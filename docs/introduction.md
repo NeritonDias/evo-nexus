@@ -10,11 +10,11 @@ Most "AI assistants" are chatbots. You ask a question, you get an answer, and th
 
 ## What EvoNexus Is
 
-EvoNexus is a multi-agent workspace compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It turns a single Claude Code installation into a team of **35 specialized agents** organized in two ortogonal layers — one for business operations, one for software engineering.
+EvoNexus is a multi-agent workspace compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It turns a single Claude Code installation into a team of **37 specialized agents** organized in two ortogonal layers — one for business operations, one for software engineering.
 
 The **Business Layer** has 16 agents that own distinct domains (finance, projects, community, social media, strategy, sales, courses, personal wellness, marketing, HR, customer success, legal, product, data, knowledge) and produce real operational outputs: HTML reports, triaged inboxes, synced meeting notes, financial snapshots, community health checks.
 
-The **Engineering Layer** has 19 agents for software development (architecture, planning, implementation, code review, testing, debugging, security, design) — derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by Yeachan Heo). These agents support the dev workflow from a brief to a verified, reviewed, tested feature.
+The **Engineering Layer** has 21 agents for software development (architecture, planning, implementation, code review, testing, debugging, security, design, cycle orchestration, retrospective) — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by Yeachan Heo) + 2 native (`helm-conductor` for cycle orchestration and `mirror-retro` for blameless retrospectives). The layer follows a canonical 6-phase workflow (Discovery → Planning → Solutioning → Build → Verify → Retro) that takes a brief all the way to a verified, reviewed, tested feature with captured lessons.
 
 A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer handoffs are common — Nova writes a PRD, Apex reviews the architecture, Bolt implements, Lens reviews, Oath verifies.
 
@@ -33,7 +33,7 @@ A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer h
 |---------|------------|
 | You ask, it answers | Agents run routines on schedule |
 | Forgets between sessions | Persistent memory across sessions |
-| One conversation thread | 35 agents with isolated domains (16 business + 19 engineering) |
+| One conversation thread | 37 agents with isolated domains (16 business + 21 engineering) |
 | Generic helper | Specialized roles per layer: ops, finance, code review, security audit, debugging |
 | No integrations | 18+ integrations (Google, GitHub, Stripe, Discord, etc.) |
 | Text output | HTML reports, dashboards, structured artifacts |

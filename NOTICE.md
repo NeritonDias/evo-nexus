@@ -7,9 +7,13 @@ This file lists attributions for all third-party code included in this workspace
 
 ## Engineering Layer — derived from oh-my-claudecode (OMC)
 
-The **19 engineering agents** and **`dev-*` skills** in this workspace are derived from
+**19 of the 21 engineering agents** and **all `dev-*` skills** in this workspace are derived from
 [**oh-my-claudecode**](https://github.com/yeachan-heo/oh-my-claudecode) (OMC),
 an open source multi-agent orchestration framework for Claude Code by **Yeachan Heo**.
+
+The 2 remaining engineering agents (`helm-conductor` and `mirror-retro`) plus the canonical
+6-phase workflow (`.claude/rules/dev-phases.md`) are EvoNexus-native additions introduced in
+v0.13.0 — they are not derived from OMC and are original EvoNexus work.
 
 - **Source:** https://github.com/yeachan-heo/oh-my-claudecode
 - **Version imported:** v4.11.4
