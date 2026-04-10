@@ -1,6 +1,6 @@
 # Nova — Product Management
 
-**Command:** `/nova` | **Color:** blue | **Model:** Sonnet
+**Command:** `/nova-product` | **Color:** blue | **Model:** Sonnet
 
 Nova is the Product Management agent, covering feature specs and PRDs, product metrics analysis, roadmap management, brainstorming sessions, stakeholder updates, and user research synthesis. She turns ideas into structured documents, keeps the roadmap current, and ensures stakeholders stay informed with data-driven updates.
 
@@ -29,9 +29,9 @@ Nova is the Product Management agent, covering feature specs and PRDs, product m
 ## Example Interactions
 
 ```
-/nova write a PRD for the new agent builder feature
-/nova review sprint metrics and highlight risks
-/nova brainstorm ideas for improving the onboarding flow
+/nova-product write a PRD for the new agent builder feature
+/nova-product review sprint metrics and highlight risks
+/nova-product brainstorm ideas for improving the onboarding flow
 ```
 
 ## Routines

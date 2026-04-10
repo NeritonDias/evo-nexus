@@ -1,6 +1,6 @@
 # Nex — Sales
 
-**Command:** `/nex` | **Color:** red | **Model:** Sonnet
+**Command:** `/nex-sales` | **Color:** red | **Model:** Sonnet
 
 Nex is the sales agent responsible for pipeline management, lead qualification, proposal drafting, and commercial KPIs. It operates at L1 Observer level — meaning it generates reports and drafts for approval but never sends anything directly. Use Nex for all commercial and sales-related tasks.
 
@@ -22,9 +22,9 @@ Nex is the sales agent responsible for pipeline management, lead qualification, 
 ## Example Interactions
 
 ```
-/nex what's the current state of our sales pipeline?
-/nex prepare a proposal for the HostGator partnership renewal
-/nex qualify this lead: mid-size SaaS company, 50 employees, looking for WhatsApp automation
+/nex-sales what's the current state of our sales pipeline?
+/nex-sales prepare a proposal for the HostGator partnership renewal
+/nex-sales qualify this lead: mid-size SaaS company, 50 employees, looking for WhatsApp automation
 ```
 
 ## Routines

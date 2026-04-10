@@ -19,7 +19,7 @@ def connect():
     if not client_key:
         return _missing("TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET")
 
-    callback_url = env.get("TIKTOK_CALLBACK_URL", "http://localhost:8765/callback/tiktok")
+    callback_url = env.get("TIKTOK_CALLBACK_URL") or (request.host_url.rstrip("/") + "/callback/tiktok")
     state = secrets.token_urlsafe(32)
     session["oauth_state_tiktok"] = state
 
@@ -46,7 +46,7 @@ def callback():
     if not code:
         return f"Error: {request.args.get('error', 'no code')}", 400
 
-    callback_url = env.get("TIKTOK_CALLBACK_URL", "http://localhost:8765/callback/tiktok")
+    callback_url = env.get("TIKTOK_CALLBACK_URL") or (request.host_url.rstrip("/") + "/callback/tiktok")
     payload = json.dumps({
         "client_key": env.get("TIKTOK_CLIENT_KEY", ""),
         "client_secret": env.get("TIKTOK_CLIENT_SECRET", ""),

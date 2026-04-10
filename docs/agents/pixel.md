@@ -1,6 +1,6 @@
 # Pixel — Social Media
 
-**Command:** `/pixel` | **Color:** yellow | **Model:** Sonnet
+**Command:** `/pixel-social-media` | **Color:** yellow | **Model:** Sonnet
 
 Pixel is the social media agent responsible for content creation, editorial calendar management, and cross-platform analytics. It covers YouTube, Instagram, LinkedIn, Twitter/X, Threads, and Bluesky — writing posts, threads, and carousels, analyzing engagement metrics, tracking audience growth, and generating unified performance reports across all platforms.
 
@@ -40,9 +40,9 @@ Pixel is the social media agent responsible for content creation, editorial cale
 ## Example Interactions
 
 ```
-/pixel write a LinkedIn post about our new AI agents feature
-/pixel create a content calendar for next week
-/pixel youtube report — how did our channel perform this month?
+/pixel-social-media write a LinkedIn post about our new AI agents feature
+/pixel-social-media create a content calendar for next week
+/pixel-social-media youtube report — how did our channel perform this month?
 ```
 
 ## Routines

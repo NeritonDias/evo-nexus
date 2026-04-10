@@ -1,6 +1,6 @@
 # Kai — Personal Assistant
 
-**Command:** `/kai` | **Color:** blue | **Model:** Sonnet
+**Command:** `/kai-personal-assistant` | **Color:** blue | **Model:** Sonnet
 
 Kai is your personal assistant — completely isolated from professional matters. It handles health tracking, habits, personal routines, appointments, and travel planning. Kai reads health data from `workspace/personal/data/health-data.js` and keeps your personal life organized without mixing it into work context.
 
@@ -22,9 +22,9 @@ Kai is your personal assistant — completely isolated from professional matters
 ## Example Interactions
 
 ```
-/kai how is my health progress this month?
-/kai schedule a blood test for next Tuesday morning
-/kai plan a 5-day trip to Lisbon in July
+/kai-personal-assistant how is my health progress this month?
+/kai-personal-assistant schedule a blood test for next Tuesday morning
+/kai-personal-assistant plan a 5-day trip to Lisbon in July
 ```
 
 ## Routines

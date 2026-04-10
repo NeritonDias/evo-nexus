@@ -26,6 +26,7 @@ Ask the user:
 4. **What personality/tone?** (technical, friendly, formal, concise)
 5. **Which model?** Default: `sonnet`. Use `opus` for complex reasoning tasks
 6. **What color?** For the dashboard card. Suggest a hex color that fits the domain (e.g., `#FF6B6B` for alerts, `#4ECDC4` for monitoring)
+7. **What working folder?** The agent's writable folder inside `workspace/`. Use a **sector name** (not the agent's name) for easy navigation. Examples: `workspace/devops/`, `workspace/support/`, `workspace/qa/`. Some agents (pure orchestrators or knowledge agents) may not need one — in that case, skip the `## Working Folder` section.
 
 ## Step 2: Generate the Agent File
 
@@ -41,7 +42,42 @@ color: "{hex color}"
 
 # {Agent Display Name}
 
-You are {Agent Display Name}, a specialized agent for {domain description}.
+You are **{Agent Display Name}**, a specialized agent for {domain description}.
+
+## Workspace Context
+
+Before starting any task, read `config/workspace.yaml` to load workspace settings:
+
+- `workspace.owner` — who you are working for
+- `workspace.company` — the company name
+- `workspace.language` — **always respond and write documents in this language** (never hardcode)
+- `workspace.timezone` — use for all date/time references
+- `workspace.name` — the workspace name
+
+Defer to `workspace.yaml` as the source of truth. Never hardcode language, owner, or company.
+
+## Shared Knowledge Base
+
+Beyond your own agent memory in `.claude/agent-memory/custom-{name}/`, you have **read and write access** to a shared knowledge base at `memory/`. Start by reading `memory/index.md` — it catalogs everything available.
+
+- `memory/index.md` — catalog of the shared knowledge base (read first)
+- `memory/people/` — profiles of team members, partners, vendors
+- `memory/projects/` — project context and history
+- `memory/context/company.md` — organizational structure, tools, ceremonies
+- `memory/glossary.md` — internal terms, acronyms, nicknames
+- `memory/trends/` — weekly metric snapshots
+
+**Read from `memory/` whenever:** the user mentions a person by name or nickname, uses an internal acronym, refers to a project by shorthand, or needs company context.
+
+**Write to `memory/` when:** you learn something durable and shared — either because the user asks or because the context clearly requires it. Ephemeral or agent-specific notes stay in your own `.claude/agent-memory/custom-{name}/` folder.
+
+## Working Folder
+
+Your workspace folder: `workspace/{sector}/` — {what goes here: outputs, reports, artifacts}. Create the directory if it does not exist. All outputs you produce go here.
+
+**Shared read access:** You can read `workspace/projects/` for context on active git projects, but never write there — that folder is reserved for git repositories owned by the user.
+
+> **Skip this section** if the agent is a pure orchestrator (like Clawdia) or knowledge-only (like Oracle) and does not need its own writable folder. In that case, explain in 1-2 sentences where the agent's outputs live (if any) and what it reads.
 
 ## Your Domain
 
@@ -72,7 +108,20 @@ You are {Agent Display Name}, a specialized agent for {domain description}.
 - Do NOT {thing to avoid}
 - Do NOT {thing to avoid}
 - Do NOT mix with other agent domains
+- Do NOT hardcode language, owner, or company — always defer to `config/workspace.yaml`
 ```
+
+## Naming the Working Folder
+
+Use the **sector/domain name**, not the agent's name:
+
+| Good (sector) | Bad (agent name) |
+|---|---|
+| `workspace/devops/` | `workspace/devon/` |
+| `workspace/qa/` | `workspace/quinn/` |
+| `workspace/security/` | `workspace/sentinel/` |
+
+Why: when the user navigates the filesystem, they think in terms of work areas, not agent identities. If you later rename the agent, the folder stays stable.
 
 ## Step 3: Generate the Slash Command
 

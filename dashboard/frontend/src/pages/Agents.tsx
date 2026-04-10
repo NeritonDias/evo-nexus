@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bot,
@@ -18,9 +18,73 @@ import {
   Scale,
   Lightbulb,
   BarChart3,
+  Search,
+  Building2,
+  Code2,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
+
+type Category = 'business' | 'engineering' | 'custom'
+type EngTier = 'reasoning' | 'execution' | 'speed'
+
+const BUSINESS_AGENTS = new Set([
+  'clawdia-assistant',
+  'flux-finance',
+  'atlas-project',
+  'kai-personal-assistant',
+  'pulse-community',
+  'sage-strategy',
+  'pixel-social-media',
+  'nex-sales',
+  'mentor-courses',
+  'oracle',
+  'mako-marketing',
+  'aria-hr',
+  'zara-cs',
+  'lex-legal',
+  'nova-product',
+  'dex-data',
+])
+
+const ENGINEERING_TIERS: Record<EngTier, Set<string>> = {
+  reasoning: new Set([
+    'apex-architect',
+    'echo-analyst',
+    'compass-planner',
+    'raven-critic',
+    'lens-reviewer',
+    'zen-simplifier',
+    'vault-security',
+  ]),
+  execution: new Set([
+    'bolt-executor',
+    'hawk-debugger',
+    'grid-tester',
+    'probe-qa',
+    'oath-verifier',
+    'trail-tracer',
+    'flow-git',
+    'scroll-docs',
+    'canvas-designer',
+    'prism-scientist',
+  ]),
+  speed: new Set(['scout-explorer', 'quill-writer']),
+}
+
+function getCategory(agent: Agent): Category {
+  if (agent.custom || agent.name.startsWith('custom-')) return 'custom'
+  if (BUSINESS_AGENTS.has(agent.name)) return 'business'
+  return 'engineering'
+}
+
+function getEngineeringTier(name: string): EngTier | null {
+  if (ENGINEERING_TIERS.reasoning.has(name)) return 'reasoning'
+  if (ENGINEERING_TIERS.execution.has(name)) return 'execution'
+  if (ENGINEERING_TIERS.speed.has(name)) return 'speed'
+  return null
+}
 
 interface Agent {
   name: string
@@ -46,7 +110,7 @@ const AGENT_META: Record<string, AgentMeta> = {
     color: '#60A5FA',
     colorMuted: 'rgba(96,165,250,0.12)',
     glowColor: 'rgba(96,165,250,0.15)',
-    command: '/atlas',
+    command: '',
     label: 'Projects',
   },
   'clawdia-assistant': {
@@ -181,7 +245,8 @@ const DEFAULT_META: AgentMeta = {
 }
 
 function getMeta(name: string, agent?: Agent): AgentMeta {
-  if (AGENT_META[name]) return AGENT_META[name]
+  const command = `/${name}`
+  if (AGENT_META[name]) return { ...AGENT_META[name], command }
   if (agent?.color) {
     const c = agent.color
     return {
@@ -189,10 +254,10 @@ function getMeta(name: string, agent?: Agent): AgentMeta {
       color: c,
       colorMuted: `${c}1F`,
       glowColor: `${c}26`,
-      command: agent.custom ? `/custom-${name.replace('custom-', '')}` : '',
+      command,
     }
   }
-  return DEFAULT_META
+  return { ...DEFAULT_META, command }
 }
 
 function formatAgentName(name: string): string {
@@ -206,6 +271,7 @@ function AgentCard({ agent, isRunning }: { agent: Agent; isRunning: boolean }) {
   const meta = getMeta(agent.name, agent)
   const Icon = meta.icon
   const isActive = agent.memory_count > 0
+  const tier = getEngineeringTier(agent.name)
 
   return (
     <Link
@@ -276,6 +342,11 @@ function AgentCard({ agent, isRunning }: { agent: Agent; isRunning: boolean }) {
               core
             </span>
           )}
+          {tier && (
+            <span className="rounded-full bg-[#818CF8]/10 px-1.5 py-0.5 text-[9px] font-medium text-[#818CF8] border border-[#818CF8]/20 uppercase tracking-wider">
+              {tier === 'reasoning' ? 'opus' : tier === 'execution' ? 'sonnet' : 'haiku'}
+            </span>
+          )}
         </div>
       </div>
 
@@ -326,10 +397,83 @@ function SkeletonCard() {
   )
 }
 
+type FilterValue = 'all' | Category
+
+const FILTERS: { value: FilterValue; label: string; icon: LucideIcon }[] = [
+  { value: 'all', label: 'All', icon: Bot },
+  { value: 'business', label: 'Business', icon: Building2 },
+  { value: 'engineering', label: 'Engineering', icon: Code2 },
+  { value: 'custom', label: 'Custom', icon: Sparkles },
+]
+
+const CATEGORY_META: Record<Category, { label: string; color: string; description: string }> = {
+  business: {
+    label: 'Business',
+    color: '#00FFA7',
+    description: 'Operations, finance, marketing, HR, legal, product, data',
+  },
+  engineering: {
+    label: 'Engineering',
+    color: '#818CF8',
+    description: 'Software development — reasoning, execution, speed tiers',
+  },
+  custom: {
+    label: 'Custom',
+    color: '#C084FC',
+    description: 'Personal agents (gitignored)',
+  },
+}
+
+const TIER_LABELS: Record<EngTier, string> = {
+  reasoning: 'Reasoning · opus',
+  execution: 'Execution · sonnet',
+  speed: 'Speed · haiku',
+}
+
+function SectionHeader({
+  label,
+  count,
+  color,
+  description,
+}: {
+  label: string
+  count: number
+  color: string
+  description?: string
+}) {
+  return (
+    <div className="mb-3 flex items-end justify-between border-b border-[#21262d] pb-2">
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-[#e6edf3]" style={{ color }}>
+          {label}
+        </h2>
+        <span className="rounded-full bg-[#0d1117] px-2 py-0.5 text-[11px] font-medium text-[#8b949e] border border-[#21262d]">
+          {count}
+        </span>
+      </div>
+      {description && (
+        <p className="hidden md:block text-[11px] text-[#667085]">{description}</p>
+      )}
+    </div>
+  )
+}
+
+function SubSectionHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="mb-2 mt-4 flex items-center gap-2">
+      <h3 className="text-[11px] font-medium uppercase tracking-wider text-[#667085]">{label}</h3>
+      <span className="text-[11px] text-[#3F3F46]">·</span>
+      <span className="text-[11px] text-[#667085]">{count}</span>
+    </div>
+  )
+}
+
 export default function Agents() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
   const [runningAgents, setRunningAgents] = useState<string[]>([])
+  const [filter, setFilter] = useState<FilterValue>('all')
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     api.get('/agents')
@@ -356,23 +500,75 @@ export default function Agents() {
 
   const totalMemories = agents.reduce((sum, a) => sum + a.memory_count, 0)
   const activeCount = agents.filter((a) => a.memory_count > 0).length
-  const coreCount = agents.filter((a) => !a.custom).length
-  const customCount = agents.filter((a) => a.custom).length
+
+  const counts = useMemo(() => {
+    const c = { all: agents.length, business: 0, engineering: 0, custom: 0 }
+    for (const a of agents) c[getCategory(a)]++
+    return c
+  }, [agents])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return agents.filter((a) => {
+      if (filter !== 'all' && getCategory(a) !== filter) return false
+      if (!q) return true
+      return (
+        a.name.toLowerCase().includes(q) ||
+        (a.description || '').toLowerCase().includes(q)
+      )
+    })
+  }, [agents, filter, query])
+
+  const grouped = useMemo(() => {
+    const business: Agent[] = []
+    const engineering: Record<EngTier, Agent[]> & { other: Agent[] } = {
+      reasoning: [],
+      execution: [],
+      speed: [],
+      other: [],
+    }
+    const custom: Agent[] = []
+    for (const a of filtered) {
+      const cat = getCategory(a)
+      if (cat === 'business') business.push(a)
+      else if (cat === 'custom') custom.push(a)
+      else {
+        const tier = getEngineeringTier(a.name)
+        if (tier) engineering[tier].push(a)
+        else engineering.other.push(a)
+      }
+    }
+    const sorter = (x: Agent, y: Agent) => x.name.localeCompare(y.name)
+    business.sort(sorter)
+    custom.sort(sorter)
+    engineering.reasoning.sort(sorter)
+    engineering.execution.sort(sorter)
+    engineering.speed.sort(sorter)
+    engineering.other.sort(sorter)
+    return { business, engineering, custom }
+  }, [filtered])
+
+  const isRunning = (name: string) =>
+    runningAgents.some((r) => name.includes(r) || r.includes(name.split('-')[0]))
+
+  const gridClass =
+    'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'
 
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#e6edf3]">Agents</h1>
-        <p className="text-[#667085] mt-1">
-          AI agents managing your workspace
-        </p>
+        <p className="text-[#667085] mt-1">AI agents managing your workspace</p>
 
         {/* Stats bar */}
         {!loading && agents.length > 0 && (
           <div className="mt-4 flex items-center gap-6 text-sm">
             <div className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-full bg-[#22C55E]" style={{ boxShadow: '0 0 6px rgba(34,197,94,0.5)' }} />
+              <span
+                className="inline-block h-2 w-2 rounded-full bg-[#22C55E]"
+                style={{ boxShadow: '0 0 6px rgba(34,197,94,0.5)' }}
+              />
               <span className="text-[#8b949e]">
                 <span className="font-medium text-[#e6edf3]">{activeCount}</span> active
               </span>
@@ -384,16 +580,22 @@ export default function Agents() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Bot size={14} className="text-[#667085]" />
+              <Building2 size={14} className="text-[#00FFA7]" />
               <span className="text-[#8b949e]">
-                <span className="font-medium text-[#e6edf3]">{coreCount}</span> core
+                <span className="font-medium text-[#e6edf3]">{counts.business}</span> business
               </span>
             </div>
-            {customCount > 0 && (
+            <div className="flex items-center gap-2">
+              <Code2 size={14} className="text-[#818CF8]" />
+              <span className="text-[#8b949e]">
+                <span className="font-medium text-[#e6edf3]">{counts.engineering}</span> engineering
+              </span>
+            </div>
+            {counts.custom > 0 && (
               <div className="flex items-center gap-2">
-                <Bot size={14} className="text-[#6B7280]" />
+                <Sparkles size={14} className="text-[#C084FC]" />
                 <span className="text-[#8b949e]">
-                  <span className="font-medium text-[#e6edf3]">{customCount}</span> custom
+                  <span className="font-medium text-[#e6edf3]">{counts.custom}</span> custom
                 </span>
               </div>
             )}
@@ -401,8 +603,52 @@ export default function Agents() {
         )}
       </div>
 
+      {/* Filter + Search bar */}
+      {!loading && agents.length > 0 && (
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {FILTERS.map((f) => {
+              const FIcon = f.icon
+              const active = filter === f.value
+              const c = counts[f.value]
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setFilter(f.value)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-all ${
+                    active
+                      ? 'border-[#00FFA7]/40 bg-[#00FFA7]/10 text-[#00FFA7]'
+                      : 'border-[#21262d] bg-[#161b22] text-[#8b949e] hover:border-[#30363d] hover:text-[#e6edf3]'
+                  }`}
+                >
+                  <FIcon size={12} />
+                  {f.label}
+                  <span className="rounded-full bg-[#0d1117] px-1.5 py-0.5 text-[10px] text-[#667085] border border-[#21262d]">
+                    {c}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="relative sm:w-64">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#667085]"
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search agents..."
+              className="w-full rounded-full border border-[#21262d] bg-[#161b22] py-1.5 pl-9 pr-3 text-[12px] text-[#e6edf3] placeholder:text-[#667085] focus:border-[#00FFA7]/40 focus:outline-none"
+            />
+          </div>
+        </div>
+      )}
+
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className={gridClass}>
           {[...Array(9)].map((_, i) => (
             <SkeletonCard key={i} />
           ))}
@@ -417,11 +663,84 @@ export default function Agents() {
             Add agent files to .claude/agents/ to get started
           </p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-[#667085] text-sm">No agents match your filters.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {agents.map((agent) => (
-            <AgentCard key={agent.name} agent={agent} isRunning={runningAgents.some(r => agent.name.includes(r) || r.includes(agent.name.split('-')[0]))} />
-          ))}
+        <div className="space-y-10">
+          {grouped.business.length > 0 && (
+            <section>
+              <SectionHeader
+                label={CATEGORY_META.business.label}
+                count={grouped.business.length}
+                color={CATEGORY_META.business.color}
+                description={CATEGORY_META.business.description}
+              />
+              <div className={gridClass}>
+                {grouped.business.map((agent) => (
+                  <AgentCard key={agent.name} agent={agent} isRunning={isRunning(agent.name)} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {(grouped.engineering.reasoning.length > 0 ||
+            grouped.engineering.execution.length > 0 ||
+            grouped.engineering.speed.length > 0 ||
+            grouped.engineering.other.length > 0) && (
+            <section>
+              <SectionHeader
+                label={CATEGORY_META.engineering.label}
+                count={
+                  grouped.engineering.reasoning.length +
+                  grouped.engineering.execution.length +
+                  grouped.engineering.speed.length +
+                  grouped.engineering.other.length
+                }
+                color={CATEGORY_META.engineering.color}
+                description={CATEGORY_META.engineering.description}
+              />
+              {(['reasoning', 'execution', 'speed'] as EngTier[]).map((tier) =>
+                grouped.engineering[tier].length > 0 ? (
+                  <div key={tier}>
+                    <SubSectionHeader label={TIER_LABELS[tier]} count={grouped.engineering[tier].length} />
+                    <div className={gridClass}>
+                      {grouped.engineering[tier].map((agent) => (
+                        <AgentCard key={agent.name} agent={agent} isRunning={isRunning(agent.name)} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              )}
+              {grouped.engineering.other.length > 0 && (
+                <div>
+                  <SubSectionHeader label="Other" count={grouped.engineering.other.length} />
+                  <div className={gridClass}>
+                    {grouped.engineering.other.map((agent) => (
+                      <AgentCard key={agent.name} agent={agent} isRunning={isRunning(agent.name)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {grouped.custom.length > 0 && (
+            <section>
+              <SectionHeader
+                label={CATEGORY_META.custom.label}
+                count={grouped.custom.length}
+                color={CATEGORY_META.custom.color}
+                description={CATEGORY_META.custom.description}
+              />
+              <div className={gridClass}>
+                {grouped.custom.map((agent) => (
+                  <AgentCard key={agent.name} agent={agent} isRunning={isRunning(agent.name)} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>

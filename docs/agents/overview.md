@@ -2,6 +2,15 @@
 
 Agents are the core of EvoNexus. Each agent is a specialized AI persona with its own domain, system prompt, skills, and persistent memory.
 
+EvoNexus organizes agents in **two ortogonal layers**:
+
+- **Business Layer (16 agents)** — operations, finance, community, marketing, HR, legal, product, data, sales. Built and maintained by EvoNexus.
+- **Engineering Layer (19 agents)** — software development, code review, testing, debugging, security, design. Derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by Yeachan Heo). See [Engineering Layer](engineering-layer.md) for details.
+
+The two layers are independent — business tasks route to business agents, engineering tasks to engineering agents — but cross-layer handoffs are common (e.g., `@nova` writes a PRD → `@apex-architect` does the architecture review → `@bolt-executor` implements).
+
+**Total: 35 agents** + custom agents you create.
+
 ## What Is an Agent?
 
 An agent is a markdown file in `.claude/agents/` that contains:
@@ -17,31 +26,58 @@ When invoked, Claude Code loads the agent's system prompt and operates within th
 
 Each agent has a corresponding command in `.claude/commands/`:
 
+**Business Layer (16):**
+
 ```
-/clawdia    — Ops hub: agenda, emails, tasks, decisions
-/flux       — Finance: Stripe, ERP, cash flow, reports
-/atlas      — Projects: Linear, GitHub, sprints, milestones
-/pulse      — Community: Discord, WhatsApp, sentiment, FAQ
-/pixel      — Social media: content, calendar, analytics
-/sage       — Strategy: OKRs, roadmap, competitive analysis
-/nex        — Sales: pipeline, proposals, qualification
-/mentor     — Courses: learning paths, modules
-/kai        — Personal: health, habits, routine
-/oracle     — Workspace knowledge: docs, how-to, configuration
-/mako       — Marketing: campaigns, SEO, email, brand
-/aria       — HR / People: recruiting, onboarding, performance
-/zara       — Customer Success: triage, escalation, KB
-/lex        — Legal / Compliance: contracts, NDA, LGPD
-/nova       — Product: specs, roadmaps, metrics, research
-/dex        — Data / BI: analysis, SQL, dashboards
+/clawdia-assistant       — Ops hub: agenda, emails, tasks, decisions
+/flux-finance            — Finance: Stripe, ERP, cash flow, reports
+/atlas-project           — Projects: Linear, GitHub, sprints, milestones
+/pulse-community         — Community: Discord, WhatsApp, sentiment, FAQ
+/pixel-social-media      — Social media: content, calendar, analytics
+/sage-strategy           — Strategy: OKRs, roadmap, competitive analysis
+/nex-sales               — Sales: pipeline, proposals, qualification
+/mentor-courses          — Courses: learning paths, modules
+/kai-personal-assistant  — Personal: health, habits, routine
+/oracle                  — Workspace knowledge: docs, how-to, configuration
+/mako-marketing          — Marketing: campaigns, SEO, email, brand
+/aria-hr                 — HR / People: recruiting, onboarding, performance
+/zara-cs                 — Customer Success: triage, escalation, KB
+/lex-legal               — Legal / Compliance: contracts, NDA, LGPD
+/nova-product            — Product: specs, roadmaps, metrics, research
+/dex-data                — Data / BI: analysis, SQL, dashboards
+```
+
+**Engineering Layer (19):**
+
+```
+/apex-architect      — Architect: design, debugging, tradeoffs (READ-ONLY)
+/echo-analyst        — Analyst: discovery, gap analysis (READ-ONLY)
+/compass-planner     — Planner: 3-6 step interview-driven plans
+/raven-critic        — Critic: multi-perspective adversarial review (READ-ONLY)
+/bolt-executor       — Executor: smallest viable diff implementation
+/hawk-debugger       — Debugger: root cause, build errors
+/lens-reviewer       — Code reviewer: 2-stage, OWASP, SOLID (READ-ONLY)
+/zen-simplifier      — Code simplifier: refactor without behavior change
+/vault-security      — Security: OWASP Top 10, secrets, deps (READ-ONLY)
+/grid-tester         — Test engineer: TDD, pyramid, flaky diagnosis
+/probe-qa            — QA tester: interactive tmux sessions
+/oath-verifier       — Verifier: evidence-based completion (READ-ONLY)
+/trail-tracer        — Tracer: causal investigation with hypotheses
+/scout-explorer      — Explorer: parallel codebase search (READ-ONLY)
+/flow-git            — Git master: atomic commits, safe rebase
+/scroll-docs         — Document specialist: external SDK/API docs (READ-ONLY)
+/quill-writer        — Writer: technical docs with verified examples
+/canvas-designer     — Designer: production-grade UI/UX
+/prism-scientist     — Scientist: formal statistical analysis
 ```
 
 Usage in Claude Code:
 
 ```
-/clawdia check my emails
-/flux what is the company's financial status?
-/pulse how is the community doing?
+/clawdia-assistant check my emails
+/flux-finance what is the company's financial status?
+/apex-architect why is the bot runtime hanging on reconnect?
+/dev-autopilot build me a CRUD API for a bookstore inventory
 ```
 
 ### Auto-routing
@@ -95,26 +131,66 @@ To create a custom agent, use the `create-agent` skill or see [Creating Agents](
 .claude/agent-memory/custom-devops/  # Persistent memory
 ```
 
-## All 16 Core Agents
+## Business Layer — 16 Core Agents
 
 | Agent | Command | Domain | Color |
 |-------|---------|--------|-------|
-| [**Clawdia**](clawdia.md) | `/clawdia` | Ops: agenda, emails, tasks, meetings, decisions | cyan |
-| [**Flux**](flux.md) | `/flux` | Finance: Stripe, Omie, cash flow, monthly close | orange |
-| [**Atlas**](atlas.md) | `/atlas` | Projects: Linear, GitHub, sprints, licensing | green |
-| [**Pulse**](pulse.md) | `/pulse` | Community: Discord, WhatsApp, sentiment, FAQ | blue |
-| [**Pixel**](pixel.md) | `/pixel` | Social: content, calendar, cross-platform analytics | yellow |
-| [**Sage**](sage.md) | `/sage` | Strategy: OKRs, roadmap, competitive analysis | orange |
-| [**Nex**](nex.md) | `/nex` | Sales: pipeline, proposals, qualification | red |
-| [**Mentor**](mentor.md) | `/mentor` | Courses: learning paths, modules, academy | purple |
-| [**Kai**](kai.md) | `/kai` | Personal: health, habits, routine (isolated) | blue |
+| [**Clawdia**](clawdia.md) | `/clawdia-assistant` | Ops: agenda, emails, tasks, meetings, decisions | cyan |
+| [**Flux**](flux.md) | `/flux-finance` | Finance: Stripe, Omie, cash flow, monthly close | orange |
+| [**Atlas**](atlas.md) | `/atlas-project` | Projects: Linear, GitHub, sprints, licensing | green |
+| [**Pulse**](pulse.md) | `/pulse-community` | Community: Discord, WhatsApp, sentiment, FAQ | blue |
+| [**Pixel**](pixel.md) | `/pixel-social-media` | Social: content, calendar, cross-platform analytics | yellow |
+| [**Sage**](sage.md) | `/sage-strategy` | Strategy: OKRs, roadmap, competitive analysis | orange |
+| [**Nex**](nex.md) | `/nex-sales` | Sales: pipeline, proposals, qualification | red |
+| [**Mentor**](mentor.md) | `/mentor-courses` | Courses: learning paths, modules, academy | purple |
+| [**Kai**](kai.md) | `/kai-personal-assistant` | Personal: health, habits, routine (isolated) | blue |
 | [**Oracle**](oracle.md) | `/oracle` | Workspace knowledge: docs, how-to, configuration | amber |
-| [**Mako**](mako.md) | `/mako` | Marketing: campaigns, SEO, email sequences, brand | orange |
-| [**Aria**](aria.md) | `/aria` | HR / People: recruiting, onboarding, performance | pink |
-| [**Zara**](zara.md) | `/zara` | Customer Success: triage, escalation, health scores | cyan |
-| [**Lex**](lex.md) | `/lex` | Legal / Compliance: contracts, NDA, LGPD, risk | purple |
-| [**Nova**](nova.md) | `/nova` | Product: specs, roadmaps, metrics, research | blue |
-| [**Dex**](dex.md) | `/dex` | Data / BI: analysis, SQL, dashboards, visualizations | yellow |
+| [**Mako**](mako.md) | `/mako-marketing` | Marketing: campaigns, SEO, email sequences, brand | orange |
+| [**Aria**](aria.md) | `/aria-hr` | HR / People: recruiting, onboarding, performance | pink |
+| [**Zara**](zara.md) | `/zara-cs` | Customer Success: triage, escalation, health scores | cyan |
+| [**Lex**](lex.md) | `/lex-legal` | Legal / Compliance: contracts, NDA, LGPD, risk | purple |
+| [**Nova**](nova.md) | `/nova-product` | Product: specs, roadmaps, metrics, research | blue |
+| [**Dex**](dex.md) | `/dex-data` | Data / BI: analysis, SQL, dashboards, visualizations | yellow |
+
+## Engineering Layer — 19 Agents
+
+Software development specialists. Each agent has a specific role in the dev workflow: design, planning, implementation, review, testing, debugging, verification.
+
+### Reasoning (opus)
+
+| Agent | Command | Role |
+|---|---|---|
+| **Apex** | `/apex-architect` | Architect — architectural design, read-only debugging, tradeoffs |
+| **Echo** | `/echo-analyst` | Analyst — discovery, requirements gaps, hidden assumptions |
+| **Compass** | `/compass-planner` | Planner — tactical 3-6 step planning with interview |
+| **Raven** | `/raven-critic` | Critic — challenges plans before execution, multi-perspective |
+| **Lens** | `/lens-reviewer` | Code Reviewer — 2-stage review (spec + quality), OWASP, SOLID |
+| **Zen** | `/zen-simplifier` | Code Simplifier — deslop, refactoring, clarity |
+| **Vault** | `/vault-security` | Security Reviewer — OWASP Top 10, secrets, dependency audit |
+
+### Execution (sonnet)
+
+| Agent | Command | Role |
+|---|---|---|
+| **Bolt** | `/bolt-executor` | Executor — precise multi-file implementation |
+| **Hawk** | `/hawk-debugger` | Debugger — root cause, regressions, stack traces |
+| **Grid** | `/grid-tester` | Test Engineer — TDD, strategy pyramid, coverage |
+| **Probe** | `/probe-qa` | QA Tester — interactive testing, flaky diagnosis |
+| **Oath** | `/oath-verifier` | Verifier — evidence-based completion verification |
+| **Trail** | `/trail-tracer` | Tracer — causal tracing, competing hypotheses |
+| **Flow** | `/flow-git` | Git Master — atomic commits, rebase, history cleanup |
+| **Scroll** | `/scroll-docs` | Document Specialist — external docs (SDKs, APIs) via web |
+| **Canvas** | `/canvas-designer` | Designer — UI/UX for product (Evo AI CRM, dashboards) |
+| **Prism** | `/prism-scientist` | Scientist — formal statistical analysis, hypothesis testing |
+
+### Speed (haiku)
+
+| Agent | Command | Role |
+|---|---|---|
+| **Scout** | `/scout-explorer` | Explorer — parallel codebase search (Glob/Grep) |
+| **Quill** | `/quill-writer` | Writer — quick technical docs, README, comments |
+
+See the dedicated [Engineering Layer](engineering-layer.md) page for pipelines, attribution, and detailed workflows.
 
 ### Agent Roles in Detail
 

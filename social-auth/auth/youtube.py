@@ -10,6 +10,10 @@ import secrets
 bp = Blueprint("youtube", __name__)
 
 
+def _redirect_uri():
+    return request.host_url.rstrip("/") + "/callback/youtube"
+
+
 @bp.route("/connect/youtube")
 def connect():
     from env_manager import read_env
@@ -69,7 +73,7 @@ def oauth_start():
 
     params = urllib.parse.urlencode({
         "client_id": client_id,
-        "redirect_uri": "http://localhost:8765/callback/youtube",
+        "redirect_uri": _redirect_uri(),
         "response_type": "code",
         "scope": "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",
         "access_type": "offline",
@@ -99,7 +103,7 @@ def callback():
         "code": code,
         "client_id": env.get("YOUTUBE_OAUTH_CLIENT_ID", ""),
         "client_secret": env.get("YOUTUBE_OAUTH_CLIENT_SECRET", ""),
-        "redirect_uri": "http://localhost:8765/callback/youtube",
+        "redirect_uri": _redirect_uri(),
         "grant_type": "authorization_code",
     }).encode()
 

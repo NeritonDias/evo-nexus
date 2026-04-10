@@ -82,6 +82,29 @@
 
 ---
 
+## v0.12 — Engineering Layer
+
+> Add a complete software development team alongside the business agents.
+
+### Engineering Layer (delivered)
+
+- [x] 🔥 **19 engineering agents** — complete dev team derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, Yeachan Heo). Reasoning tier (opus): apex-architect, echo-analyst, compass-planner, raven-critic, lens-reviewer, zen-simplifier, vault-security. Execution tier (sonnet): bolt-executor, hawk-debugger, grid-tester, probe-qa, oath-verifier, trail-tracer, flow-git, scroll-docs, canvas-designer, prism-scientist. Speed tier (haiku): scout-explorer, quill-writer.
+- [x] 🔥 **25 `dev-*` skills** — Tier 1 orchestration (15): `dev-autopilot`, `dev-plan`, `dev-ralplan`, `dev-deep-interview`, `dev-deep-dive`, `dev-external-context`, `dev-trace`, `dev-verify`, `dev-ultraqa`, `dev-visual-verdict`, `dev-ai-slop-cleaner`, `dev-sciomc`, `dev-team`, `dev-ccg`, `dev-ralph`. Tier 2 setup (5): `dev-mcp-setup`, `dev-deepinit`, `dev-project-session-manager`, `dev-configure-notifications`, `dev-release`. Tier 3 utilities (5): `dev-cancel`, `dev-remember`, `dev-ask`, `dev-learner`, `dev-skillify`.
+- [x] **15 dev templates** — `.claude/templates/dev-*.md` for each agent's primary output (architecture-decision, work-plan, code-review, bug-report, verification-report, deep-interview-spec, security-audit, test-strategy, trace-report, explore-report, design-spec, analysis-report, research-brief, critique, simplification-report).
+- [x] **`workspace/development/` folder** — 7 subfolders (architecture, plans, specs, reviews, debug, verifications, research) for engineering layer artifacts. Distinct from `workspace/projects/` (active git repos).
+- [x] **Two-layer architecture documented** — `.claude/rules/agents.md`, `CLAUDE.md`, `docs/agents/overview.md`, `docs/agents/engineering-layer.md`, `docs/architecture.md`, `docs/introduction.md`, site `Home.tsx`.
+- [x] **Open source attribution** — `NOTICE.md` at repo root with full MIT license, version pinned (v4.11.4), modifications listed. Credits in `README.md`.
+- [x] **Pattern compliance** — all 19 engineering agents follow the EvoNexus standard: rich frontmatter (Examples + commentary), Workspace Context, Shared Knowledge Base, Working Folder, Identity, Anti-patterns, Domain, How You Work, Skills You Can Use, Handoffs, Output Format, Continuity. Verified by `@lens-reviewer` (3 fixes applied: oath-verifier disallowedTools, raven-critic and trail-tracer Skills section).
+
+### Cross-layer pipelines (now possible)
+
+- [x] **End-to-end implementation** — `dev-autopilot` orchestrates spec → plan → code → QA → validation across multiple engineering agents.
+- [x] **High-stakes consensus planning** — `dev-ralplan` runs Planner/Architect/Critic consensus loop with RALPLAN-DR structured deliberation.
+- [x] **Bug investigation** — `@trail-tracer` (multi-hypothesis) → `@hawk-debugger` (root cause + minimal fix) → `@oath-verifier` (regression check).
+- [x] **Pre-merge gate** — `@lens-reviewer` (code quality) → `@vault-security` (OWASP audit) → `dev-ultraqa` (build/test/fix loop) → `@oath-verifier` (acceptance criteria).
+
+---
+
 ## v1.0 — Community & Growth
 
 > Community adoption, discoverability, and self-sustaining ecosystem.
@@ -109,4 +132,4 @@ Want to help? Pick any `[ ]` item and:
 
 ---
 
-*Last updated: 2026-04-09 — [Evolution Foundation](https://evolutionfoundation.com.br)*
+*Last updated: 2026-04-10 — [Evolution Foundation](https://evolutionfoundation.com.br)*

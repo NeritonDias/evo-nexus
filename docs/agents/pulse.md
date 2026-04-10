@@ -1,6 +1,6 @@
 # Pulse — Community
 
-**Command:** `/pulse` | **Color:** blue | **Model:** Sonnet
+**Command:** `/pulse-community` | **Color:** blue | **Model:** Sonnet
 
 Pulse is the community monitoring agent — tracking Discord channels, WhatsApp groups, sentiment analysis, FAQ management, and engagement metrics. Pulse keeps a finger on the community's pulse, surfacing recurring questions, emerging issues, and contributor highlights so nothing important gets missed.
 
@@ -30,9 +30,9 @@ Pulse is the community monitoring agent — tracking Discord channels, WhatsApp 
 ## Example Interactions
 
 ```
-/pulse how's the community doing this week?
-/pulse what are the most frequent questions in Discord?
-/pulse generate the monthly engagement summary
+/pulse-community how's the community doing this week?
+/pulse-community what are the most frequent questions in Discord?
+/pulse-community generate the monthly engagement summary
 ```
 
 ## Routines

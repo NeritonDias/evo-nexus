@@ -17,7 +17,7 @@ def _callback_url():
     ngrok = env.get("NGROK_URL", "")
     if ngrok:
         return f"{ngrok.rstrip('/')}/callback/linkedin"
-    return "http://localhost:8765/callback/linkedin"
+    return request.host_url.rstrip("/") + "/callback/linkedin"
 
 
 @bp.route("/connect/linkedin")

@@ -13,6 +13,10 @@ from datetime import datetime, timezone
 bp = Blueprint("twitter", __name__)
 
 
+def _redirect_uri():
+    return request.host_url.rstrip("/") + "/callback/twitter"
+
+
 @bp.route("/connect/twitter")
 def connect():
     from env_manager import read_env
@@ -45,7 +49,7 @@ def connect():
     params = urllib.parse.urlencode({
         "response_type": "code",
         "client_id": client_id,
-        "redirect_uri": "http://localhost:8765/callback/twitter",
+        "redirect_uri": _redirect_uri(),
         "scope": "tweet.read users.read follows.read offline.access",
         "state": state,
         "code_challenge": code_challenge,
@@ -82,7 +86,7 @@ def callback():
         "code": code,
         "grant_type": "authorization_code",
         "client_id": env.get("TWITTER_CLIENT_ID", ""),
-        "redirect_uri": "http://localhost:8765/callback/twitter",
+        "redirect_uri": _redirect_uri(),
         "code_verifier": session.get("twitter_code_verifier", ""),
     }).encode()
 

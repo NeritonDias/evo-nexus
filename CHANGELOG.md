@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-04-10
+
+### Added
+
+- **Engineering Layer (19 agents)** — complete software development team derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by **Yeachan Heo**, v4.11.4). The layer is ortogonal to the existing Business Layer (16 agents). EvoNexus now ships with **35 specialized agents** in two layers + custom.
+  - **Reasoning tier (opus, 7 agents):** `apex-architect`, `echo-analyst`, `compass-planner`, `raven-critic`, `lens-reviewer`, `zen-simplifier`, `vault-security`
+  - **Execution tier (sonnet, 10 agents):** `bolt-executor`, `hawk-debugger`, `grid-tester`, `probe-qa`, `oath-verifier`, `trail-tracer`, `flow-git`, `scroll-docs`, `canvas-designer`, `prism-scientist`
+  - **Speed tier (haiku, 2 agents):** `scout-explorer`, `quill-writer`
+- **25 `dev-*` skills** organized in 3 tiers:
+  - **Tier 1 — Core orchestration (15):** `dev-autopilot`, `dev-plan`, `dev-ralplan`, `dev-deep-interview`, `dev-deep-dive`, `dev-external-context`, `dev-trace`, `dev-verify`, `dev-ultraqa`, `dev-visual-verdict`, `dev-ai-slop-cleaner`, `dev-sciomc`, `dev-team`, `dev-ccg`, `dev-ralph`
+  - **Tier 2 — Setup & infra (5):** `dev-mcp-setup`, `dev-deepinit`, `dev-project-session-manager`, `dev-configure-notifications`, `dev-release`
+  - **Tier 3 — Meta utilities (5):** `dev-cancel`, `dev-remember`, `dev-ask`, `dev-learner`, `dev-skillify`
+- **15 dev templates** in `.claude/templates/dev-*.md` — one per primary agent output: `dev-architecture-decision`, `dev-work-plan`, `dev-code-review`, `dev-bug-report`, `dev-verification-report`, `dev-deep-interview-spec`, `dev-security-audit`, `dev-test-strategy`, `dev-trace-report`, `dev-explore-report`, `dev-design-spec`, `dev-analysis-report`, `dev-research-brief`, `dev-critique`, `dev-simplification-report`.
+- **`workspace/development/` folder** — engineering layer working directory with 7 subfolders (`architecture`, `plans`, `specs`, `reviews`, `debug`, `verifications`, `research`) and a `README.md`. Distinct from `workspace/projects/` (active git repos).
+- **`NOTICE.md`** — third-party attribution for `oh-my-claudecode` with full MIT license, version pinned at v4.11.4, modifications listed (renaming, namespace `dev-*`, memory pattern adaptation, runtime stripping).
+- **`docs/agents/engineering-layer.md`** — dedicated documentation page covering tiers, agents, pipelines, working folder, templates, memory pattern, cross-layer handoffs, and attribution.
+- **Two-layer dashboard categorization** — `dashboard/frontend/src/pages/Agents.tsx` now categorizes agents into Business / Engineering (with reasoning/execution/speed tiers) / Custom, with auto-derived slash commands and dynamic icon assignment.
+
+### Changed
+
+- **Slash command naming** — all 35 core agents now use the **full agent name** as the slash command (e.g., `/clawdia-assistant`, `/flux-finance`, `/apex-architect`, `/bolt-executor`) instead of short aliases (`/clawdia`, `/flux`, `/apex`, `/bolt`). The only exception is `/oracle` which is already a single word. The 16 short business commands and the 13 short engineering commands were removed.
+- **`README.md` updated** — agent count (16 → 35), skill count (~130 → ~137), Engineering Layer mention with attribution, two-layer description.
+- **`CLAUDE.md` updated** — Active Projects table now lists "Engineering Layer" as delivered (v0.12.0). Folder Structure includes `workspace/development/`. "What Claude Should Do" rules cover both layers and link to NOTICE.md.
+- **`docs/introduction.md`** — "35 specialized agents in two layers" framing, expanded "Chatbot vs EvoNexus" comparison table including engineering scenarios.
+- **`docs/architecture.md`** — diagram refreshed to show 35 agents in two ortogonal layers, ~137 skills, attribution to Yeachan Heo.
+- **`docs/agents/overview.md`** — Two-layer intro, 19 engineering agents grouped by tier, all 16 business agents updated with full slash commands.
+- **`docs/skills/overview.md`** — engineering layer skills section with all 25 `dev-*` skills grouped by tier; total skill count updated to ~137.
+- **`docs/agents/{16 individual}.md`** — slash commands updated to full names (e.g., `/clawdia` → `/clawdia-assistant`).
+- **`site/src/pages/Home.tsx`** — `35 agents` / `137+ skills` stats, two-layer feature card, "Meet your new team" section now shows both Business Layer (16 cards) and Engineering Layer (19 cards) with full slash commands and attribution link.
+- **`site/public/docs/`** — full mirror sync via `make docs-build`.
+- **`docs/llms-full.txt`** — regenerated with 62 docs (added `engineering-layer.md`).
+- **`.claude/rules/agents.md`** — both layers documented (16 + 19) with cross-layer handoff guidance.
+- **`.claude/rules/skills.md`** — `dev-` category added with all 25 skills listed; total bumped to ~137.
+- **`ROADMAP.md`** — new `v0.12 — Engineering Layer` section marking the deliverable as `[x]` with full agent / skill / template enumeration and recommended pipelines.
+
+### Documentation
+
+- **Engineering Layer attribution** — `NOTICE.md` at repo root + `README.md` Credits & Acknowledgments section + per-agent attribution comments + dedicated `docs/agents/engineering-layer.md`.
+- **Pattern compliance** — all 19 engineering agents follow the EvoNexus standard pattern (rich frontmatter with Examples, Workspace Context, Shared Knowledge Base, Working Folder, Identity, Anti-patterns, Domain, How You Work, Skills You Can Use, Handoffs, Output Format, Continuity). Verified by `@lens-reviewer`, 3 fixes applied (oath-verifier `disallowedTools`, raven-critic and trail-tracer `Skills You Can Use` section).
+
 ## [0.11.4] - 2026-04-10
 
 ### Changed

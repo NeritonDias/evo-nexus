@@ -18,7 +18,7 @@ def _callback_url():
     ngrok = env.get("NGROK_URL", "")
     if ngrok:
         return f"{ngrok.rstrip('/')}/callback/instagram"
-    return "http://localhost:8765/callback/instagram"
+    return request.host_url.rstrip("/") + "/callback/instagram"
 
 
 @bp.route("/connect/instagram")

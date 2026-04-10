@@ -1,6 +1,6 @@
 # Clawdia — Operations & COO
 
-**Command:** `/clawdia` | **Color:** cyan | **Model:** Sonnet
+**Command:** `/clawdia-assistant` | **Color:** cyan | **Model:** Sonnet
 
 Clawdia is the operational hub and default agent — a COO-like partner that manages your calendar, emails, tasks, meetings, prioritization, decisions, research, and documentation. She keeps the daily rhythm running smoothly, from morning briefings to end-of-day consolidation, ensuring nothing falls through the cracks.
 
@@ -39,9 +39,9 @@ Clawdia is the operational hub and default agent — a COO-like partner that man
 ## Example Interactions
 
 ```
-/clawdia good morning
-/clawdia check my emails and flag anything urgent
-/clawdia summarize yesterday's meeting with HostGator
+/clawdia-assistant good morning
+/clawdia-assistant check my emails and flag anything urgent
+/clawdia-assistant summarize yesterday's meeting with HostGator
 ```
 
 ## Routines

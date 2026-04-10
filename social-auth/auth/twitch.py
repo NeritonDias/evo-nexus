@@ -10,6 +10,10 @@ import secrets
 bp = Blueprint("twitch", __name__)
 
 
+def _redirect_uri():
+    return request.host_url.rstrip("/") + "/callback/twitch"
+
+
 @bp.route("/connect/twitch")
 def connect():
     from env_manager import read_env
@@ -38,7 +42,7 @@ def connect():
 
     params = urllib.parse.urlencode({
         "client_id": client_id,
-        "redirect_uri": "http://localhost:8765/callback/twitch",
+        "redirect_uri": _redirect_uri(),
         "response_type": "code",
         "scope": "moderator:read:followers analytics:read:extensions",
         "state": state,
@@ -110,7 +114,7 @@ def callback():
         "client_secret": env.get("TWITCH_CLIENT_SECRET", ""),
         "code": code,
         "grant_type": "authorization_code",
-        "redirect_uri": "http://localhost:8765/callback/twitch",
+        "redirect_uri": _redirect_uri(),
     }).encode()
 
     req = urllib.request.Request("https://id.twitch.tv/oauth2/token", data=data, method="POST")

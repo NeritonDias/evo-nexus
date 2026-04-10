@@ -7,29 +7,16 @@
 # ── Secrets & credentials ─────────────────
 .env
 
-# EN folder names (new standard)
-workspace/daily-logs/*
-!workspace/daily-logs/.gitkeep
-workspace/projects/*
-!workspace/projects/.gitkeep
-workspace/community/*
-!workspace/community/.gitkeep
-workspace/social/*
-!workspace/social/.gitkeep
-workspace/finance/*
-!workspace/finance/.gitkeep
-workspace/personal/*
-!workspace/personal/.gitkeep
-workspace/meetings/*
-!workspace/meetings/.gitkeep
-workspace/courses/*
-!workspace/courses/.gitkeep
-workspace/strategy/*
-!workspace/strategy/.gitkeep
+# Workspace — personal data, ignore everything except .gitkeep placeholders
+workspace/**
+!workspace/
+!workspace/**/
+!workspace/**/.gitkeep
 
 # ── Agent memory (runtime, personal) ──────
 .claude/agent-memory/
-memory/
+memory/**
+!memory/.gitkeep
 
 # ── Custom agents/skills/commands (user-specific) ────────
 .claude/agents/custom-*

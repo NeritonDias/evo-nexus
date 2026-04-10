@@ -1,6 +1,6 @@
 # Dex — Data & BI
 
-**Command:** `/dex` | **Color:** yellow | **Model:** Sonnet
+**Command:** `/dex-data` | **Color:** yellow | **Model:** Sonnet
 
 Dex is the Data and BI agent, specializing in data analysis, SQL queries, interactive dashboards (Chart.js), statistical analysis, data profiling, and validation. He connects to Stripe, Omie, and Licensing APIs to turn raw data into actionable insights, visualizations, and quality-checked deliverables.
 
@@ -30,9 +30,9 @@ Dex is the Data and BI agent, specializing in data analysis, SQL queries, intera
 ## Example Interactions
 
 ```
-/dex analyze MRR trend for the last 3 months
-/dex build a licensing growth dashboard with geo breakdown
-/dex run statistical analysis on trial-to-paid conversion rates
+/dex-data analyze MRR trend for the last 3 months
+/dex-data build a licensing growth dashboard with geo breakdown
+/dex-data run statistical analysis on trial-to-paid conversion rates
 ```
 
 ## Routines
