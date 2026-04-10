@@ -20,6 +20,53 @@ interface ScheduledTask {
   agent: string
   script: string
   custom?: boolean
+  command?: string
+}
+
+const DAY_ORDER: Record<string, number> = {
+  monday: 1, tuesday: 2, wednesday: 3, thursday: 4,
+  friday: 5, saturday: 6, sunday: 7,
+}
+
+const FREQ_BUCKET: Record<string, number> = {
+  daily: 0,
+  weekly: 1,
+  monthly: 2,
+}
+
+function bucketOf(freq: string): number {
+  if (freq in FREQ_BUCKET) return FREQ_BUCKET[freq]
+  if (freq.startsWith('every')) return 3
+  return 4
+}
+
+function timeToMinutes(t: string): number {
+  const m = /^(\d{1,2}):(\d{2})/.exec(t || '')
+  if (!m) return 99 * 60
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
+}
+
+function dayOf(task: ScheduledTask): number {
+  const match = /^([A-Za-z]+)/.exec(task.schedule || '')
+  if (!match) return 99
+  return DAY_ORDER[match[1].toLowerCase()] ?? 99
+}
+
+function sortTasks(tasks: ScheduledTask[]): ScheduledTask[] {
+  return [...tasks].sort((a, b) => {
+    const ba = bucketOf(a.frequency)
+    const bb = bucketOf(b.frequency)
+    if (ba !== bb) return ba - bb
+    if (a.frequency === 'weekly' && b.frequency === 'weekly') {
+      const da = dayOf(a)
+      const db = dayOf(b)
+      if (da !== db) return da - db
+    }
+    const ta = timeToMinutes(a.time)
+    const tb = timeToMinutes(b.time)
+    if (ta !== tb) return ta - tb
+    return (a.name || '').localeCompare(b.name || '')
+  })
 }
 
 export default function Scheduler() {
@@ -39,7 +86,7 @@ export default function Scheduler() {
       api.get('/scheduler').catch(() => []),
     ]).then(([svc, sched]) => {
       setServices(Array.isArray(svc) ? svc : [])
-      setTasks(Array.isArray(sched) ? sched : [])
+      setTasks(Array.isArray(sched) ? sortTasks(sched) : [])
     }).finally(() => setLoading(false))
   }
 
@@ -259,6 +306,7 @@ export default function Scheduler() {
               <th className="text-left p-4 font-medium">Task</th>
               <th className="text-left p-4 font-medium">Schedule</th>
               <th className="text-left p-4 font-medium">Agent</th>
+              <th className="text-left p-4 font-medium">Command</th>
               <th className="text-left p-4 font-medium">Script</th>
             </tr>
           </thead>
@@ -287,6 +335,13 @@ export default function Scheduler() {
                     <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#00FFA7]/8 border border-[#00FFA7]/20 text-[#00FFA7]">
                       @{task.agent}
                     </span>
+                  ) : (
+                    <span className="text-[#667085]">--</span>
+                  )}
+                </td>
+                <td className="p-4">
+                  {task.command ? (
+                    <code className="text-[11px] bg-[#0d1117] border border-[#21262d] px-2 py-1 rounded text-[#00FFA7] font-mono">{task.command}</code>
                   ) : (
                     <span className="text-[#667085]">--</span>
                   )}
