@@ -2,11 +2,13 @@
 
 > **Attribution:** the Engineering Layer is derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by **Yeachan Heo**). EvoNexus imports the agents and adapts them to the workspace conventions (themed names, EvoNexus standard pattern, `workspace/development/` paths). See [NOTICE.md](https://github.com/EvolutionAPI/evo-nexus/blob/main/NOTICE.md) at the repo root for the full list of derived components and modifications.
 
+> **Native additions (v0.13.0):** `helm-conductor` and `mirror-retro` are native EvoNexus agents, not derived from oh-my-claudecode. Helm orchestrates the engineering cycle and routes tasks to phase owners; Mirror runs blameless retrospectives at the end of features and sprints.
+
 ## What It Is
 
-The Engineering Layer is a complete software development team built into EvoNexus. **19 specialized agents** + **25 `dev-*` skills** + **15 templates** that cover the full dev lifecycle: discovery, planning, implementation, code review, testing, debugging, security, design, verification.
+The Engineering Layer is a complete software development team built into EvoNexus. **21 specialized agents** (19 derived + 2 native) + **25 `dev-*` skills** + **15 templates** + a **canonical 6-phase workflow** ([`dev-phases.md`](https://github.com/EvolutionAPI/evo-nexus/blob/main/.claude/rules/dev-phases.md)) that cover the full dev lifecycle: discovery, planning, solutioning, build, verify, retro.
 
-It exists as a layer ortogonal to the Business Layer (Clawdia, Flux, Atlas, etc.). Business agents handle operations (emails, finance, community); engineering agents handle code (architecture, bugs, reviews, tests). Cross-layer handoffs are common — e.g., Nova writes a PRD → Apex reviews the architecture → Bolt implements → Lens reviews → Oath verifies.
+It exists as a layer ortogonal to the Business Layer (Clawdia, Flux, Atlas, etc.). Business agents handle operations (emails, finance, community); engineering agents handle code (architecture, bugs, reviews, tests). Cross-layer handoffs are common — e.g., Nova writes a PRD → Apex reviews the architecture → Bolt implements → Lens reviews → Oath verifies → Mirror captures lessons.
 
 ## When to Use
 
@@ -17,25 +19,26 @@ It exists as a layer ortogonal to the Business Layer (Clawdia, Flux, Atlas, etc.
 
 If you only need EvoNexus for ops/business work, you can ignore the Engineering Layer entirely — it doesn't get in the way.
 
-## The 19 Agents
+## The 21 Agents
 
-### Reasoning (opus) — 7 agents
+### Reasoning (opus / sonnet) — 8 agents
 
-These agents do deep cognitive work: design, analysis, planning, critique. Higher token cost, higher quality output.
+These agents do deep cognitive work: design, analysis, planning, critique, reflection. Higher token cost, higher quality output.
 
 | Agent | Slash | Role | READ-ONLY? |
 |---|---|---|---|
 | **Apex** | `/apex-architect` | Architect — architectural design, debugging diagnosis, tradeoffs with file:line citations | ✅ |
 | **Echo** | `/echo-analyst` | Analyst — discovery, gap analysis, hidden assumptions, missing acceptance criteria | ✅ |
-| **Compass** | `/compass-planner` | Planner — interview-driven 3-6 step work plans with explicit ADRs | |
+| **Compass** | `/compass-planner` | Planner — interview-driven 3-6 step work plans + PRD production with explicit ADRs | |
 | **Raven** | `/raven-critic` | Critic — multi-perspective adversarial review with pre-commitment predictions | ✅ |
 | **Lens** | `/lens-reviewer` | Code Reviewer — 2-stage review (spec compliance + quality), OWASP, SOLID, severity ratings | ✅ |
 | **Zen** | `/zen-simplifier` | Code Simplifier — deslop, reduce nesting, eliminate redundancy without changing behavior | |
 | **Vault** | `/vault-security` | Security Reviewer — OWASP Top 10, secrets scan, dependency audit, prioritized remediation | ✅ |
+| **Mirror** ⭐ | `/mirror-retro` | Retrospective — blameless lessons learned, reads the full feature folder, proposes memory updates | |
 
-### Execution (sonnet) — 10 agents
+### Execution (sonnet) — 11 agents
 
-These agents do focused implementation work: writing code, running tests, investigating bugs, producing artifacts.
+These agents do focused implementation work: writing code, running tests, investigating bugs, producing artifacts, sequencing work.
 
 | Agent | Slash | Role |
 |---|---|---|
@@ -49,6 +52,9 @@ These agents do focused implementation work: writing code, running tests, invest
 | **Scroll** | `/scroll-docs` | Document Specialist — external SDK/API docs lookup with citations |
 | **Canvas** | `/canvas-designer` | Designer — production-grade UI/UX, framework-idiomatic, distinctive aesthetic |
 | **Prism** | `/prism-scientist` | Scientist — formal statistical analysis with CI, effect size, p-value |
+| **Helm** ⭐ | `/helm-conductor` | Conductor — cycle orchestration, sequencing, routing to phase owners, sprint planning |
+
+⭐ = native EvoNexus agent (not derived from oh-my-claudecode)
 
 ### Speed (haiku) — 2 agents
 
@@ -58,6 +64,27 @@ Fast, parallel, low-token agents for high-volume work.
 |---|---|---|
 | **Scout** | `/scout-explorer` | Explorer — parallel codebase search (Glob/Grep), absolute paths, file:line evidence |
 | **Quill** | `/quill-writer` | Writer — quick technical docs, README, comments, every code example tested |
+
+## The 6-Phase Workflow
+
+The engineering layer follows a canonical workflow documented in [`.claude/rules/dev-phases.md`](https://github.com/EvolutionAPI/evo-nexus/blob/main/.claude/rules/dev-phases.md). It is a **guide**, not a rigid gate — simple changes can skip phases, complex features should follow them in order.
+
+```
+Discovery → Planning → Solutioning → Build → Verify → Retro
+```
+
+| Phase | Owner | Output |
+|---|---|---|
+| 1. Discovery | `@echo-analyst` | `[C]discovery-{feature}.md` — gaps, assumptions, open questions |
+| 2. Planning | `@compass-planner` | `[C]prd-{feature}.md` + `[C]plan-{feature}.md` |
+| 3. Solutioning | `@apex-architect` | `[C]architecture-{feature}.md` (ADR format) |
+| 4. Build | `@bolt-executor` | code + tests + commits |
+| 5. Verify | `@oath-verifier` | `[C]verification-{feature}.md` — evidence-based PASS/FAIL |
+| 6. Retro | `@mirror-retro` | `[C]retro-{feature}.md` — lessons + memory updates |
+
+**Cycle orchestration** — `@helm-conductor` sits above the phases and answers "what next?", "who does it?", and "what's blocked?". Call Helm when you have multiple active features or need sprint sequencing.
+
+**Feature folders** — non-trivial work lives in `workspace/features/{feature-slug}/` where all artifacts of one feature are grouped together. Standalone artifacts continue to live in `workspace/development/{type}/`.
 
 ## The 25 `dev-*` Skills
 

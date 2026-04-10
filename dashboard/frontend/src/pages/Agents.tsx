@@ -22,6 +22,8 @@ import {
   Building2,
   Code2,
   Sparkles,
+  Navigation,
+  History,
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -57,6 +59,7 @@ const ENGINEERING_TIERS: Record<EngTier, Set<string>> = {
     'lens-reviewer',
     'zen-simplifier',
     'vault-security',
+    'mirror-retro',
   ]),
   execution: new Set([
     'bolt-executor',
@@ -69,6 +72,7 @@ const ENGINEERING_TIERS: Record<EngTier, Set<string>> = {
     'scroll-docs',
     'canvas-designer',
     'prism-scientist',
+    'helm-conductor',
   ]),
   speed: new Set(['scout-explorer', 'quill-writer']),
 }
@@ -232,6 +236,22 @@ const AGENT_META: Record<string, AgentMeta> = {
     glowColor: 'rgba(251,191,36,0.15)',
     command: '/dex',
     label: 'Data / BI',
+  },
+  'helm-conductor': {
+    icon: Navigation,
+    color: '#14B8A6',
+    colorMuted: 'rgba(20,184,166,0.12)',
+    glowColor: 'rgba(20,184,166,0.15)',
+    command: '/helm-conductor',
+    label: 'Cycle Orchestration',
+  },
+  'mirror-retro': {
+    icon: History,
+    color: '#94A3B8',
+    colorMuted: 'rgba(148,163,184,0.12)',
+    glowColor: 'rgba(148,163,184,0.15)',
+    command: '/mirror-retro',
+    label: 'Retrospective',
   },
 }
 

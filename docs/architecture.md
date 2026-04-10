@@ -4,7 +4,7 @@
 
 EvoNexus is a file-based, git-friendly framework. Everything is markdown, YAML, and Python scripts. No database required for the core framework (SQLite is used only by the dashboard).
 
-EvoNexus organizes 35 agents in **two ortogonal layers**: a Business Layer (16 agents for ops/finance/community/etc.) and an Engineering Layer (19 agents for software dev — derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo). The two layers share the same skill, memory, and integration infrastructure but stay out of each other's way: business tasks route to business agents, engineering tasks to engineering agents. Cross-layer handoffs are common (e.g., Nova writes a PRD → Apex reviews → Bolt implements).
+EvoNexus organizes 37 agents in **two ortogonal layers**: a Business Layer (16 agents for ops/finance/community/etc.) and an Engineering Layer (21 agents for software dev — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo, plus 2 native: Helm and Mirror). The two layers share the same skill, memory, and integration infrastructure but stay out of each other's way: business tasks route to business agents, engineering tasks to engineering agents. Cross-layer handoffs are common (e.g., Nova writes a PRD → Apex reviews → Bolt implements → Mirror captures lessons). The engineering layer follows a canonical 6-phase workflow (Discovery → Planning → Solutioning → Build → Verify → Retro) documented in [`.claude/rules/dev-phases.md`](https://github.com/EvolutionAPI/evo-nexus/blob/main/.claude/rules/dev-phases.md).
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐

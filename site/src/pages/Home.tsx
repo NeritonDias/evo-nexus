@@ -178,14 +178,14 @@ export default function Home() {
               The open source operating system for <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-300">AI-powered businesses</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-              An unofficial open source toolkit compatible with Claude Code. 35 specialized agents (16 business + 19 engineering), 137+ skills, automated routines, channels, and a web dashboard — all in one command.
+              An unofficial open source toolkit compatible with Claude Code. 37 specialized agents (16 business + 21 engineering), 137+ skills, automated routines, channels, and a web dashboard — all in one command.
             </p>
 
             {/* Social proof numbers */}
             <div className="flex flex-wrap justify-center gap-4 mb-10">
               {[
                 { value: "17,000+", label: "Community members" },
-                { value: "35", label: "AI Agents" },
+                { value: "37", label: "AI Agents" },
                 { value: "137+", label: "Skills" },
                 { value: "18", label: "Integrations" },
               ].map((stat, i) => (
@@ -365,7 +365,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-6 mb-12">
             <FadeIn>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Meet your new team</h2>
-              <p className="text-muted-foreground text-lg">35 specialized agents ready to handle your operations and your code — 16 business agents + 19 engineering agents.</p>
+              <p className="text-muted-foreground text-lg">37 specialized agents ready to handle your operations and your code — 16 business agents + 21 engineering agents.</p>
             </FadeIn>
           </div>
 
@@ -413,8 +413,8 @@ export default function Home() {
             <div>
               <div className="mb-6 flex items-center gap-3 flex-wrap">
                 <h3 className="text-xl md:text-2xl font-bold">Engineering Layer</h3>
-                <span className="text-xs font-medium px-2 py-1 rounded bg-primary/10 text-primary border border-primary/30">19 agents</span>
-                <span className="text-xs text-muted-foreground">derived from <a href="https://github.com/yeachan-heo/oh-my-claudecode" className="underline hover:text-primary" target="_blank" rel="noopener noreferrer">oh-my-claudecode</a> (MIT, by Yeachan Heo)</span>
+                <span className="text-xs font-medium px-2 py-1 rounded bg-primary/10 text-primary border border-primary/30">21 agents</span>
+                <span className="text-xs text-muted-foreground">19 derived from <a href="https://github.com/yeachan-heo/oh-my-claudecode" className="underline hover:text-primary" target="_blank" rel="noopener noreferrer">oh-my-claudecode</a> (MIT, by Yeachan Heo) + 2 native</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
@@ -437,6 +437,8 @@ export default function Home() {
                   { name: "Quill", cmd: "/quill-writer", role: "Writer", desc: "tested technical docs (haiku)", color: "text-cyan-300" },
                   { name: "Canvas", cmd: "/canvas-designer", role: "Designer", desc: "production-grade UI/UX", color: "text-pink-500" },
                   { name: "Prism", cmd: "/prism-scientist", role: "Scientist", desc: "formal statistical analysis", color: "text-purple-300" },
+                  { name: "Helm", cmd: "/helm-conductor", role: "Conductor", desc: "cycle orchestration + sprint sequencing (native)", color: "text-teal-400" },
+                  { name: "Mirror", cmd: "/mirror-retro", role: "Retrospective", desc: "blameless lessons + memory updates (native)", color: "text-slate-300" },
                 ].map((agent, i) => (
                   <div key={i} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors" data-testid={`agent-card-${agent.name.toLowerCase()}`}>
                     <div className="flex items-center justify-between mb-4">

@@ -1,9 +1,9 @@
-# Agents (16 business + 19 engineering core + custom)
+# Agents (16 business + 21 engineering core + custom)
 
 Defined in `.claude/agents/`. Each agent has an isolated domain and can be invoked via command. EvoNexus organizes agents in **two ortogonal layers**:
 
 - **Business Layer** — 16 agents for operations, finance, community, marketing, HR, legal, product, data, sales.
-- **Engineering Layer** — 19 agents for software development, derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT). See [NOTICE.md](../../NOTICE.md).
+- **Engineering Layer** — 21 agents for software development, most derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT). See [NOTICE.md](../../NOTICE.md). The canonical 6-phase workflow is documented in `.claude/rules/dev-phases.md`.
 
 Custom agents use `custom-` prefix and are gitignored.
 
@@ -22,7 +22,7 @@ Custom agents use `custom-` prefix and are gitignored.
 | **Pixel** | `/pixel` | Social media — content, calendar, analysis, reports |
 | **Nex** | `/nex` | Sales — pipeline, proposals, qualification |
 | **Mentor** | `/mentor` | Courses — learning paths, modules, Evo Academy |
-| **Oracle** | `/oracle` | Workspace knowledge — docs, how-to, configuration |
+| **Oracle** | `/oracle` | **Entry point** — onboarding, business discovery, implementation plan, workspace knowledge |
 | **Mako** | `/mako` | Marketing — campaigns, content strategy, SEO, email, brand |
 | **Aria** | `/aria` | HR / People — recruiting, onboarding, performance, compensation |
 | **Zara** | `/zara` | Customer Success — triage, escalation, health scores, KB |
@@ -32,9 +32,9 @@ Custom agents use `custom-` prefix and are gitignored.
 
 ---
 
-## Engineering Layer (19) — derived from oh-my-claudecode
+## Engineering Layer (21) — 19 derived from oh-my-claudecode + 2 native
 
-*Imported in phases — see `workspace/projects/specs/[C]omc-integration-quick-spec.md` roadmap.*
+*Imported in phases — see `workspace/projects/specs/[C]omc-integration-quick-spec.md` roadmap. The 6-phase workflow is canonical — see `.claude/rules/dev-phases.md`.*
 
 ### Reasoning (opus)
 | Agent | Command | Role |
@@ -60,6 +60,8 @@ Custom agents use `custom-` prefix and are gitignored.
 | **Scroll** | `/scroll` | Document Specialist — external docs (SDKs, APIs) via web |
 | **Canvas** | `/canvas` | Designer — UI/UX for product (Evo AI CRM, dashboards) |
 | **Prism** | `/prism` | Scientist — formal statistical analysis, hypothesis testing |
+| **Helm** ⭐ | `/helm` | Conductor — cycle orchestration, sequencing, routing to phase owners (native) |
+| **Mirror** ⭐ | `/mirror` | Retrospective — lessons learned, blameless post-mortem, memory updates (native) |
 
 ### Speed (haiku)
 | Agent | Command | Role |

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-04-10
+
+### Added
+
+- **2 native engineering agents** — bringing the Engineering Layer to **21 agents** (19 derived from oh-my-claudecode + 2 native):
+  - **`helm-conductor`** (sonnet, teal) — cycle orchestration agent. Sequences features, decides "what next?", routes tasks to phase owners, coordinates sprint planning. Does not do the work of any phase itself; it orchestrates.
+  - **`mirror-retro`** (sonnet, silver) — blameless retrospective agent. Reads the full feature folder end-to-end at the close of a feature, sprint, or incident, and produces a structured retro with "what worked / didn't / surprises / lessons / proposed memory updates". Requires explicit user approval before writing to `memory/`.
+- **Canonical 6-phase engineering workflow** — `.claude/rules/dev-phases.md` documents the EvoNexus development lifecycle: **Discovery → Planning → Solutioning → Build → Verify → Retro**. Each phase has an owner, inputs, outputs, exit criteria, and skip conditions. Includes handoff protocol, inherited-context rules, and a feature-skip matrix (typo fixes skip most phases; high-stakes migrations use all 6).
+- **Feature folders as unit of work** — `workspace/features/{feature-slug}/` groups all artifacts of one feature (discovery, PRD, plan, architecture, reviews, verification, retro) in one coherent location. Coexists with the type-based folders in `workspace/development/{plans,reviews,...}/` which remain the canonical location for standalone artifacts.
+- **Oracle redesigned as consulting entry point** — `@oracle` is now the official entry door to EvoNexus. It runs a full 8-step flow: detect workspace state → run `initial-setup` if needed → business discovery interview → delegate capability mapping to `@scout-explorer` → delegate gap analysis to `@echo-analyst` → present the "potential" in business language → delegate plan production to `@compass-planner` → deliver with 3 autonomy paths (guided / autonomous / delegated). Oracle keeps the relationship with the user in a single voice while orchestrating specialist agents for the heavy lifting. Prime directive: the user must never be left with doubts — check-ins are mandatory before any side-effect action and after every substantive response.
+
+### Changed
+
+- **`@compass-planner` now produces PRD + Plan in Phase 2** — for non-trivial feature work, Compass first produces `[C]prd-{feature}.md` (problem, goals, non-goals, user stories, acceptance criteria in Given/When/Then, constraints, open questions) and then derives `[C]plan-{feature}.md` from it. Trivial changes skip the PRD. Handoff chain updated: Compass → Apex (Phase 3) → Bolt (Phase 4), not directly Compass → Bolt for non-trivial work.
+- **`README.md`, `CLAUDE.md`, `docs/introduction.md`, `docs/architecture.md`, `docs/agents/overview.md`, `docs/agents/engineering-layer.md`, `site/src/pages/Home.tsx`, `public/cover.svg`** — agent count updated from 35 → 37 (16 business + 21 engineering). Engineering layer descriptions mention the 2 native additions (Helm, Mirror) and the 6-phase workflow.
+- **`.claude/rules/agents.md`** — Engineering Layer bumped to 21 agents. Helm and Mirror marked with ⭐ as EvoNexus-native (not derived from oh-my-claudecode). Header reference added to `.claude/rules/dev-phases.md` as the canonical workflow.
+- **`docs/agents/engineering-layer.md`** — the "19 Agents" section is now "21 Agents", split into Reasoning (opus/sonnet, 8 agents — Mirror added), Execution (sonnet, 11 agents — Helm added), and Speed (haiku, 2 agents, unchanged). New section "The 6-Phase Workflow" documents the canonical pipeline with phase owners and feature-folder convention.
+- **`dashboard/frontend/src/pages/Agents.tsx`** — `AGENT_META` now includes `helm-conductor` and `mirror-retro` with icons (`Navigation`, `History`), colors, labels, and slash commands. `ENGINEERING_TIERS` updated: Mirror added to `reasoning`, Helm added to `execution`.
+- **`NOTICE.md`** — clarifies that 19 of 21 engineering agents are derived from OMC; Helm and Mirror plus `dev-phases.md` are native EvoNexus additions.
+
+### Documentation
+
+- New canonical workflow doc: `.claude/rules/dev-phases.md` (auto-loaded by engineering agents as they work).
+- Updated `docs/llms-full.txt` (regenerated via `make docs-build`).
+
 ## [0.12.0] - 2026-04-10
 
 ### Added

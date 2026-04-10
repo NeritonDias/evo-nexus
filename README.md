@@ -27,7 +27,7 @@
 
 EvoNexus is an open source, **unofficial** toolkit compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It is designed to integrate with Claude Code capabilities: native agents, skills, slash commands, MCP integrations, and the Claude CLI.
 
-It turns a single Claude Code installation into a team of **35 specialized agents** organized in two ortogonal layers — **16 business agents** (operations, finance, community, marketing, HR, legal, product, data) and **19 engineering agents** (architecture, planning, code review, testing, debugging, security, design — derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo). Each agent has its own domain, skills, persistent memory, and automated routines. The result is a production system that runs daily operations for a founder/CEO **and** supports software development workflows: from morning briefings to financial reports, community monitoring, social analytics, end-of-day consolidation, plus architectural reviews, code audits, and verified implementation pipelines.
+It turns a single Claude Code installation into a team of **37 specialized agents** organized in two ortogonal layers — **16 business agents** (operations, finance, community, marketing, HR, legal, product, data) and **21 engineering agents** (architecture, planning, code review, testing, debugging, security, design, cycle orchestration, retrospective — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo + 2 native: Helm and Mirror). The engineering layer follows a canonical 6-phase workflow documented in `.claude/rules/dev-phases.md`. Each agent has its own domain, skills, persistent memory, and automated routines. The result is a production system that runs daily operations for a founder/CEO **and** supports software development workflows: from morning briefings to financial reports, community monitoring, social analytics, end-of-day consolidation, plus architectural reviews, code audits, and verified implementation pipelines.
 
 **This is not a chatbot.** It is a real operating layer that runs routines, generates HTML reports, syncs meetings, triages emails, monitors community health, tracks financial metrics, and consolidates everything into a unified dashboard — all automated.
 
@@ -113,6 +113,8 @@ The setup wizard (`make setup`) checks for all prerequisites before proceeding.
 ---
 
 ## Quick Start
+
+> **Começando agora?** Depois de instalar, abra o Claude Code e chame **`/oracle`**. Ele é o ponto de entrada oficial do EvoNexus: conduz o setup inicial, entrevista você sobre o seu negócio, mostra o que a ferramenta pode automatizar pra você, e entrega um plano de implementação faseado. Você nunca fica com dúvida sobre o próximo passo.
 
 ### Method 1 — One command (recommended)
 
@@ -202,7 +204,7 @@ Open Claude Code in the project directory — it reads `CLAUDE.md` automatically
 /nex           # Sales — pipeline, proposals, qualification
 /mentor        # Courses — learning paths, modules
 /kai           # Personal — health, habits, routine
-/oracle        # Knowledge — workspace docs, how-to, configuration
+/oracle        # Entry point — onboarding, business discovery, implementation plan
 /mako          # Marketing — campaigns, content, SEO, brand
 /aria          # HR — recruiting, onboarding, performance
 /zara          # Customer Success — triage, escalation, health
@@ -262,7 +264,7 @@ Claude Code (orchestrator)
     +-- Nex       — sales: pipeline, proposals, qualification
     +-- Mentor    — courses: learning paths, modules
     +-- Kai       — personal: health, habits, routine (isolated domain)
-    +-- Oracle    — knowledge: workspace docs, how-to, configuration
+    +-- Oracle    — entry point: onboarding, business discovery, implementation plan
     +-- Mako      — marketing: campaigns, content, SEO, brand
     +-- Aria      — HR: recruiting, onboarding, performance
     +-- Zara      — customer success: triage, escalation, health
@@ -357,7 +359,7 @@ make help            # List all available commands
 
 EvoNexus stands on the shoulders of great open source projects:
 
-- **[oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode)** by **Yeachan Heo** (MIT) — the Engineering Layer (19 agents including `apex-architect`, `bolt-executor`, `lens-reviewer`, and `dev-*` skills) is derived from OMC v4.11.4. See [NOTICE.md](NOTICE.md) for the full list of derived components and modifications.
+- **[oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode)** by **Yeachan Heo** (MIT) — 19 of the 21 engineering agents (including `apex-architect`, `bolt-executor`, `lens-reviewer`) and all `dev-*` skills are derived from OMC v4.11.4. The 2 native agents (`helm-conductor`, `mirror-retro`) and the 6-phase workflow (`.claude/rules/dev-phases.md`) are EvoNexus-native additions. See [NOTICE.md](NOTICE.md) for the full list of derived components and modifications.
 
 ---
 
