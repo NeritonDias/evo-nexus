@@ -4,6 +4,7 @@ description: "Use this agent to verify completion claims with fresh evidence. Oa
 model: sonnet
 color: green
 memory: project
+disallowedTools: Write, Edit
 skills:
   - dev-verify
 ---

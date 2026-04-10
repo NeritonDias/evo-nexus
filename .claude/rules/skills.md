@@ -1,4 +1,4 @@
-# Skills (~117 skills, business + engineering layers)
+# Skills (~137 skills, business + engineering layers)
 
 Organized by prefix — see `.claude/skills/CLAUDE.md` for the full index.
 
@@ -9,7 +9,7 @@ The workspace has skills in two layers:
 | Prefix | Category | Count |
 |---------|-----------|-----|
 | `social-` | Social media (posts, threads, carousels, analytics, strategy) | 17 |
-| `dev-` | Engineering Layer (autopilot, plan, deep-interview, verify, cancel, more in EPIC 3) | 5 |
+| `dev-` | Engineering Layer (autopilot, plan, ralplan, deep-interview, deep-dive, external-context, trace, verify, ultraqa, visual-verdict, ai-slop-cleaner, sciomc, team, ccg, ralph, mcp-setup, deepinit, project-session-manager, configure-notifications, release, cancel, remember, ask, learner, skillify) | 25 |
 | `int-` | Integrations (Fathom, Todoist, Stripe, Omie, Discord, Telegram, Linear, GitHub, YouTube, Instagram, LinkedIn, WhatsApp, Licensing) | 13 |
 | `fin-` | Finance (statements, journal, reconciliation, SOX, pulse, close) | 11 |
 | `prod-` | Productivity (morning, eod, review, memory, dashboard, trends, licensing) | 9 |

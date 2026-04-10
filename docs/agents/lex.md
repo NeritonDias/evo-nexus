@@ -1,6 +1,6 @@
 # Lex — Legal & Compliance
 
-**Command:** `/lex` | **Color:** purple | **Model:** Sonnet
+**Command:** `/lex-legal` | **Color:** purple | **Model:** Sonnet
 
 Lex is the Legal and Compliance agent, handling contract review, NDA triage, LGPD compliance, risk assessment, legal briefs, vendor checks, and signature requests. He provides clause-by-clause analysis, flags regulatory concerns, and ensures legal workflows move efficiently from review to execution.
 
@@ -31,9 +31,9 @@ Lex is the Legal and Compliance agent, handling contract review, NDA triage, LGP
 ## Example Interactions
 
 ```
-/lex review this contract and flag risky clauses
-/lex triage the NDA we received from vendor X
-/lex run a LGPD compliance check on the new analytics feature
+/lex-legal review this contract and flag risky clauses
+/lex-legal triage the NDA we received from vendor X
+/lex-legal run a LGPD compliance check on the new analytics feature
 ```
 
 ## Routines

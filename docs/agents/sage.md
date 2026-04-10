@@ -1,6 +1,6 @@
 # Sage — Strategy
 
-**Command:** `/sage` | **Color:** orange | **Model:** Sonnet
+**Command:** `/sage-strategy` | **Color:** orange | **Model:** Sonnet
 
 Sage is the senior strategist agent. It handles OKR tracking, competitive analysis, roadmap planning, decision frameworks, and weekly strategy digests that synthesize financial, product, and community data into actionable strategic insights. Use Sage when you need to think about the big picture, weigh trade-offs, or make informed decisions about company direction.
 
@@ -23,9 +23,9 @@ Sage is the senior strategist agent. It handles OKR tracking, competitive analys
 ## Example Interactions
 
 ```
-/sage should we prioritize the self-hosted plan or the managed cloud offering?
-/sage OKR progress — how are we tracking for Q2?
-/sage competitive analysis of the AI CRM space
+/sage-strategy should we prioritize the self-hosted plan or the managed cloud offering?
+/sage-strategy OKR progress — how are we tracking for Q2?
+/sage-strategy competitive analysis of the AI CRM space
 ```
 
 ## Routines

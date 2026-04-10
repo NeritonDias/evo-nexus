@@ -27,7 +27,7 @@
 
 EvoNexus is an open source, **unofficial** toolkit compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It is designed to integrate with Claude Code capabilities: native agents, skills, slash commands, MCP integrations, and the Claude CLI.
 
-It turns a single Claude Code installation into a team of 16 specialized agents — each with its own domain, skills, persistent memory, and automated routines. The result is a production system that runs daily operations for a founder/CEO: from morning briefings to financial reports, community monitoring, social analytics, and end-of-day consolidation.
+It turns a single Claude Code installation into a team of **35 specialized agents** organized in two ortogonal layers — **16 business agents** (operations, finance, community, marketing, HR, legal, product, data) and **19 engineering agents** (architecture, planning, code review, testing, debugging, security, design — derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo). Each agent has its own domain, skills, persistent memory, and automated routines. The result is a production system that runs daily operations for a founder/CEO **and** supports software development workflows: from morning briefings to financial reports, community monitoring, social analytics, end-of-day consolidation, plus architectural reviews, code audits, and verified implementation pipelines.
 
 **This is not a chatbot.** It is a real operating layer that runs routines, generates HTML reports, syncs meetings, triages emails, monitors community health, tracks financial metrics, and consolidates everything into a unified dashboard — all automated.
 
@@ -227,7 +227,7 @@ A full web UI at `http://localhost:8080`:
 | **Agents** | View agent definitions and system prompts |
 | **Routines** | Metrics per routine (runs, success rate, cost) + manual run |
 | **Tasks** | Schedule one-off actions (skill, prompt, script) at a specific date/time |
-| **Skills** | Browse all ~180 skills by category |
+| **Skills** | Browse all ~137 skills by category (~112 business + 25 dev-*) |
 | **Templates** | Preview HTML report templates |
 | **Services** | Start/stop scheduler, channels (Telegram, Discord, iMessage) with live logs |
 | **Memory** | Browse agent and global memory files |
@@ -286,7 +286,7 @@ evo-nexus/
 ├── .claude/
 │   ├── agents/          — 16 agent system prompts
 │   ├── commands/        — 16 slash commands
-│   ├── skills/          — ~130 skills by prefix (+ custom)
+│   ├── skills/          — ~137 skills by prefix (~112 business + 25 dev-*) (+ custom)
 │   └── templates/html/  — 2 core + custom HTML templates
 ├── ADWs/
 │   ├── runner.py        — execution engine (logs + metrics + notifications)

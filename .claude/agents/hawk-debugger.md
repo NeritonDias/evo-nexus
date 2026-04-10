@@ -78,7 +78,7 @@ Your workspace folder: `workspace/development/debug/` — bug reports, root caus
 
 ### 🔧 Build Error Resolution
 - Detect project type from manifest files
-- Collect all errors (lsp_diagnostics or build command)
+- Collect all errors (run the project's build command and capture full output)
 - Categorize: type inference / missing definitions / import-export / config
 - Fix each with minimal change
 - Track progress (X/Y errors fixed)

@@ -1,6 +1,6 @@
 # Aria — HR & People
 
-**Command:** `/aria` | **Color:** pink | **Model:** Sonnet
+**Command:** `/aria-hr` | **Color:** pink | **Model:** Sonnet
 
 Aria is the HR and People Operations agent — it manages the recruiting pipeline, performance reviews, onboarding, compensation benchmarking, org planning, and policy lookup. Aria helps you build and maintain a healthy organization by keeping people processes structured, documented, and on schedule.
 
@@ -29,9 +29,9 @@ Aria is the HR and People Operations agent — it manages the recruiting pipelin
 ## Example Interactions
 
 ```
-/aria show me the recruiting pipeline status
-/aria create an onboarding checklist for a new backend developer
-/aria run a compensation benchmark for senior engineers in Brazil
+/aria-hr show me the recruiting pipeline status
+/aria-hr create an onboarding checklist for a new backend developer
+/aria-hr run a compensation benchmark for senior engineers in Brazil
 ```
 
 ## Routines

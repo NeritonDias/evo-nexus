@@ -1,6 +1,6 @@
 # Zara — Customer Success
 
-**Command:** `/zara` | **Color:** cyan | **Model:** Sonnet
+**Command:** `/zara-cs` | **Color:** cyan | **Model:** Sonnet
 
 Zara is the Customer Success agent, responsible for ticket triage, escalation packaging, customer research, draft responses, knowledge base articles, and CRM integration. She ensures support tickets are prioritized correctly, customers get professional replies, and recurring issues are captured as self-service documentation.
 
@@ -26,9 +26,9 @@ Zara is the Customer Success agent, responsible for ticket triage, escalation pa
 ## Example Interactions
 
 ```
-/zara triage the open support tickets from today
-/zara draft a response for the customer reporting downtime on instance X
-/zara escalate the authentication bug to engineering with full context
+/zara-cs triage the open support tickets from today
+/zara-cs draft a response for the customer reporting downtime on instance X
+/zara-cs escalate the authentication bug to engineering with full context
 ```
 
 ## Routines

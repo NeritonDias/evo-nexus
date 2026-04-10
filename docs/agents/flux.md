@@ -1,6 +1,6 @@
 # Flux — Finance & CFO
 
-**Command:** `/flux` | **Color:** orange | **Model:** Sonnet
+**Command:** `/flux-finance` | **Color:** orange | **Model:** Sonnet
 
 Flux is the virtual CFO — managing all financial operations including cash flow analysis, income statements, Stripe MRR tracking, Omie ERP integration, monthly closing processes, journal entries, reconciliation, and variance analysis. Flux ensures financial health is always visible and actionable.
 
@@ -33,9 +33,9 @@ Flux is the virtual CFO — managing all financial operations including cash flo
 ## Example Interactions
 
 ```
-/flux how's our cash flow this month?
-/flux start the monthly closing for March
-/flux what's our current MRR and churn rate?
+/flux-finance how's our cash flow this month?
+/flux-finance start the monthly closing for March
+/flux-finance what's our current MRR and churn rate?
 ```
 
 ## Routines

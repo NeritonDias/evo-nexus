@@ -1,6 +1,6 @@
 # Mako — Marketing
 
-**Command:** `/mako` | **Color:** orange | **Model:** Sonnet
+**Command:** `/mako-marketing` | **Color:** orange | **Model:** Sonnet
 
 Mako is the marketing agent — it handles campaigns, content strategy, brand voice, SEO, email sequences, competitive positioning, and performance reports. Mako helps you plan, create, and measure marketing efforts across all channels, ensuring consistency with your brand and strategic goals.
 
@@ -28,9 +28,9 @@ Mako is the marketing agent — it handles campaigns, content strategy, brand vo
 ## Example Interactions
 
 ```
-/mako create a campaign brief for the Evo AI launch
-/mako run an SEO audit on our blog
-/mako draft a 5-email onboarding sequence for new users
+/mako-marketing create a campaign brief for the Evo AI launch
+/mako-marketing run an SEO audit on our blog
+/mako-marketing draft a 5-email onboarding sequence for new users
 ```
 
 ## Routines

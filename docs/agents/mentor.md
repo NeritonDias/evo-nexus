@@ -1,6 +1,6 @@
 # Mentor — Courses & Education
 
-**Command:** `/mentor` | **Color:** purple | **Model:** Sonnet
+**Command:** `/mentor-courses` | **Color:** purple | **Model:** Sonnet
 
 Mentor is the education agent focused on course creation, learning paths, study plans, and didactic material for the Evo Academy platform. It helps structure educational content from scratch, build progressive learning journeys, and produce lesson material that is clear, engaging, and well-organized.
 
@@ -22,9 +22,9 @@ Mentor is the education agent focused on course creation, learning paths, study 
 ## Example Interactions
 
 ```
-/mentor structure a course on building AI agents with the Evolution API
-/mentor create a learning path for someone new to WhatsApp automation
-/mentor build a module about webhook configuration for intermediate users
+/mentor-courses structure a course on building AI agents with the Evolution API
+/mentor-courses create a learning path for someone new to WhatsApp automation
+/mentor-courses build a module about webhook configuration for intermediate users
 ```
 
 ## Routines

@@ -23,7 +23,9 @@ A skill is a directory in `.claude/skills/` containing a `SKILL.md` file with:
 
 Skills are organized by prefix:
 
-The repo ships **~82 skills** (non-evo). If you install [Evo Method](https://github.com/EvolutionAPI/EVO-METHOD) separately, you get ~45 additional `evo-` skills — these are gitignored from this repo but work normally when present locally.
+The repo ships **~137 skills** total: **~112 business skills** + **25 engineering skills (`dev-*`)**.
+
+### Business Layer skills
 
 | Prefix | Category | Count | Examples |
 |--------|----------|-------|----------|
@@ -31,14 +33,28 @@ The repo ships **~82 skills** (non-evo). If you install [Evo Method](https://git
 | `int-` | Integrations | ~13 | `int-stripe`, `int-discord`, `int-youtube` |
 | `fin-` | Finance | ~11 | `fin-daily-pulse`, `fin-weekly-report`, `fin-reconciliation` |
 | `prod-` | Productivity | ~9 | `prod-good-morning`, `prod-end-of-day`, `prod-dashboard` |
+| `ops-` | Operations | ~9 | `ops-status-report`, `ops-runbook`, `ops-risk-assessment` |
+| `legal-` | Legal / Compliance | ~9 | `legal-review-contract`, `legal-triage-nda`, `legal-brief` |
+| `hr-` | HR / People | ~9 | `hr-recruiting-pipeline`, `hr-onboarding`, `hr-comp-analysis` |
 | `mkt-` | Marketing | ~8 | `mkt-campaign-plan`, `mkt-seo-audit`, `mkt-content-creation` |
+| `data-` | Data / BI | ~7 | `data-analyze`, `data-build-dashboard`, `data-statistical-analysis` |
 | `gog-` | Google (Gmail, Calendar) | ~6 | `gog-email-triage`, `gog-calendar`, `gog-tasks` |
+| `pm-` | Product Management | ~6 | `pm-write-spec`, `pm-metrics-review`, `pm-roadmap-update` |
+| `cs-` | Customer Success | ~5 | `cs-ticket-triage`, `cs-customer-escalation`, `cs-kb-article` |
 | `obs-` | Obsidian | ~5 | `obs-obsidian-cli`, `obs-obsidian-markdown` |
 | `discord-` | Discord | ~5 | `discord-get-messages`, `discord-send-message` |
 | `pulse-` | Community | ~4 | `pulse-daily`, `pulse-weekly`, `pulse-monthly` |
 | `sage-` | Strategy | ~3 | `sage-okr-review`, `sage-strategy-digest` |
 
-> **Evo Method skills** (`evo-` prefix, ~45 skills) cover dev, architect, QA, PM, sprints, and reviews. They are maintained in the [EVO-METHOD](https://github.com/EvolutionAPI/EVO-METHOD) repo. Install them locally and they appear in `.claude/skills/` alongside the built-in skills — gitignored so they don't pollute this repo.
+### Engineering Layer skills (`dev-*`)
+
+Derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, Yeachan Heo). See [Engineering Layer](../agents/engineering-layer.md) for the full story.
+
+| Tier | Count | Skills |
+|---|---|---|
+| **Tier 1 — Core orchestration** | 15 | `dev-autopilot`, `dev-plan`, `dev-ralplan`, `dev-deep-interview`, `dev-deep-dive`, `dev-external-context`, `dev-trace`, `dev-verify`, `dev-ultraqa`, `dev-visual-verdict`, `dev-ai-slop-cleaner`, `dev-sciomc`, `dev-team`, `dev-ccg`, `dev-ralph` |
+| **Tier 2 — Setup & infra** | 5 | `dev-mcp-setup`, `dev-deepinit`, `dev-project-session-manager`, `dev-configure-notifications`, `dev-release` |
+| **Tier 3 — Meta / utilities** | 5 | `dev-cancel`, `dev-remember`, `dev-ask`, `dev-learner`, `dev-skillify` |
 
 ## How Triggering Works
 

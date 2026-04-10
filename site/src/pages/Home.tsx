@@ -178,15 +178,15 @@ export default function Home() {
               The open source operating system for <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-300">AI-powered businesses</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-              An unofficial open source toolkit compatible with Claude Code. 16 specialized agents, 130+ skills, automated routines, channels, and a web dashboard — all in one command.
+              An unofficial open source toolkit compatible with Claude Code. 35 specialized agents (16 business + 19 engineering), 137+ skills, automated routines, channels, and a web dashboard — all in one command.
             </p>
 
             {/* Social proof numbers */}
             <div className="flex flex-wrap justify-center gap-4 mb-10">
               {[
                 { value: "17,000+", label: "Community members" },
-                { value: "16", label: "AI Agents" },
-                { value: "130+", label: "Skills" },
+                { value: "35", label: "AI Agents" },
+                { value: "137+", label: "Skills" },
                 { value: "18", label: "Integrations" },
               ].map((stat, i) => (
                 <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border text-sm">
@@ -278,8 +278,8 @@ export default function Home() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {[
-                { icon: Bot, title: "16 Specialized Agents", desc: "Ops, Finance, Projects, Community, Social, Strategy, Sales, Courses, Personal, Marketing, HR, CS, Legal, Product, Data, Knowledge" },
-                { icon: BrainCircuit, title: "130+ Skills", desc: "Organized by domain: financial, social, marketing, HR, legal, ops, data, integrations, productivity" },
+                { icon: Bot, title: "35 Specialized Agents", desc: "Two ortogonal layers — Business (16): Ops, Finance, Projects, Community, Social, Strategy, Sales, Marketing, HR, CS, Legal, Product, Data, Courses, Personal, Knowledge. Engineering (19): Architect, Planner, Executor, Code Reviewer, Debugger, Security, Tester, Verifier, Designer, and more." },
+                { icon: BrainCircuit, title: "137+ Skills", desc: "Business skills (fin-, social-, mkt-, hr-, legal-...) plus 25 dev-* engineering skills (autopilot, plan, ralplan, verify, ultraqa, trace...)" },
                 { icon: Clock, title: "Automated Routines", desc: "Morning briefing to monthly close, running on schedule automatically" },
                 { icon: LayoutDashboard, title: "Web Dashboard", desc: "React + Flask with auth, roles, terminal, reports, service management" },
                 { icon: Workflow, title: "18 Integrations", desc: "Gmail, Calendar, GitHub, Linear, Discord, Stripe, Evolution API, Evolution Go, Evo CRM, and more" },
@@ -314,7 +314,7 @@ export default function Home() {
                 { icon: FileText, title: "Native Agents via Markdown", desc: "Agents are defined as plain markdown files. No SDKs, no complex frameworks \u2014 just structured text that Claude understands natively." },
                 { icon: BrainCircuit, title: "Skills as Instructions", desc: "Each skill is a markdown instruction set. Add, edit, or remove capabilities by editing text files. Zero code required." },
                 { icon: Cpu, title: "MCP Integrations", desc: "Model Context Protocol connects Claude to external tools and APIs with a standardized interface. First-class support built in." },
-                { icon: Terminal, title: "Slash Commands", desc: "Type /clawdia, /flux, or /atlas to activate agents instantly. Natural command interface directly in the terminal." },
+                { icon: Terminal, title: "Slash Commands", desc: "Type /clawdia-assistant, /flux-finance, or /apex-architect to activate agents instantly. Natural command interface directly in the terminal." },
                 { icon: Database, title: "Persistent Memory", desc: "Two-tier memory system: session context for current work, long-term memory across conversations. Your agents remember everything." },
                 { icon: Shield, title: "Full Control", desc: "No vendor lock-in, no API intermediaries. Claude Code CLI runs locally on your machine. Your data never leaves your infrastructure." },
               ].map((item, i) => (
@@ -365,41 +365,91 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-6 mb-12">
             <FadeIn>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Meet your new team</h2>
-              <p className="text-muted-foreground text-lg">16 specialized agents ready to handle your operations.</p>
+              <p className="text-muted-foreground text-lg">35 specialized agents ready to handle your operations and your code — 16 business agents + 19 engineering agents.</p>
             </FadeIn>
           </div>
 
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                { name: "Clawdia", cmd: "/clawdia", role: "Ops", desc: "agenda, emails, tasks", color: "text-emerald-400" },
-                { name: "Flux", cmd: "/flux", role: "Finance", desc: "Stripe, ERP, cash flow", color: "text-blue-400" },
-                { name: "Atlas", cmd: "/atlas", role: "Projects", desc: "GitHub, Linear, sprints", color: "text-purple-400" },
-                { name: "Pulse", cmd: "/pulse", role: "Community", desc: "Discord, WhatsApp", color: "text-pink-400" },
-                { name: "Pixel", cmd: "/pixel", role: "Social", desc: "content, analytics", color: "text-orange-400" },
-                { name: "Sage", cmd: "/sage", role: "Strategy", desc: "OKRs, roadmap", color: "text-cyan-400" },
-                { name: "Nex", cmd: "/nex", role: "Sales", desc: "pipeline, proposals", color: "text-yellow-400" },
-                { name: "Mentor", cmd: "/mentor", role: "Courses", desc: "learning paths", color: "text-indigo-400" },
-                { name: "Kai", cmd: "/kai", role: "Personal", desc: "health, habits", color: "text-rose-400" },
-                { name: "Oracle", cmd: "/oracle", role: "Knowledge", desc: "docs, how-to, config", color: "text-amber-400" },
-                { name: "Mako", cmd: "/mako", role: "Marketing", desc: "campaigns, SEO, brand", color: "text-orange-500" },
-                { name: "Aria", cmd: "/aria", role: "HR", desc: "recruiting, onboarding", color: "text-pink-500" },
-                { name: "Zara", cmd: "/zara", role: "CS", desc: "triage, escalation", color: "text-teal-400" },
-                { name: "Lex", cmd: "/lex", role: "Legal", desc: "contracts, compliance", color: "text-violet-400" },
-                { name: "Nova", cmd: "/nova", role: "Product", desc: "specs, roadmaps", color: "text-yellow-300" },
-                { name: "Dex", cmd: "/dex", role: "Data", desc: "analysis, dashboards", color: "text-sky-400" },
-              ].map((agent, i) => (
-                <div key={i} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors" data-testid={`agent-card-${agent.name.toLowerCase()}`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className={`text-2xl font-bold ${agent.color}`}>{agent.name}</h3>
-                    <span className="text-xs font-medium px-2 py-1 rounded bg-secondary/20 text-secondary-foreground border border-secondary/30">{agent.role}</span>
+          <div className="max-w-7xl mx-auto px-6 space-y-12">
+            {/* Business Layer */}
+            <div>
+              <div className="mb-6 flex items-center gap-3">
+                <h3 className="text-xl md:text-2xl font-bold">Business Layer</h3>
+                <span className="text-xs font-medium px-2 py-1 rounded bg-primary/10 text-primary border border-primary/30">16 agents</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[
+                  { name: "Clawdia", cmd: "/clawdia-assistant", role: "Ops", desc: "agenda, emails, tasks", color: "text-emerald-400" },
+                  { name: "Flux", cmd: "/flux-finance", role: "Finance", desc: "Stripe, ERP, cash flow", color: "text-blue-400" },
+                  { name: "Atlas", cmd: "/atlas-project", role: "Projects", desc: "GitHub, Linear, sprints", color: "text-purple-400" },
+                  { name: "Pulse", cmd: "/pulse-community", role: "Community", desc: "Discord, WhatsApp", color: "text-pink-400" },
+                  { name: "Pixel", cmd: "/pixel-social-media", role: "Social", desc: "content, analytics", color: "text-orange-400" },
+                  { name: "Sage", cmd: "/sage-strategy", role: "Strategy", desc: "OKRs, roadmap", color: "text-cyan-400" },
+                  { name: "Nex", cmd: "/nex-sales", role: "Sales", desc: "pipeline, proposals", color: "text-yellow-400" },
+                  { name: "Mentor", cmd: "/mentor-courses", role: "Courses", desc: "learning paths", color: "text-indigo-400" },
+                  { name: "Kai", cmd: "/kai-personal-assistant", role: "Personal", desc: "health, habits", color: "text-rose-400" },
+                  { name: "Oracle", cmd: "/oracle", role: "Knowledge", desc: "docs, how-to, config", color: "text-amber-400" },
+                  { name: "Mako", cmd: "/mako-marketing", role: "Marketing", desc: "campaigns, SEO, brand", color: "text-orange-500" },
+                  { name: "Aria", cmd: "/aria-hr", role: "HR", desc: "recruiting, onboarding", color: "text-pink-500" },
+                  { name: "Zara", cmd: "/zara-cs", role: "CS", desc: "triage, escalation", color: "text-teal-400" },
+                  { name: "Lex", cmd: "/lex-legal", role: "Legal", desc: "contracts, compliance", color: "text-violet-400" },
+                  { name: "Nova", cmd: "/nova-product", role: "Product", desc: "specs, roadmaps", color: "text-yellow-300" },
+                  { name: "Dex", cmd: "/dex-data", role: "Data", desc: "analysis, dashboards", color: "text-sky-400" },
+                ].map((agent, i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors" data-testid={`agent-card-${agent.name.toLowerCase()}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className={`text-2xl font-bold ${agent.color}`}>{agent.name}</h3>
+                      <span className="text-xs font-medium px-2 py-1 rounded bg-secondary/20 text-secondary-foreground border border-secondary/30">{agent.role}</span>
+                    </div>
+                    <div className="font-mono text-primary text-sm mb-3 bg-primary/10 inline-block px-2 py-1 rounded">
+                      {agent.cmd}
+                    </div>
+                    <p className="text-muted-foreground">{agent.desc}</p>
                   </div>
-                  <div className="font-mono text-primary text-sm mb-3 bg-primary/10 inline-block px-2 py-1 rounded">
-                    {agent.cmd}
+                ))}
+              </div>
+            </div>
+
+            {/* Engineering Layer */}
+            <div>
+              <div className="mb-6 flex items-center gap-3 flex-wrap">
+                <h3 className="text-xl md:text-2xl font-bold">Engineering Layer</h3>
+                <span className="text-xs font-medium px-2 py-1 rounded bg-primary/10 text-primary border border-primary/30">19 agents</span>
+                <span className="text-xs text-muted-foreground">derived from <a href="https://github.com/yeachan-heo/oh-my-claudecode" className="underline hover:text-primary" target="_blank" rel="noopener noreferrer">oh-my-claudecode</a> (MIT, by Yeachan Heo)</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[
+                  { name: "Apex", cmd: "/apex-architect", role: "Architect", desc: "design, debug, tradeoffs (read-only)", color: "text-purple-400" },
+                  { name: "Echo", cmd: "/echo-analyst", role: "Analyst", desc: "discovery, gap analysis (read-only)", color: "text-pink-400" },
+                  { name: "Compass", cmd: "/compass-planner", role: "Planner", desc: "3-6 step interview-driven plans", color: "text-blue-400" },
+                  { name: "Raven", cmd: "/raven-critic", role: "Critic", desc: "multi-perspective review (read-only)", color: "text-red-400" },
+                  { name: "Bolt", cmd: "/bolt-executor", role: "Executor", desc: "smallest viable diff implementation", color: "text-yellow-400" },
+                  { name: "Hawk", cmd: "/hawk-debugger", role: "Debugger", desc: "root cause + minimal fix", color: "text-orange-400" },
+                  { name: "Lens", cmd: "/lens-reviewer", role: "Code Review", desc: "OWASP, SOLID, severity (read-only)", color: "text-red-500" },
+                  { name: "Zen", cmd: "/zen-simplifier", role: "Simplifier", desc: "deslop without behavior change", color: "text-green-400" },
+                  { name: "Vault", cmd: "/vault-security", role: "Security", desc: "OWASP Top 10, secrets (read-only)", color: "text-red-300" },
+                  { name: "Grid", cmd: "/grid-tester", role: "Test Engineer", desc: "TDD, pyramid, flaky diagnosis", color: "text-blue-300" },
+                  { name: "Probe", cmd: "/probe-qa", role: "QA Tester", desc: "interactive tmux sessions", color: "text-orange-300" },
+                  { name: "Oath", cmd: "/oath-verifier", role: "Verifier", desc: "evidence-based completion (read-only)", color: "text-emerald-400" },
+                  { name: "Trail", cmd: "/trail-tracer", role: "Tracer", desc: "competing hypotheses, evidence ranks", color: "text-yellow-300" },
+                  { name: "Scout", cmd: "/scout-explorer", role: "Explorer", desc: "fast parallel codebase search (haiku)", color: "text-cyan-400" },
+                  { name: "Flow", cmd: "/flow-git", role: "Git Master", desc: "atomic commits, safe rebase", color: "text-orange-500" },
+                  { name: "Scroll", cmd: "/scroll-docs", role: "Doc Specialist", desc: "external SDK/API docs (read-only)", color: "text-blue-500" },
+                  { name: "Quill", cmd: "/quill-writer", role: "Writer", desc: "tested technical docs (haiku)", color: "text-cyan-300" },
+                  { name: "Canvas", cmd: "/canvas-designer", role: "Designer", desc: "production-grade UI/UX", color: "text-pink-500" },
+                  { name: "Prism", cmd: "/prism-scientist", role: "Scientist", desc: "formal statistical analysis", color: "text-purple-300" },
+                ].map((agent, i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors" data-testid={`agent-card-${agent.name.toLowerCase()}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className={`text-2xl font-bold ${agent.color}`}>{agent.name}</h3>
+                      <span className="text-xs font-medium px-2 py-1 rounded bg-secondary/20 text-secondary-foreground border border-secondary/30">{agent.role}</span>
+                    </div>
+                    <div className="font-mono text-primary text-sm mb-3 bg-primary/10 inline-block px-2 py-1 rounded">
+                      {agent.cmd}
+                    </div>
+                    <p className="text-muted-foreground">{agent.desc}</p>
                   </div>
-                  <p className="text-muted-foreground">{agent.desc}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </section>

@@ -1,6 +1,6 @@
 # Atlas — Projects & Ops
 
-**Command:** `/atlas` | **Color:** green | **Model:** Sonnet
+**Command:** `/atlas-project` | **Color:** green | **Model:** Sonnet
 
 Atlas is the project management agent — tracking Linear issues, GitHub pull requests, sprint progress, licensing telemetry, capacity planning, and status reports. Atlas keeps all development workstreams visible and helps identify blockers before they become problems.
 
@@ -29,9 +29,9 @@ Atlas is the project management agent — tracking Linear issues, GitHub pull re
 ## Example Interactions
 
 ```
-/atlas what's the sprint status for this week?
-/atlas check open PRs on evolution-api
-/atlas how's licensing growth looking this month?
+/atlas-project what's the sprint status for this week?
+/atlas-project check open PRs on evolution-api
+/atlas-project how's licensing growth looking this month?
 ```
 
 ## Routines
