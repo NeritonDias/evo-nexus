@@ -178,14 +178,14 @@ export default function Home() {
               The open source operating system for <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-300">AI-powered businesses</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-              An unofficial open source toolkit compatible with Claude Code. 37 specialized agents (16 business + 21 engineering), 137+ skills, automated routines, channels, and a web dashboard — all in one command.
+              A markdown-first multi-agent operating layer that runs on Anthropic's Claude CLI by default — or on OpenAI, Gemini, Bedrock, Vertex, or OpenRouter via OpenClaude. 38 specialized agents (17 business + 21 engineering), ~140 skills, automated routines, channels, and a web dashboard — all in one command.
             </p>
 
             {/* Social proof numbers */}
             <div className="flex flex-wrap justify-center gap-4 mb-10">
               {[
                 { value: "17,000+", label: "Community members" },
-                { value: "37", label: "AI Agents" },
+                { value: "38", label: "AI Agents" },
                 { value: "137+", label: "Skills" },
                 { value: "18", label: "Integrations" },
               ].map((stat, i) => (
@@ -278,7 +278,7 @@ export default function Home() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {[
-                { icon: Bot, title: "35 Specialized Agents", desc: "Two ortogonal layers — Business (16): Ops, Finance, Projects, Community, Social, Strategy, Sales, Marketing, HR, CS, Legal, Product, Data, Courses, Personal, Knowledge. Engineering (19): Architect, Planner, Executor, Code Reviewer, Debugger, Security, Tester, Verifier, Designer, and more." },
+                { icon: Bot, title: "38 Specialized Agents", desc: "Two ortogonal layers — Business (17): Ops, Finance, Projects, Community, Social, Strategy, Sales, Marketing, HR, CS, Legal, Product, Data, Courses, Personal, Knowledge, Learning Retention. Engineering (21): Architect, Planner, Executor, Code Reviewer, Debugger, Security, Tester, Verifier, Designer, and more." },
                 { icon: BrainCircuit, title: "137+ Skills", desc: "Business skills (fin-, social-, mkt-, hr-, legal-...) plus 25 dev-* engineering skills (autopilot, plan, ralplan, verify, ultraqa, trace...)" },
                 { icon: Clock, title: "Automated Routines", desc: "Morning briefing to monthly close, running on schedule automatically" },
                 { icon: LayoutDashboard, title: "Web Dashboard", desc: "React + Flask with auth, roles, terminal, reports, service management" },
@@ -301,22 +301,22 @@ export default function Home() {
           </FadeIn>
         </section>
 
-        {/* Why Claude Code? */}
+        {/* Why EvoNexus? */}
         <section className="max-w-7xl mx-auto px-6">
           <FadeIn>
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Claude Code?</h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">EvoNexus is an unofficial toolkit that integrates with Claude Code — not just another wrapper. Here's what makes it different.</p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Why EvoNexus?</h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">A markdown-first operating layer that runs on any LLM you choose — Claude, GPT, Gemini, Bedrock, Vertex, or OpenRouter. Here's what makes it different.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
-                { icon: FileText, title: "Native Agents via Markdown", desc: "Agents are defined as plain markdown files. No SDKs, no complex frameworks \u2014 just structured text that Claude understands natively." },
-                { icon: BrainCircuit, title: "Skills as Instructions", desc: "Each skill is a markdown instruction set. Add, edit, or remove capabilities by editing text files. Zero code required." },
-                { icon: Cpu, title: "MCP Integrations", desc: "Model Context Protocol connects Claude to external tools and APIs with a standardized interface. First-class support built in." },
-                { icon: Terminal, title: "Slash Commands", desc: "Type /clawdia-assistant, /flux-finance, or /apex-architect to activate agents instantly. Natural command interface directly in the terminal." },
-                { icon: Database, title: "Persistent Memory", desc: "Two-tier memory system: session context for current work, long-term memory across conversations. Your agents remember everything." },
-                { icon: Layers, title: "Multi-Provider, No Lock-In", desc: "Runs on Anthropic's Claude by default, or swap to OpenRouter, OpenAI, Gemini, Bedrock, or Vertex AI via OpenClaude. One click in the Providers page — no code changes. Your keys, your choice, your data never leaves your infrastructure." },
+                { icon: FileText, title: "Markdown-First Agents", desc: "Agents are plain `.md` files with system prompts. No SDK, no plugin runtime, no compile step. Drop a file in .claude/agents/ and it's live." },
+                { icon: BrainCircuit, title: "Skills as Instructions", desc: "~140 reusable capabilities across finance, community, social, engineering, data, legal, HR, ops, product, CS \u2014 each one a markdown instruction set. Add, edit, or remove by editing text." },
+                { icon: Layers, title: "Multi-Provider, No Lock-In", desc: "Default runs on Anthropic's native claude CLI, or swap to OpenRouter, OpenAI, Gemini, Bedrock, or Vertex AI via OpenClaude. One click in the Providers page \u2014 no code changes. Your keys, your model choice." },
+                { icon: Cpu, title: "MCP Integrations", desc: "Model Context Protocol connects agents to Google Calendar, Gmail, GitHub, Linear, Telegram, Canva, Notion, and more \u2014 with a standardized interface. First-class support built in." },
+                { icon: Terminal, title: "Slash Commands", desc: "Type /clawdia, /flux, /pulse, or /apex to activate agents instantly. Natural command interface directly in the terminal \u2014 no menus, no forms." },
+                { icon: Database, title: "Persistent Memory", desc: "Two-tier memory: CLAUDE.md for working state, per-agent memory/ for long-term context. Survives across sessions. Your agents remember who you are, what you're working on, and what's been decided." },
               ].map((item, i) => (
                 <div key={i} className="group relative p-6 rounded-xl border border-border bg-card/50 hover:bg-card hover:border-primary/30 transition-all">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:shadow-[0_0_15px_rgba(0,255,167,0.2)] transition-shadow">
@@ -365,7 +365,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-6 mb-12">
             <FadeIn>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Meet your new team</h2>
-              <p className="text-muted-foreground text-lg">37 specialized agents ready to handle your operations and your code — 16 business agents + 21 engineering agents.</p>
+              <p className="text-muted-foreground text-lg">38 specialized agents ready to handle your operations and your code — 17 business agents + 21 engineering agents.</p>
             </FadeIn>
           </div>
 
@@ -374,7 +374,7 @@ export default function Home() {
             <div>
               <div className="mb-6 flex items-center gap-3">
                 <h3 className="text-xl md:text-2xl font-bold">Business Layer</h3>
-                <span className="text-xs font-medium px-2 py-1 rounded bg-primary/10 text-primary border border-primary/30">16 agents</span>
+                <span className="text-xs font-medium px-2 py-1 rounded bg-primary/10 text-primary border border-primary/30">17 agents</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
@@ -394,6 +394,7 @@ export default function Home() {
                   { name: "Lex", cmd: "/lex-legal", role: "Legal", desc: "contracts, compliance", color: "text-violet-400" },
                   { name: "Nova", cmd: "/nova-product", role: "Product", desc: "specs, roadmaps", color: "text-yellow-300" },
                   { name: "Dex", cmd: "/dex-data", role: "Data", desc: "analysis, dashboards", color: "text-sky-400" },
+                  { name: "Lumen", cmd: "/lumen-learning", role: "Learning", desc: "spaced repetition, quizzes", color: "text-yellow-400" },
                 ].map((agent, i) => (
                   <div key={i} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors" data-testid={`agent-card-${agent.name.toLowerCase()}`}>
                     <div className="flex items-center justify-between mb-4">

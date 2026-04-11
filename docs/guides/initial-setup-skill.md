@@ -18,7 +18,7 @@ onboarding
 
 ### 1. Agent Tour
 
-A quick overview of all 16 agents and what they do:
+A quick overview of all 17 agents and what they do:
 
 - **Clawdia** — your operational hub (calendar, emails, tasks)
 - **Flux** — financial intelligence (Stripe, Omie, reports)
@@ -29,6 +29,7 @@ A quick overview of all 16 agents and what they do:
 - **Kai** — personal wellness (health, habits)
 - **Nex** — sales pipeline (proposals, qualification)
 - **Mentor** — education (Evo Academy, courses)
+- **Lumen** — learning retention (spaced repetition, quizzes, fact capture)
 - **Oracle** — workspace knowledge (docs, how-to, config)
 - **Mako** — marketing (campaigns, SEO, brand, content)
 - **Aria** — HR / people (recruiting, onboarding, performance)

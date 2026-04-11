@@ -8,7 +8,7 @@ The CEO runs operations, development coordination, community management, financi
 
 ## The Setup
 
-Evolution Foundation runs EvoNexus with all 16 agents active:
+Evolution Foundation runs EvoNexus with all 17 agents active:
 
 - **Clawdia** — daily ops, email, calendar, task management
 - **Flux** — Stripe revenue tracking, ERP integration (Omie), financial reports
@@ -18,6 +18,7 @@ Evolution Foundation runs EvoNexus with all 16 agents active:
 - **Sage** — OKRs, strategy digests, competitive analysis
 - **Nex** — sales pipeline and proposals
 - **Mentor** — Evo Academy course planning
+- **Lumen** — knowledge retention, spaced repetition, fact capture
 - **Kai** — personal health and habit tracking
 - **Oracle** — workspace knowledge, docs, configuration
 - **Mako** — marketing campaigns, SEO, brand reviews
@@ -96,4 +97,4 @@ After running EvoNexus for daily operations:
 - **Community issues caught early** — sentiment shifts and recurring questions surface in hours, not weeks
 - **Consistent reporting** — every day produces the same structured outputs, regardless of how busy the day was
 
-The key insight: the value isn't in any single routine. It's in the compounding effect of having every domain monitored, every day, with memory that carries forward. Problems don't slip through cracks when 16 agents are watching their domains on schedule.
+The key insight: the value isn't in any single routine. It's in the compounding effect of having every domain monitored, every day, with memory that carries forward. Problems don't slip through cracks when 17 agents are watching their domains on schedule.

@@ -25,27 +25,28 @@
 
 ## What It Is
 
-EvoNexus is an open source, **unofficial** toolkit compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It is designed to integrate with Claude Code capabilities: native agents, skills, slash commands, MCP integrations, and the Claude CLI.
+EvoNexus is an open source, **unofficial** multi-agent operating layer built around the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI protocol — but **not locked to any single LLM provider**. It runs natively on Anthropic's `claude` CLI by default, and can transparently switch to OpenAI, Google Gemini, OpenRouter (200+ models), AWS Bedrock, Google Vertex AI, or Codex Auth via [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude). Same agents, same skills, same workflows — your choice of backend.
 
-It turns a single Claude Code installation into a team of **37 specialized agents** organized in two ortogonal layers — **16 business agents** (operations, finance, community, marketing, HR, legal, product, data) and **21 engineering agents** (architecture, planning, code review, testing, debugging, security, design, cycle orchestration, retrospective — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo + 2 native: Helm and Mirror). The engineering layer follows a canonical 6-phase workflow documented in `.claude/rules/dev-phases.md`. Each agent has its own domain, skills, persistent memory, and automated routines. The result is a production system that runs daily operations for a founder/CEO **and** supports software development workflows: from morning briefings to financial reports, community monitoring, social analytics, end-of-day consolidation, plus architectural reviews, code audits, and verified implementation pipelines.
+It turns a single CLI installation into a team of **38 specialized agents** organized in two ortogonal layers — **17 business agents** (operations, finance, community, marketing, HR, legal, product, data, learning retention) and **21 engineering agents** (architecture, planning, code review, testing, debugging, security, design, cycle orchestration, retrospective — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo + 2 native: Helm and Mirror). The engineering layer follows a canonical 6-phase workflow documented in `.claude/rules/dev-phases.md`. Each agent has its own domain, skills, persistent memory, and automated routines. The result is a production system that runs daily operations for a founder/CEO **and** supports software development workflows: from morning briefings to financial reports, community monitoring, social analytics, end-of-day consolidation, plus architectural reviews, code audits, and verified implementation pipelines.
 
 **This is not a chatbot.** It is a real operating layer that runs routines, generates HTML reports, syncs meetings, triages emails, monitors community health, tracks financial metrics, and consolidates everything into a unified dashboard — all automated.
 
-### Why Claude Code?
+### Why EvoNexus?
 
-- **Native agent system** — agents are `.md` files with system prompts, not code
-- **Skills as instructions** — teach Claude new capabilities via markdown, not plugins
-- **MCP integrations** — first-class support for Google Calendar, Gmail, GitHub, Linear, Telegram, and more
-- **Slash commands** — `/clawdia`, `/flux`, `/pulse` invoke agents directly
-- **Persistent memory** — CLAUDE.md + per-agent memory survives across sessions
-- **CLI-first** — runs anywhere Claude Code runs (terminal, VS Code, JetBrains, web)
+- **Markdown-first agents** — agents are `.md` files with system prompts, not code. No SDK, no plugin runtime, no compile step. Add an agent by dropping a file in `.claude/agents/`
+- **Skills as instructions** — reusable capabilities are markdown too. ~140 skills covering finance, community, social, engineering, data, legal, HR, ops, product, CS
+- **Multi-provider by design** — default runs on Anthropic's native `claude` CLI, but can switch to OpenRouter, OpenAI, Gemini, AWS Bedrock, Google Vertex, or Codex Auth via [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude) without touching a line of code. Your keys, your model choice, no vendor lock-in
+- **MCP integrations** — first-class support for Google Calendar, Gmail, GitHub, Linear, Telegram, Canva, Notion, and more via the Model Context Protocol
+- **Slash commands** — `/clawdia`, `/flux`, `/pulse`, `/apex` invoke agents directly from the terminal
+- **Persistent memory** — `CLAUDE.md` + per-agent memory survives across sessions
+- **CLI-first, local-only** — runs anywhere the Claude CLI (or OpenClaude) runs. Your data never leaves your infrastructure
 
 ---
 
 ## Key Features
 
 - **Multi-Provider** — runs on Anthropic (native `claude`) or any of 6 alternate backends via [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude): OpenRouter (200+ models), OpenAI, Google Gemini, Codex Auth, AWS Bedrock, Google Vertex AI. Switch providers from the dashboard, no code changes
-- **16 Core Agents + Custom** — Ops, Finance, Projects, Community, Social, Strategy, Sales, Courses, Personal, Knowledge, Marketing, HR, Customer Success, Legal, Product, Data — plus user-created `custom-*` agents (gitignored)
+- **17 Core Agents + Custom** — Ops, Finance, Projects, Community, Social, Strategy, Sales, Courses, Learning Retention, Personal, Knowledge, Marketing, HR, Customer Success, Legal, Product, Data — plus user-created `custom-*` agents (gitignored)
 - **~140 Skills + Custom** — organized by domain prefix (`social-`, `fin-`, `int-`, `prod-`, `mkt-`, `gog-`, `obs-`, `discord-`, `pulse-`, `sage-`, `hr-`, `legal-`, `ops-`, `cs-`, `data-`, `pm-`). Includes `prod-activation-plan` — the canonical skill for producing phased activation plans (index + folder-per-phase + file-per-item) used by Oracle
 - **7 Core + 20 Custom Routines** — daily, weekly, and monthly ADWs managed by a scheduler (core routines ship with the repo; custom routines are user-created and gitignored)
 - **Web Dashboard** — React + Flask app with auth, roles, web terminal, service management
@@ -248,6 +249,7 @@ The plan lives at `workspace/development/plans/[C]{plan-name}-{date}.md` (index)
 /sage          # Strategy — OKRs, roadmap, competitive analysis
 /nex           # Sales — pipeline, proposals, qualification
 /mentor        # Courses — learning paths, modules
+/lumen-learning # Learning retention — spaced repetition, fact capture, quizzes
 /kai           # Personal — health, habits, routine
 /oracle        # Entry point — onboarding, business discovery, implementation plan
 /mako          # Marketing — campaigns, content, SEO, brand

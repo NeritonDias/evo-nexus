@@ -9,7 +9,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 from flask import Flask, send_from_directory, request, jsonify
 from flask_cors import CORS
-from flask_login import LoginManager, current_user
+from flask_login import LoginManager, current_user, login_user
 
 # Workspace root: two levels up from backend/
 WORKSPACE = Path(__file__).resolve().parent.parent.parent
@@ -83,6 +83,34 @@ PUBLIC_PATHS = {
     "/api/agents/active",
 }
 
+def _try_api_token_auth():
+    """Resolve an Authorization: Bearer <token> header against DASHBOARD_API_TOKEN.
+    On match, log in the configured service user for the duration of this request.
+    Returns True if a valid token was found and applied, False otherwise.
+    """
+    expected = os.environ.get("DASHBOARD_API_TOKEN", "").strip()
+    if not expected:
+        return False
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Bearer "):
+        return False
+    provided = header[len("Bearer "):].strip()
+    if not provided or not secrets.compare_digest(provided, expected):
+        return False
+    # Load service user: DASHBOARD_API_USER env var, defaults to first admin
+    service_username = os.environ.get("DASHBOARD_API_USER", "").strip()
+    user = None
+    if service_username:
+        user = User.query.filter_by(username=service_username, is_active=True).first()
+    if user is None:
+        user = User.query.filter_by(role="admin", is_active=True).order_by(User.id.asc()).first()
+    if user is None:
+        return False
+    # Log in for this request only (no remember cookie)
+    login_user(user, remember=False, fresh=False)
+    return True
+
+
 @app.before_request
 def auth_middleware():
     path = request.path
@@ -104,13 +132,18 @@ def auth_middleware():
         if path not in PUBLIC_PATHS:
             return jsonify({"error": "Setup required", "needs_setup": True}), 403
 
+    # Try API token auth first (Bearer header) for headless agents / CLI tools
+    if not current_user.is_authenticated:
+        if _try_api_token_auth():
+            return None
+
     # Require auth for all other API paths
     if not current_user.is_authenticated:
         return jsonify({"error": "Authentication required"}), 401
 
 # --------------- Register blueprints ---------------
 from routes.overview import bp as overview_bp
-from routes.reports import bp as reports_bp
+from routes.workspace import bp as workspace_bp
 from routes.agents import bp as agents_bp
 from routes.routines import bp as routines_bp
 from routes.skills import bp as skills_bp
@@ -118,7 +151,6 @@ from routes.templates_routes import bp as templates_bp
 from routes.memory import bp as memory_bp
 from routes.costs import bp as costs_bp
 from routes.config import bp as config_bp
-from routes.files import bp as files_bp
 from routes.integrations import bp as integrations_bp
 from routes.scheduler import bp as scheduler_bp
 from routes.services import bp as services_bp
@@ -132,7 +164,7 @@ from routes.backups import bp as backups_bp
 from routes.providers import bp as providers_bp
 
 app.register_blueprint(overview_bp)
-app.register_blueprint(reports_bp)
+app.register_blueprint(workspace_bp)
 app.register_blueprint(agents_bp)
 app.register_blueprint(routines_bp)
 app.register_blueprint(skills_bp)
@@ -140,7 +172,6 @@ app.register_blueprint(templates_bp)
 app.register_blueprint(memory_bp)
 app.register_blueprint(costs_bp)
 app.register_blueprint(config_bp)
-app.register_blueprint(files_bp)
 app.register_blueprint(integrations_bp)
 app.register_blueprint(scheduler_bp)
 app.register_blueprint(services_bp)

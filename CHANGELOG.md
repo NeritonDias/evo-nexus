@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Learning Loop feature** — knowledge retention system based on SM-2 spaced repetition. Four skills: `learn-capture` (extract atomic facts from pasted content), `learn-review` (run SM-2 sessions), `learn-quiz` (retrieval-practice question sets), `learn-stats` (retention metrics per deck). Facts stored as markdown files in `workspace/learning/facts/` with full SM-2 frontmatter (`interval`, `ease`, `reps`, `lapses`, `next_review`).
+- **`@lumen-learning` agent** — new business-layer agent (17th) dedicated to learning retention. Orchestrates the four `learn-*` skills, runs proactive review nudges, and keeps separation of concerns clean: Mentor creates learning content, Lumen makes it stick. Command: `/lumen-learning`. Model: sonnet. Color: yellow.
+- **Agent count updated across all docs** — README, `docs/introduction.md`, `docs/agents/overview.md`, `docs/architecture.md`, `site/src/pages/Home.tsx`, `.claude/rules/agents.md`, `CLAUDE.md` updated from 37 (16 business) → 38 (17 business).
+- **`dashboard/frontend/src/lib/agent-meta.ts`** — `lumen-learning` entry added (Zap icon, yellow `#FCD34D`, command `/lumen-learning`, label `Learning Retention`).
+
 ## [0.14.1] - 2026-04-11
 
 ### Fixed

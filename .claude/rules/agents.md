@@ -1,15 +1,15 @@
-# Agents (16 business + 21 engineering core + custom)
+# Agents (17 business + 21 engineering core + custom)
 
 Defined in `.claude/agents/`. Each agent has an isolated domain and can be invoked via command. EvoNexus organizes agents in **two ortogonal layers**:
 
-- **Business Layer** — 16 agents for operations, finance, community, marketing, HR, legal, product, data, sales.
+- **Business Layer** — 17 agents for operations, finance, community, marketing, HR, legal, product, data, sales, learning retention.
 - **Engineering Layer** — 21 agents for software development, most derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT). See [NOTICE.md](../../NOTICE.md). The canonical 6-phase workflow is documented in `.claude/rules/dev-phases.md`.
 
 Custom agents use `custom-` prefix and are gitignored.
 
 ---
 
-## Business Layer (16)
+## Business Layer (17)
 
 | Agent | Command | Domain |
 |--------|---------|---------|
@@ -22,6 +22,7 @@ Custom agents use `custom-` prefix and are gitignored.
 | **Pixel** | `/pixel` | Social media — content, calendar, analysis, reports |
 | **Nex** | `/nex` | Sales — pipeline, proposals, qualification |
 | **Mentor** | `/mentor` | Courses — learning paths, modules, Evo Academy |
+| **Lumen** | `/lumen-learning` | Learning retention — spaced repetition (SM-2), fact capture, quizzes, retention stats |
 | **Oracle** | `/oracle` | **Entry point** — onboarding, business discovery, implementation plan, workspace knowledge |
 | **Mako** | `/mako` | Marketing — campaigns, content strategy, SEO, email, brand |
 | **Aria** | `/aria` | HR / People — recruiting, onboarding, performance, compensation |

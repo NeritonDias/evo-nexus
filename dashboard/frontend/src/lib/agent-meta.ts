@@ -18,6 +18,7 @@ import {
   BarChart3,
   Navigation,
   History,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -34,6 +35,7 @@ const AGENT_META: Record<string, AgentMeta> = {
   'flux-finance': { icon: DollarSign, color: '#34D399', command: '/flux', label: 'Finance' },
   'kai-personal-assistant': { icon: Heart, color: '#F472B6', command: '/kai', label: 'Personal' },
   'mentor-courses': { icon: GraduationCap, color: '#FBBF24', command: '/mentor', label: 'Courses' },
+  'lumen-learning': { icon: Zap, color: '#FCD34D', command: '/lumen-learning', label: 'Learning Retention' },
   'nex-sales': { icon: Target, color: '#FB923C', command: '/nex', label: 'Sales' },
   'pixel-social-media': { icon: Camera, color: '#A78BFA', command: '/pixel', label: 'Social Media' },
   'pulse-community': { icon: Users, color: '#2DD4BF', command: '/pulse', label: 'Community' },
