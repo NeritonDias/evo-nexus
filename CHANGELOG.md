@@ -5,14 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.15.0] - 2026-04-11
 
 ### Added
 
-- **Learning Loop feature** — knowledge retention system based on SM-2 spaced repetition. Four skills: `learn-capture` (extract atomic facts from pasted content), `learn-review` (run SM-2 sessions), `learn-quiz` (retrieval-practice question sets), `learn-stats` (retention metrics per deck). Facts stored as markdown files in `workspace/learning/facts/` with full SM-2 frontmatter (`interval`, `ease`, `reps`, `lapses`, `next_review`).
-- **`@lumen-learning` agent** — new business-layer agent (17th) dedicated to learning retention. Orchestrates the four `learn-*` skills, runs proactive review nudges, and keeps separation of concerns clean: Mentor creates learning content, Lumen makes it stick. Command: `/lumen-learning`. Model: sonnet. Color: yellow.
-- **Agent count updated across all docs** — README, `docs/introduction.md`, `docs/agents/overview.md`, `docs/architecture.md`, `site/src/pages/Home.tsx`, `.claude/rules/agents.md`, `CLAUDE.md` updated from 37 (16 business) → 38 (17 business).
-- **`dashboard/frontend/src/lib/agent-meta.ts`** — `lumen-learning` entry added (Zap icon, yellow `#FCD34D`, command `/lumen-learning`, label `Learning Retention`).
+- **Learning Loop feature** — knowledge retention system based on SM-2 spaced repetition. Four skills: `learn-capture` (extract 1-5 atomic facts from pasted content), `learn-review` (run SM-2 sessions with Again/Hard/Good/Easy grades updating `interval`/`ease` in-place), `learn-quiz` (retrieval-practice question sets, read-only), `learn-stats` (total facts, overdue count, retention rate, active decks, facts added this week). Facts are individual markdown files in `workspace/learning/facts/` with full SM-2 frontmatter (`interval`, `ease`, `reps`, `lapses`, `next_review`). Review history appended to `.state/review-log.jsonl` for audit. All user data gitignored by default — only `workspace/learning/README.md` is committed. Pull-only in v0 (no Telegram push, no Fathom auto-capture — deferred).
+- **`@lumen-learning` agent** — new business-layer agent (17th) dedicated to learning retention. Orchestrates the four `learn-*` skills and keeps separation of concerns clean: `@mentor-courses` creates learning content, `@lumen-learning` makes it stick. Command: `/lumen-learning`. Model: sonnet. Color: yellow.
+- **`learning_weekly` routine** — scheduled for Sundays 09:45 BRT via `ADWs/routines/custom/learning_weekly.py`. Generates a markdown digest in `workspace/daily-logs/YYYY-MM-DD-learning-weekly.md` with overdue facts and retention stats. Read-only — never mutates SM-2 frontmatter. Makefile target: `make learn-weekly`.
+- **Agent avatars in the dashboard** — 35 custom PNG avatars under `dashboard/frontend/public/avatar/` covering all business agents (12) and 19 engineering agents (helm, mirror also now included). New `AgentAvatar` component renders the PNG as a circular image when available, or falls back to a colored circle with the Lucide icon when not. Integrated into the agent list cards (`Agents.tsx`, 56px) and the agent detail page header (`AgentDetail.tsx`, 60px with colored halo).
+- **Agent count bumped across all docs** — README, `docs/introduction.md`, `docs/agents/overview.md`, `docs/architecture.md`, `docs/real-world/evolution-foundation.md`, `docs/dashboard/overview.md`, `docs/guides/initial-setup-skill.md`, `site/src/pages/Home.tsx`, `.claude/rules/agents.md`, `CLAUDE.md` updated from 37 (16 business) → 38 (17 business). `public/cover.svg` text updated from `37 Agents` → `38 Agents`.
+
+### Changed
+
+- **`dashboard/frontend/src/lib/agent-meta.ts`** — expanded from 19 entries to 38. All 21 engineering agents were previously falling through to `DEFAULT_META` (generic `Bot` icon, no slash command badge); each now has a dedicated entry with icon, color, command, label, and avatar path. Business agents `aria-hr`, `zara-cs`, `lex-legal`, `nova-product`, `dex-data`, `helm-conductor`, `mirror-retro` also gained their `avatar` field. `AgentMeta` interface extended with optional `avatar?: string`.
+- **`AgentDetail.tsx` header** — grew from `h-14` to `h-20` to accommodate the 60px avatar with its colored halo to the left of the agent name and command.
 
 ## [0.14.1] - 2026-04-11
 

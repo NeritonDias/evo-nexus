@@ -1053,12 +1053,12 @@ Agents are the core of EvoNexus. Each agent is a specialized AI persona with its
 
 EvoNexus organizes agents in **two ortogonal layers**:
 
-- **Business Layer (16 agents)** — operations, finance, community, marketing, HR, legal, product, data, sales. Built and maintained by EvoNexus.
+- **Business Layer (17 agents)** — operations, finance, community, marketing, HR, legal, product, data, sales, learning retention. Built and maintained by EvoNexus.
 - **Engineering Layer (21 agents)** — software development, code review, testing, debugging, security, design, cycle orchestration, retrospective. 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by Yeachan Heo) + 2 native (Helm, Mirror). Follows a canonical 6-phase workflow. See [Engineering Layer](engineering-layer.md) for details.
 
 The two layers are independent — business tasks route to business agents, engineering tasks to engineering agents — but cross-layer handoffs are common (e.g., `@nova` writes a PRD → `@apex-architect` does the architecture review → `@bolt-executor` implements → `@mirror-retro` captures lessons).
 
-**Total: 37 agents** + custom agents you create.
+**Total: 38 agents** + custom agents you create.
 
 ## What Is an Agent?
 
@@ -1075,7 +1075,7 @@ When invoked, Claude Code loads the agent's system prompt and operates within th
 
 Each agent has a corresponding command in `.claude/commands/`:
 
-**Business Layer (16):**
+**Business Layer (17):**
 
 ```
 /clawdia-assistant       — Ops hub: agenda, emails, tasks, decisions
@@ -1086,6 +1086,7 @@ Each agent has a corresponding command in `.claude/commands/`:
 /sage-strategy           — Strategy: OKRs, roadmap, competitive analysis
 /nex-sales               — Sales: pipeline, proposals, qualification
 /mentor-courses          — Courses: learning paths, modules
+/lumen-learning          — Learning retention: spaced repetition, fact capture, quizzes
 /kai-personal-assistant  — Personal: health, habits, routine
 /oracle                  — Workspace knowledge: docs, how-to, configuration
 /mako-marketing          — Marketing: campaigns, SEO, email, brand
@@ -1180,7 +1181,7 @@ To create a custom agent, use the `create-agent` skill or see [Creating Agents](
 .claude/agent-memory/custom-devops/  # Persistent memory
 ```
 
-## Business Layer — 16 Core Agents
+## Business Layer — 17 Core Agents
 
 | Agent | Command | Domain | Color |
 |-------|---------|--------|-------|
@@ -1192,6 +1193,7 @@ To create a custom agent, use the `create-agent` skill or see [Creating Agents](
 | [**Sage**](sage.md) | `/sage-strategy` | Strategy: OKRs, roadmap, competitive analysis | orange |
 | [**Nex**](nex.md) | `/nex-sales` | Sales: pipeline, proposals, qualification | red |
 | [**Mentor**](mentor.md) | `/mentor-courses` | Courses: learning paths, modules, academy | purple |
+| [**Lumen**](lumen-learning.md) | `/lumen-learning` | Learning retention: spaced repetition (SM-2), fact capture, quizzes | yellow |
 | [**Kai**](kai.md) | `/kai-personal-assistant` | Personal: health, habits, routine (isolated) | blue |
 | [**Oracle**](oracle.md) | `/oracle` | Workspace knowledge: docs, how-to, configuration | amber |
 | [**Mako**](mako.md) | `/mako-marketing` | Marketing: campaigns, SEO, email sequences, brand | orange |
@@ -1274,6 +1276,8 @@ See the dedicated [Engineering Layer](engineering-layer.md) page for pipelines, 
 **Nova** handles product management. Feature specs/PRDs, metrics reviews, roadmap updates, product brainstorming, and stakeholder updates.
 
 **Dex** is the data and BI agent. Data analysis, SQL queries, interactive dashboards, statistical analysis, and data validation.
+
+**Lumen** is the knowledge retention agent. It captures atomic facts from pasted content, runs SM-2 spaced repetition review sessions, generates retrieval-practice quizzes, and reports retention metrics per deck. Use Lumen to lock in what you read — Mentor creates learning content, Lumen makes it stick.
 
 ## Preloaded Skills
 
@@ -1515,7 +1519,7 @@ Persistent memory at `.claude/agent-memory/zara/`. Stores project context, user 
 
 EvoNexus is a file-based, git-friendly framework. Everything is markdown, YAML, and Python scripts. No database required for the core framework (SQLite is used only by the dashboard).
 
-EvoNexus organizes 37 agents in **two ortogonal layers**: a Business Layer (16 agents for ops/finance/community/etc.) and an Engineering Layer (21 agents for software dev — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo, plus 2 native: Helm and Mirror). The two layers share the same skill, memory, and integration infrastructure but stay out of each other's way: business tasks route to business agents, engineering tasks to engineering agents. Cross-layer handoffs are common (e.g., Nova writes a PRD → Apex reviews → Bolt implements → Mirror captures lessons). The engineering layer follows a canonical 6-phase workflow (Discovery → Planning → Solutioning → Build → Verify → Retro) documented in [`.claude/rules/dev-phases.md`](https://github.com/EvolutionAPI/evo-nexus/blob/main/.claude/rules/dev-phases.md).
+EvoNexus organizes 38 agents in **two ortogonal layers**: a Business Layer (17 agents for ops/finance/community/learning retention/etc.) and an Engineering Layer (21 agents for software dev — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode), MIT, by Yeachan Heo, plus 2 native: Helm and Mirror). The two layers share the same skill, memory, and integration infrastructure but stay out of each other's way: business tasks route to business agents, engineering tasks to engineering agents. Cross-layer handoffs are common (e.g., Nova writes a PRD → Apex reviews → Bolt implements → Mirror captures lessons). The engineering layer follows a canonical 6-phase workflow (Discovery → Planning → Solutioning → Build → Verify → Retro) documented in [`.claude/rules/dev-phases.md`](https://github.com/EvolutionAPI/evo-nexus/blob/main/.claude/rules/dev-phases.md).
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -1524,9 +1528,9 @@ EvoNexus organizes 37 agents in **two ortogonal layers**: a Business Layer (16 a
 │                            Claude Code CLI                           │
 │                                  │                                   │
 │   ┌────────────────────────────────────────────────────────────┐    │
-│   │  BUSINESS LAYER (16) — operations / finance / community    │    │
-│   │  Clawdia Flux Atlas Pulse Pixel Sage Nex Mentor Kai        │    │
-│   │  Oracle Mako Aria Zara Lex Nova Dex                        │    │
+│   │  BUSINESS LAYER (17) — operations / finance / community    │    │
+│   │  Clawdia Flux Atlas Pulse Pixel Sage Nex Mentor Lumen      │    │
+│   │  Kai Oracle Mako Aria Zara Lex Nova Dex                    │    │
 │   └──────────────────────────┬─────────────────────────────────┘    │
 │                              │                                       │
 │   ┌──────────────────────────┴─────────────────────────────────┐    │
@@ -1873,7 +1877,7 @@ When no users exist in the database, the dashboard redirects to a setup wizard a
 
 1. **Workspace info** -- name, company, timezone
 2. **Admin account** -- create your first user (username + password)
-3. **Agents** -- choose which of the 16 agents to enable
+3. **Agents** -- choose which of the 17 agents to enable
 4. **Integrations** -- select which services to connect
 
 After setup completes, you are logged in as admin and can access all pages.
@@ -3485,7 +3489,7 @@ onboarding
 
 ### 1. Agent Tour
 
-A quick overview of all 16 agents and what they do:
+A quick overview of all 17 agents and what they do:
 
 - **Clawdia** — your operational hub (calendar, emails, tasks)
 - **Flux** — financial intelligence (Stripe, Omie, reports)
@@ -3496,6 +3500,7 @@ A quick overview of all 16 agents and what they do:
 - **Kai** — personal wellness (health, habits)
 - **Nex** — sales pipeline (proposals, qualification)
 - **Mentor** — education (Evo Academy, courses)
+- **Lumen** — learning retention (spaced repetition, quizzes, fact capture)
 - **Oracle** — workspace knowledge (docs, how-to, config)
 - **Mako** — marketing (campaigns, SEO, brand, content)
 - **Aria** — HR / people (recruiting, onboarding, performance)
@@ -5623,9 +5628,9 @@ Most "AI assistants" are chatbots. You ask a question, you get an answer, and th
 
 ## What EvoNexus Is
 
-EvoNexus is a multi-agent workspace compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It turns a single Claude Code installation into a team of **37 specialized agents** organized in two ortogonal layers — one for business operations, one for software engineering.
+EvoNexus is a multi-agent workspace compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It turns a single Claude Code installation into a team of **38 specialized agents** organized in two ortogonal layers — one for business operations, one for software engineering.
 
-The **Business Layer** has 16 agents that own distinct domains (finance, projects, community, social media, strategy, sales, courses, personal wellness, marketing, HR, customer success, legal, product, data, knowledge) and produce real operational outputs: HTML reports, triaged inboxes, synced meeting notes, financial snapshots, community health checks.
+The **Business Layer** has 17 agents that own distinct domains (finance, projects, community, social media, strategy, sales, courses, learning retention, personal wellness, marketing, HR, customer success, legal, product, data, knowledge) and produce real operational outputs: HTML reports, triaged inboxes, synced meeting notes, financial snapshots, community health checks.
 
 The **Engineering Layer** has 21 agents for software development (architecture, planning, implementation, code review, testing, debugging, security, design, cycle orchestration, retrospective) — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by Yeachan Heo) + 2 native (`helm-conductor` for cycle orchestration and `mirror-retro` for blameless retrospectives). The layer follows a canonical 6-phase workflow (Discovery → Planning → Solutioning → Build → Verify → Retro) that takes a brief all the way to a verified, reviewed, tested feature with captured lessons.
 
@@ -5646,7 +5651,7 @@ A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer h
 |---------|------------|
 | You ask, it answers | Agents run routines on schedule |
 | Forgets between sessions | Persistent memory across sessions |
-| One conversation thread | 37 agents with isolated domains (16 business + 21 engineering) |
+| One conversation thread | 38 agents with isolated domains (17 business + 21 engineering) |
 | Generic helper | Specialized roles per layer: ops, finance, code review, security audit, debugging |
 | No integrations | 18+ integrations (Google, GitHub, Stripe, Discord, etc.) |
 | Text output | HTML reports, dashboards, structured artifacts |
@@ -5657,7 +5662,7 @@ A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer h
 
 ### Agents
 
-16 specialized agents, each with a system prompt, slash command, persistent memory, and domain-specific skills:
+17 specialized agents, each with a system prompt, slash command, persistent memory, and domain-specific skills:
 
 | Agent | Domain | Command |
 |-------|--------|---------|
@@ -5677,6 +5682,7 @@ A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer h
 | Lex | Legal — contracts, compliance, NDA, risk | `/lex` |
 | Nova | Product — specs, roadmaps, metrics, research | `/nova` |
 | Dex | Data / BI — analysis, SQL, dashboards | `/dex` |
+| Lumen | Learning Retention — spaced repetition (SM-2), fact capture, quizzes | `/lumen-learning` |
 
 ### Skills
 
@@ -5723,7 +5729,7 @@ The CEO runs operations, development coordination, community management, financi
 
 ## The Setup
 
-Evolution Foundation runs EvoNexus with all 16 agents active:
+Evolution Foundation runs EvoNexus with all 17 agents active:
 
 - **Clawdia** — daily ops, email, calendar, task management
 - **Flux** — Stripe revenue tracking, ERP integration (Omie), financial reports
@@ -5733,6 +5739,7 @@ Evolution Foundation runs EvoNexus with all 16 agents active:
 - **Sage** — OKRs, strategy digests, competitive analysis
 - **Nex** — sales pipeline and proposals
 - **Mentor** — Evo Academy course planning
+- **Lumen** — knowledge retention, spaced repetition, fact capture
 - **Kai** — personal health and habit tracking
 - **Oracle** — workspace knowledge, docs, configuration
 - **Mako** — marketing campaigns, SEO, brand reviews
@@ -5811,7 +5818,7 @@ After running EvoNexus for daily operations:
 - **Community issues caught early** — sentiment shifts and recurring questions surface in hours, not weeks
 - **Consistent reporting** — every day produces the same structured outputs, regardless of how busy the day was
 
-The key insight: the value isn't in any single routine. It's in the compounding effect of having every domain monitored, every day, with memory that carries forward. Problems don't slip through cracks when 16 agents are watching their domains on schedule.
+The key insight: the value isn't in any single routine. It's in the compounding effect of having every domain monitored, every day, with memory that carries forward. Problems don't slip through cracks when 17 agents are watching their domains on schedule.
 
 
 ---
