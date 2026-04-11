@@ -106,6 +106,11 @@ export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA
     // alternative.
     const AUTO_REPLY_RE = /^\x1b\[(\?|>)[0-9;]*[a-zA-Z]$|^\x1b\[[0-9;]*[nRct]$/
     term.onData((data) => {
+      // TEMP DEBUG: log every onData payload so we can see what's being
+      // sent to the pty on startup
+      const hex = Array.from(data).map((c) => (c as unknown as string).charCodeAt(0).toString(16).padStart(2, '0')).join('')
+      // eslint-disable-next-line no-console
+      console.log('[xterm onData]', data.length, 'B  hex:', hex, '  match:', AUTO_REPLY_RE.test(data))
       if (AUTO_REPLY_RE.test(data)) return
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'input', data }))

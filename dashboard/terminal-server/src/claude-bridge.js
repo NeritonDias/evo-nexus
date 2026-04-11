@@ -175,7 +175,7 @@ class ClaudeBridge {
         if (process.env.DEBUG) {
           console.log(`Session ${sessionId} output:`, data);
         }
-        
+
         // Buffer data to check for trust prompt
         dataBuffer += data;
         
