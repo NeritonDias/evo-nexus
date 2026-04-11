@@ -45,7 +45,7 @@ It turns a single Claude Code installation into a team of **37 specialized agent
 ## Key Features
 
 - **16 Core Agents + Custom** — Ops, Finance, Projects, Community, Social, Strategy, Sales, Courses, Personal, Knowledge, Marketing, HR, Customer Success, Legal, Product, Data — plus user-created `custom-*` agents (gitignored)
-- **~138 Skills + Custom** — organized by domain prefix (`social-`, `fin-`, `int-`, `prod-`, `mkt-`, `gog-`, `obs-`, `discord-`, `pulse-`, `sage-`, `hr-`, `legal-`, `ops-`, `cs-`, `data-`, `pm-`). Includes `prod-activation-plan` — the canonical skill for producing phased activation plans (index + folder-per-phase + file-per-item) used by Oracle
+- **~140 Skills + Custom** — organized by domain prefix (`social-`, `fin-`, `int-`, `prod-`, `mkt-`, `gog-`, `obs-`, `discord-`, `pulse-`, `sage-`, `hr-`, `legal-`, `ops-`, `cs-`, `data-`, `pm-`). Includes `prod-activation-plan` — the canonical skill for producing phased activation plans (index + folder-per-phase + file-per-item) used by Oracle
 - **7 Core + 20 Custom Routines** — daily, weekly, and monthly ADWs managed by a scheduler (core routines ship with the repo; custom routines are user-created and gitignored)
 - **Web Dashboard** — React + Flask app with auth, roles, web terminal, service management
 - **17 Integrations** — Google Calendar, Gmail, Linear, GitHub, Discord, Telegram, Stripe, Omie, Fathom, Todoist, YouTube, Instagram, LinkedIn, Evolution API, Evolution Go, Evo CRM, and more
@@ -246,7 +246,7 @@ A full web UI at `http://localhost:8080`:
 | **Agents** | View agent definitions and system prompts |
 | **Routines** | Metrics per routine (runs, success rate, cost) + manual run |
 | **Tasks** | Schedule one-off actions (skill, prompt, script) at a specific date/time |
-| **Skills** | Browse all ~138 skills by category (~113 business + 25 dev-*) |
+| **Skills** | Browse all ~140 skills by category (~115 business + 25 dev-*) |
 | **Templates** | Preview HTML report templates |
 | **Services** | Start/stop scheduler, channels (Telegram, Discord, iMessage) with live logs |
 | **Memory** | Browse agent and global memory files |
@@ -305,7 +305,7 @@ evo-nexus/
 ├── .claude/
 │   ├── agents/          — 16 agent system prompts
 │   ├── commands/        — 16 slash commands
-│   ├── skills/          — ~138 skills by prefix (~113 business + 25 dev-*) (+ custom)
+│   ├── skills/          — ~140 skills by prefix (~115 business + 25 dev-*) (+ custom)
 │   └── templates/html/  — 2 core + custom HTML templates
 ├── ADWs/
 │   ├── runner.py        — execution engine (logs + metrics + notifications)

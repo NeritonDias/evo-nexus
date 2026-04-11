@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.3] - 2026-04-10
+
+### Added
+
+- **New skill `int-bling`** — Bling ERP API v3 integration. 10 operations across products (list/create), sales orders (list/create), contacts (list/create, F/J types), fiscal invoices/NF-e (list/create from orders), and stock (get/update by warehouse). Uses OAuth2 Bearer token (`BLING_ACCESS_TOKEN`). Schemas and endpoint coverage derived from the `mcp-dev-brasil` TypeScript reference implementation under `workspace/projects/mcp-dev-brasil/packages/erp/bling/`, complemented by [developer.bling.com.br](https://developer.bling.com.br) for advanced endpoints.
+- **New skill `int-asaas`** — Asaas payment platform API v3 integration. 15 operations across payments (create/get/list, PIX QR code, boleto PDF), customers (create/list with CPF/CNPJ validation), subscriptions (create/list/cancel), financial (balance, transfer), marketplace (subaccount for split payments), and utilities (installments, webhook events). Uses `ASAAS_API_KEY` header auth with `ASAAS_SANDBOX=true` as safe default (sandbox.asaas.com), switchable to production. Enums documented: `billingType` (BOLETO/CREDIT_CARD/PIX/UNDEFINED) and payment `status` (PENDING/RECEIVED/CONFIRMED/OVERDUE/REFUNDED/etc). Schemas derived from `mcp-dev-brasil/packages/payments/asaas/` with Zod validation patterns ported to the skill.
+- **`.env.example`** — new `BLING_ACCESS_TOKEN`, `ASAAS_API_KEY`, and `ASAAS_SANDBOX` entries under dedicated Brazilian ERP/payments sections.
+
+### Changed
+
+- **`.claude/rules/skills.md`** — `int-*` row bumped from 13 → 15, now listing Bling and Asaas alongside Stripe, Omie, and the other integrations.
+- **README + docs** — skill counts updated: ~138 → ~140 total (~113 → ~115 business layer).
+
 ## [0.13.2] - 2026-04-10
 
 ### Added

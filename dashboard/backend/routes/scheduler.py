@@ -2,9 +2,33 @@
 
 import re
 from flask import Blueprint, jsonify
-from routes._helpers import WORKSPACE, safe_read, get_script_agents
+from routes._helpers import WORKSPACE, safe_read, get_script_agents, discover_routines
 
 bp = Blueprint("scheduler", __name__)
+
+
+def _script_to_command_map() -> dict:
+    """script path → `make run R=<id>` command."""
+    registry = discover_routines()
+    return {r["script"]: f"make run R={make_id}" for make_id, r in registry.items()}
+
+
+def _command_for(script: str) -> str:
+    if not script:
+        return ""
+    mapping = _script_to_command_map()
+    # Try exact match first
+    if script in mapping:
+        return mapping[script]
+    # Try stripping 'custom/' prefix and re-matching
+    bare = script.replace("custom/", "")
+    if bare in mapping:
+        return mapping[bare]
+    # Try with 'custom/' prefix
+    with_prefix = f"custom/{bare}"
+    if with_prefix in mapping:
+        return mapping[with_prefix]
+    return ""
 
 
 @bp.route("/api/scheduler")
@@ -69,6 +93,7 @@ def get_schedule():
             "time": time_str or "",
             "agent": agent,
             "custom": "custom/" in script,
+            "command": _command_for(script),
         })
 
     # Also load custom routines from config/routines.yaml
@@ -108,6 +133,7 @@ def _load_yaml_routines(entries: list):
                 "time": r.get("time", ""),
                 "agent": agent,
                 "custom": True,
+                "command": _command_for(f"custom/{script}"),
             })
 
         for r in config.get("weekly", []) or []:
@@ -127,6 +153,7 @@ def _load_yaml_routines(entries: list):
                     "time": time_str,
                     "agent": agent,
                     "custom": True,
+                    "command": _command_for(f"custom/{script}"),
                 })
 
         for r in config.get("monthly", []) or []:
@@ -143,6 +170,7 @@ def _load_yaml_routines(entries: list):
                 "time": r.get("time", ""),
                 "agent": agent,
                 "custom": True,
+                "command": _command_for(f"custom/{script}"),
             })
 
     except Exception as e:
