@@ -475,9 +475,9 @@ export default function Home() {
               <SiCanva className="w-8 h-8 hover:text-blue-500 transition-colors" />
               <SiNotion className="w-8 h-8 hover:text-white transition-colors" />
               <SiObsidian className="w-8 h-8 hover:text-purple-400 transition-colors" />
-              <MessageSquare className="w-8 h-8 hover:text-emerald-400 transition-colors" title="Evolution API" />
-              <GitBranch className="w-8 h-8 hover:text-emerald-400 transition-colors" title="Evolution Go" />
-              <Database className="w-8 h-8 hover:text-emerald-400 transition-colors" title="Evo CRM" />
+              <span title="Evolution API"><MessageSquare className="w-8 h-8 hover:text-emerald-400 transition-colors" /></span>
+              <span title="Evolution Go"><GitBranch className="w-8 h-8 hover:text-emerald-400 transition-colors" /></span>
+              <span title="Evo CRM"><Database className="w-8 h-8 hover:text-emerald-400 transition-colors" /></span>
             </div>
           </FadeIn>
         </section>

@@ -9,7 +9,6 @@ import {
   X,
   Zap,
   TestTube2,
-  type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
 
