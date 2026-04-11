@@ -124,9 +124,72 @@ def _log_to_file(log_name, prompt, stdout, stderr, returncode, duration, usage=N
             f.write(f"{'='*60}\nSTDERR:\n{'='*60}\n{stderr}\n")
 
 
+_ALLOWED_CLI_COMMANDS = frozenset({"claude", "openclaude"})
+
+
+def _spawn_cli(cli_command: str, prompt: str, agent: str | None, provider_env: dict) -> subprocess.Popen:
+    """Spawn a CLI process using only hardcoded command strings.
+
+    Uses a dictionary lookup so that the subprocess argument is always
+    a static string, satisfying semgrep/opengrep subprocess injection rules.
+    """
+    base_args = ["--print", "--dangerously-skip-permissions", "--output-format", "json"]
+    if agent:
+        base_args.extend(["--agent", agent])
+    base_args.append(prompt)
+
+    env = {**os.environ, **provider_env, "TERM": "dumb"}
+    popen_kwargs = dict(
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=str(WORKSPACE),
+        env=env,
+    )
+
+    # Hardcoded dispatch — each branch uses a literal string for the executable
+    if cli_command == "openclaude":
+        return subprocess.Popen(["openclaude"] + base_args, **popen_kwargs)  # noqa: S603
+    else:
+        return subprocess.Popen(["claude"] + base_args, **popen_kwargs)  # noqa: S603
+_ALLOWED_ENV_VARS = frozenset({
+    "CLAUDE_CODE_USE_OPENAI", "CLAUDE_CODE_USE_GEMINI", "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CODE_USE_VERTEX", "OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL",
+    "GEMINI_API_KEY", "GEMINI_MODEL", "AWS_REGION", "AWS_BEARER_TOKEN_BEDROCK",
+    "ANTHROPIC_VERTEX_PROJECT_ID", "CLOUD_ML_REGION",
+})
+
+
+def _get_provider_config() -> tuple[str, dict]:
+    """Read active provider CLI command and env vars from config/providers.json.
+
+    Only allowlisted CLI commands and env var names are returned.
+    """
+    config_path = WORKSPACE / "config" / "providers.json"
+    if not config_path.is_file():
+        return "claude", {}
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        active = config.get("active_provider", "anthropic")
+        provider = config.get("providers", {}).get(active, {})
+        cli = provider.get("cli_command", "claude")
+        if cli not in _ALLOWED_CLI_COMMANDS:
+            cli = "claude"
+        env_vars = {
+            k: v for k, v in provider.get("env_vars", {}).items()
+            if v and k in _ALLOWED_ENV_VARS
+        }
+        return cli, env_vars
+    except (json.JSONDecodeError, OSError):
+        return "claude", {}
+
+
 def run_claude(prompt: str, log_name: str = "unnamed", timeout: int = 600, agent: str = None) -> dict:
     """
-    Execute Claude Code CLI with streaming output.
+    Execute AI CLI (claude or openclaude) with streaming output.
+
+    Uses the active provider from config/providers.json to determine
+    which binary to run and which env vars to inject.
 
     Args:
         prompt: The prompt to execute
@@ -134,27 +197,19 @@ def run_claude(prompt: str, log_name: str = "unnamed", timeout: int = 600, agent
         timeout: Timeout in seconds
         agent: Agent name (.claude/agents/*.md) — if None, runs without agent
     """
-    cmd = ["claude", "--print", "--dangerously-skip-permissions", "--output-format", "json"]
+    cli_command, provider_env = _get_provider_config()
 
     if agent:
-        cmd.extend(["--agent", agent])
-
-    cmd.append(prompt)
-
-    agent_label = f"@{agent}" if agent else ""
-    console.print(f"  [step]▶[/step] {log_name} [dim]{agent_label}[/dim]", end="")
+        agent_label = f"@{agent}"
+    else:
+        agent_label = ""
+    provider_label = f"[{cli_command}]" if cli_command != "claude" else ""
+    console.print(f"  [step]▶[/step] {log_name} [dim]{agent_label} {provider_label}[/dim]", end="")
 
     start_time = datetime.now()
 
     try:
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            cwd=str(WORKSPACE),
-            env={**os.environ, "TERM": "dumb"},
-        )
+        process = _spawn_cli(cli_command, prompt, agent, provider_env)
 
         stdout_lines = []
         line_count = 0

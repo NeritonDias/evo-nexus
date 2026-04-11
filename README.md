@@ -44,6 +44,7 @@ It turns a single Claude Code installation into a team of **37 specialized agent
 
 ## Key Features
 
+- **Multi-Provider** — runs on Anthropic (native `claude`) or any of 6 alternate backends via [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude): OpenRouter (200+ models), OpenAI, Google Gemini, Codex Auth, AWS Bedrock, Google Vertex AI. Switch providers from the dashboard, no code changes
 - **16 Core Agents + Custom** — Ops, Finance, Projects, Community, Social, Strategy, Sales, Courses, Personal, Knowledge, Marketing, HR, Customer Success, Legal, Product, Data — plus user-created `custom-*` agents (gitignored)
 - **~140 Skills + Custom** — organized by domain prefix (`social-`, `fin-`, `int-`, `prod-`, `mkt-`, `gog-`, `obs-`, `discord-`, `pulse-`, `sage-`, `hr-`, `legal-`, `ops-`, `cs-`, `data-`, `pm-`). Includes `prod-activation-plan` — the canonical skill for producing phased activation plans (index + folder-per-phase + file-per-item) used by Oracle
 - **7 Core + 20 Custom Routines** — daily, weekly, and monthly ADWs managed by a scheduler (core routines ship with the repo; custom routines are user-created and gitignored)
@@ -114,6 +115,30 @@ The setup wizard (`make setup`) checks for all prerequisites before proceeding.
 
 ---
 
+## AI Providers
+
+EvoNexus runs on **Anthropic's Claude** by default — no extra config needed. For everything else (OpenAI, Gemini, Bedrock, OpenRouter, Vertex AI, Codex Auth), it switches to [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude), a drop-in binary that speaks the Claude CLI protocol but dispatches to the provider of your choice via environment variables.
+
+| Provider | Binary | Key env vars |
+|---|---|---|
+| **Anthropic** (default) | `claude` | native auth |
+| **OpenRouter** (200+ models) | `openclaude` | `CLAUDE_CODE_USE_OPENAI`, `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` |
+| **OpenAI** | `openclaude` | `CLAUDE_CODE_USE_OPENAI`, `OPENAI_API_KEY`, `OPENAI_MODEL` |
+| **Google Gemini** | `openclaude` | `CLAUDE_CODE_USE_GEMINI`, `GEMINI_API_KEY`, `GEMINI_MODEL` |
+| **Codex Auth** (OpenAI via OAuth) | `openclaude` | `CLAUDE_CODE_USE_OPENAI`, `OPENAI_API_KEY` |
+| **AWS Bedrock** | `openclaude` | `CLAUDE_CODE_USE_BEDROCK`, `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK` |
+| **Google Vertex AI** | `openclaude` | `CLAUDE_CODE_USE_VERTEX`, `ANTHROPIC_VERTEX_PROJECT_ID`, `CLOUD_ML_REGION` |
+
+Install OpenClaude once globally if you plan to use any non-Anthropic provider:
+
+```bash
+npm install -g @gitlawb/openclaude
+```
+
+The setup wizard asks which provider you want during `make setup`, and you can switch at any time from the **Providers** page in the dashboard (no restart needed — the terminal-server and ADW runner re-read `config/providers.json` on every session spawn). See [docs/dashboard/providers.md](docs/dashboard/providers.md) for the full reference.
+
+---
+
 ## Quick Start
 
 > **Starting out?** After installing, open Claude Code and call **`/oracle`**. It's the official entry point of EvoNexus: runs the initial setup, interviews you about your business, shows what the toolkit can automate for you, and delivers a **phased activation plan** — an index file at the top + one folder per phase + one file per item, each with suggested agent team, dependencies, and pending decisions. The plan is materialized by the `prod-activation-plan` skill (workspace canonical pattern) so you never have to guess the next step.
@@ -141,8 +166,9 @@ make setup
 The wizard:
 - Checks that Claude Code, uv, Node.js are installed
 - Asks for your name, company, timezone, language
+- **Asks which AI provider to use** (Anthropic by default; offers OpenRouter, OpenAI, Gemini, Bedrock, Vertex, Codex Auth as alternatives via OpenClaude)
 - Lets you pick which agents and integrations to enable
-- Generates `config/workspace.yaml`, `.env`, `CLAUDE.md`, and workspace folders
+- Generates `config/workspace.yaml`, `config/providers.json`, `.env`, `CLAUDE.md`, and workspace folders
 - Builds the dashboard frontend
 
 ### 2. Configure API keys

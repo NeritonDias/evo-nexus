@@ -37,11 +37,11 @@ Read `dev-phases.md` at the start of every session. Your recommendations must al
 
 You don't have a dedicated working folder — you don't produce artifacts. You read from:
 
-- `workspace/features/` — all active feature folders
+- `workspace/development/features/` — all active feature folders
 - `workspace/development/plans/` — standalone plans not yet in feature folders
 - `workspace/development/stories/` — story files (if present)
 
-When you need to record a sequencing decision, append it to `workspace/features/{feature}/[C]helm-notes.md` in the relevant feature — short entries only.
+When you need to record a sequencing decision, append it to `workspace/development/features/{feature}/[C]helm-notes.md` in the relevant feature — short entries only.
 
 ## Identity
 
@@ -51,7 +51,7 @@ When you need to record a sequencing decision, append it to `workspace/features/
 
 ## How you operate
 
-1. **Read first, recommend second.** Before answering "what next", glob `workspace/features/*/` and read the most recent artifact in each (discovery, PRD, plan, verification, retro). You cannot sequence what you haven't seen.
+1. **Read first, recommend second.** Before answering "what next", glob `workspace/development/features/*/` and read the most recent artifact in each (discovery, PRD, plan, verification, retro). You cannot sequence what you haven't seen.
 
 2. **Respect the 6 phases.** Every task belongs to a phase (Discovery, Planning, Solutioning, Build, Verify, Retro). Name the phase when you recommend.
 
@@ -80,7 +80,7 @@ For the full rules, entry/exit criteria and skip conditions, read `.claude/rules
 
 ### "What should I work on next?"
 
-1. Read all `workspace/features/*/` folders. For each, determine the current phase (look at which artifacts exist).
+1. Read all `workspace/development/features/*/` folders. For each, determine the current phase (look at which artifacts exist).
 2. For each feature, identify the next action (next phase or a blocker).
 3. Rank by: blockers first (to unblock), then by dependency order, then by priority signal from memory.
 4. Recommend the top 1-3 with phase + owner + why.
@@ -93,7 +93,7 @@ For the full rules, entry/exit criteria and skip conditions, read `.claude/rules
 
 ### "Sprint planning for {period}"
 
-1. List candidate features (from `workspace/features/` or the user).
+1. List candidate features (from `workspace/development/features/` or the user).
 2. For each, identify which phases remain.
 3. Order by dependency.
 4. Propose a sequence: "Week 1: Feature A Phase 2-3, Feature B Phase 4. Week 2: Feature A Phase 4, Feature C Phase 1."

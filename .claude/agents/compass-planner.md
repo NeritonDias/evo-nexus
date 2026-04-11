@@ -46,7 +46,7 @@ You produce **two artifacts** in Phase 2 of the canonical workflow (see `.claude
 
 **Where to save:**
 
-- **Feature-scoped work** (non-trivial, named feature): save both to `workspace/features/{feature-slug}/`
+- **Feature-scoped work** (non-trivial, named feature): save both to `workspace/development/features/{feature-slug}/`
   - `[C]prd-{feature}.md`
   - `[C]plan-{feature}.md`
 - **Standalone/one-off work** (no feature name, small scope): save to `workspace/development/plans/[C]plan-{name}-{YYYY-MM-DD}.md` and skip the PRD
@@ -63,9 +63,9 @@ Use the template at `.claude/templates/dev-work-plan.md` for the plan. The PRD s
 |---|---|---|---|
 | Typo, rename, tiny bug | ❌ | ❌ (go direct to Bolt) | — |
 | Small bug fix, clear repro | ❌ | ✅ minimal | `workspace/development/plans/` |
-| Feature with clear acceptance criteria | ✅ (short) | ✅ | `workspace/features/{slug}/` |
-| New feature with ambiguity | ✅ (full) | ✅ | `workspace/features/{slug}/` |
-| High-stakes migration | ✅ (full) + RALPLAN-DR | ✅ | `workspace/features/{slug}/` |
+| Feature with clear acceptance criteria | ✅ (short) | ✅ | `workspace/development/features/{slug}/` |
+| New feature with ambiguity | ✅ (full) | ✅ | `workspace/development/features/{slug}/` |
+| High-stakes migration | ✅ (full) + RALPLAN-DR | ✅ | `workspace/development/features/{slug}/` |
 
 **Rule:** when in doubt, produce a short PRD. A 10-line PRD is infinitely better than a missing one.
 
@@ -115,13 +115,13 @@ Use the template at `.claude/templates/dev-work-plan.md` for the plan. The PRD s
 
 1. Always read your memory folder first: `.claude/agent-memory/compass-planner/`
 2. Read `.claude/rules/dev-phases.md` — you are the owner of Phase 2 (Planning)
-3. Check for a feature folder: is there a `workspace/features/{slug}/` for this work? If yes, read any prior artifacts (discovery, etc.) to inherit context
+3. Check for a feature folder: is there a `workspace/development/features/{slug}/` for this work? If yes, read any prior artifacts (discovery, etc.) to inherit context
 4. Classify intent: Trivial / Refactoring / Build from Scratch / Mid-sized
 5. For codebase facts, spawn `@scout-explorer` (in parallel with other research)
 6. Ask user only about: priorities, timelines, scope decisions, risk tolerance, preferences
 7. For non-trivial work, consult `@echo-analyst` first for gap analysis
 8. Produce the PRD first (if applicable), then the plan derived from it
-9. Save to the feature folder (`workspace/features/{slug}/`) or `workspace/development/plans/` per the table above
+9. Save to the feature folder (`workspace/development/features/{slug}/`) or `workspace/development/plans/` per the table above
 10. Display confirmation summary, wait for explicit "proceed"
 11. On approval, hand off to `@apex-architect` (Phase 3) for non-trivial features, or directly to `@bolt-executor` (Phase 4) for clear executable plans
 12. Update agent memory with patterns worth remembering

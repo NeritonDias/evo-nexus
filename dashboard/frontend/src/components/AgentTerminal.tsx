@@ -62,6 +62,28 @@ export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA
     termRef.current = term
     fitRef.current = fit
 
+    // Silence terminal query replies at the parser level — before
+    // xterm.js gets a chance to generate them. The pty already knows
+    // its own capabilities; forwarding emulator-side replies made
+    // claude see them as keyboard input and print bytes like "0?1;2c"
+    // or "000000" into the prompt on startup.
+    //
+    // Registering a handler that returns `true` marks the CSI as
+    // "handled" and prevents the default sendDeviceAttributesPrimary /
+    // sendDeviceAttributesSecondary / deviceStatus / reportWindow*
+    // paths from firing. No reply is emitted at all.
+    //
+    // - final 'c'            → DA1 (\x1b[c) and DA2 (\x1b[>c)
+    // - final 'n'            → DSR status (\x1b[5n) and cursor pos (\x1b[6n)
+    // - final 't'            → window manipulation reports (xterm
+    //                          CSI Ps ; Ps ; Ps t)
+    const noReply = () => true
+    term.parser.registerCsiHandler({ final: 'c' }, noReply)
+    term.parser.registerCsiHandler({ final: 'c', prefix: '>' }, noReply)
+    term.parser.registerCsiHandler({ final: 'n' }, noReply)
+    term.parser.registerCsiHandler({ final: 'n', prefix: '?' }, noReply)
+    term.parser.registerCsiHandler({ final: 't' }, noReply)
+
     const onResize = () => {
       try {
         fit.fit()
@@ -76,7 +98,20 @@ export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA
     }
     window.addEventListener('resize', onResize)
 
+    // Second line of defense: even though the parser-level handlers
+    // above should prevent every known query reply, drop any onData
+    // payload that still looks like a terminal auto-reply. Real user
+    // keyboard input (arrows \x1b[A-D, Home/End \x1b[H/F, function
+    // keys \x1b[<n>~, modified arrows \x1b[1;2A) don't match either
+    // alternative.
+    const AUTO_REPLY_RE = /^\x1b\[(\?|>)[0-9;]*[a-zA-Z]$|^\x1b\[[0-9;]*[nRct]$/
     term.onData((data) => {
+      // TEMP DEBUG: log every onData payload so we can see what's being
+      // sent to the pty on startup
+      const hex = Array.from(data).map((c) => (c as unknown as string).charCodeAt(0).toString(16).padStart(2, '0')).join('')
+      // eslint-disable-next-line no-console
+      console.log('[xterm onData]', data.length, 'B  hex:', hex, '  match:', AUTO_REPLY_RE.test(data))
+      if (AUTO_REPLY_RE.test(data)) return
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'input', data }))
       }
@@ -154,12 +189,23 @@ export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA
               }
             } else {
               // Start Claude with --agent <agent>
+              // Pass cols/rows up-front so the pty is born at the right
+              // size — otherwise claude's DA1 (\x1b[c) / cursor-position
+              // queries during startup can echo back into the prompt as
+              // literal text ("0?1;2c0?1;2c") before the first resize
+              // message arrives.
               setStatus('starting')
+              const fit = fitRef.current
+              if (fit) {
+                try { fit.fit() } catch {}
+              }
               ws.send(JSON.stringify({
                 type: 'start_claude',
                 options: {
                   dangerouslySkipPermissions: true,
                   agent,
+                  cols: term!.cols,
+                  rows: term!.rows,
                 },
               }))
             }
@@ -257,7 +303,7 @@ export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA
           }}
         />
         <code className="font-mono text-[10.5px] text-[#8b949e] truncate">
-          claude --agent {agent}
+          @{agent}
         </code>
         <span className="text-[#21262d]">·</span>
         <span className="text-[10px] uppercase tracking-[0.12em] text-[#667085]">

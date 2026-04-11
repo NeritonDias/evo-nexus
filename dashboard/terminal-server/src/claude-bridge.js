@@ -5,42 +5,107 @@ const fs = require('fs');
 class ClaudeBridge {
   constructor() {
     this.sessions = new Map();
-    this.claudeCommand = this.findClaudeCommand();
   }
 
-  findClaudeCommand() {
-    const possibleCommands = [
-      '/home/ec2-user/.claude/local/claude',
-      'claude',
-      'claude-code',
-      path.join(process.env.HOME || '/', '.claude', 'local', 'claude'),
-      path.join(process.env.HOME || '/', '.local', 'bin', 'claude'),
-      '/usr/local/bin/claude',
-      '/usr/bin/claude'
-    ];
+  /**
+   * Load active provider config from config/providers.json.
+   * Returns the CLI command to use and env vars to inject.
+   * Only allowlisted CLI commands and env var names are accepted.
+   */
+  _loadProviderConfig() {
+    const ALLOWED_CLI = new Set(['claude', 'openclaude']);
+    const ALLOWED_VARS = new Set([
+      'CLAUDE_CODE_USE_OPENAI', 'CLAUDE_CODE_USE_GEMINI',
+      'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX',
+      'OPENAI_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_MODEL',
+      'GEMINI_API_KEY', 'GEMINI_MODEL',
+      'AWS_REGION', 'AWS_BEARER_TOKEN_BEDROCK',
+      'ANTHROPIC_VERTEX_PROJECT_ID', 'CLOUD_ML_REGION',
+    ]);
 
-    for (const cmd of possibleCommands) {
+    try {
+      // Resolve config relative to this file (src/ → terminal-server/ → dashboard/ → root)
+      const workspaceRoot = path.resolve(__dirname, '..', '..', '..');
+      const configPath = path.join(workspaceRoot, 'config', 'providers.json');
+      if (!fs.existsSync(configPath)) {
+        console.log(`[provider] providers.json not found at ${configPath}, using defaults`);
+        return { cli_command: 'claude', env_vars: {} };
+      }
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const active = config.active_provider || 'anthropic';
+      const provider = config.providers?.[active] || {};
+
+      let cliCommand = provider.cli_command || 'claude';
+      if (!ALLOWED_CLI.has(cliCommand)) {
+        console.warn(`[provider] Rejected non-allowlisted CLI: ${cliCommand}, using claude`);
+        cliCommand = 'claude';
+      }
+
+      const envVars = Object.fromEntries(
+        Object.entries(provider.env_vars || {}).filter(
+          ([k, v]) => v !== '' && ALLOWED_VARS.has(k)
+        )
+      );
+
+      console.log(`[provider] Active provider: ${active} (cli: ${cliCommand})`);
+      if (Object.keys(envVars).length > 0) {
+        console.log(`[provider] Injecting env vars: ${Object.keys(envVars).join(', ')}`);
+      }
+      return { cli_command: cliCommand, env_vars: envVars };
+    } catch (err) {
+      console.warn(`[provider] Could not read providers.json: ${err.message}`);
+      return { cli_command: 'claude', env_vars: {} };
+    }
+  }
+
+  findClaudeCommand(cliCommand = 'claude') {
+    const { execSync } = require('child_process');
+
+    // Use shell-based `which` to resolve with full PATH (incl. nvm, fnm, etc.)
+    // Hardcoded dispatch to satisfy semgrep — each branch is a literal string
+    try {
+      let resolved;
+      if (cliCommand === 'openclaude') {
+        resolved = execSync('which openclaude', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+      } else {
+        resolved = execSync('which claude', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+      }
+      if (resolved) {
+        console.log(`[provider] Found ${cliCommand} at: ${resolved}`);
+        return resolved;
+      }
+    } catch {
+      // which failed — try hardcoded paths below
+    }
+
+    // Fallback: check common hardcoded paths
+    const home = process.env.HOME || '/';
+    const paths = cliCommand === 'openclaude'
+      ? [
+          path.join(home, '.local', 'bin', 'openclaude'),
+          '/usr/local/bin/openclaude',
+          '/usr/bin/openclaude',
+        ]
+      : [
+          path.join(home, '.claude', 'local', 'claude'),
+          path.join(home, '.local', 'bin', 'claude'),
+          '/usr/local/bin/claude',
+          '/usr/bin/claude',
+        ];
+
+    for (const p of paths) {
       try {
-        if (fs.existsSync(cmd) || this.commandExists(cmd)) {
-          console.log(`Found Claude command at: ${cmd}`);
-          return cmd;
+        if (fs.existsSync(p)) {
+          console.log(`[provider] Found ${cliCommand} at hardcoded path: ${p}`);
+          return p;
         }
-      } catch (error) {
+      } catch {
         continue;
       }
     }
 
-    console.error('Claude command not found, using default "claude"');
-    return 'claude';
-  }
-
-  commandExists(command) {
-    try {
-      require('child_process').execFileSync('which', [command], { stdio: 'ignore' });
-      return true;
-    } catch (error) {
-      return false;
-    }
+    console.error(`[provider] ${cliCommand} not found anywhere, using bare command name`);
+    return cliCommand;
   }
 
   async startSession(sessionId, options = {}) {
@@ -60,8 +125,13 @@ class ClaudeBridge {
     } = options;
 
     try {
-      console.log(`Starting Claude session ${sessionId}`);
-      console.log(`Command: ${this.claudeCommand}`);
+      // Reload provider config fresh on every session start
+      // so switching provider in the dashboard takes effect immediately
+      const providerConfig = this._loadProviderConfig();
+      const cliCommand = this.findClaudeCommand(providerConfig.cli_command);
+
+      console.log(`Starting session ${sessionId} with ${providerConfig.cli_command}`);
+      console.log(`Command: ${cliCommand}`);
       console.log(`Working directory: ${workingDir}`);
       console.log(`Terminal size: ${cols}x${rows}`);
       if (dangerouslySkipPermissions) {
@@ -72,10 +142,12 @@ class ClaudeBridge {
       if (agent) {
         args.push('--agent', agent);
       }
-      const claudeProcess = spawn(this.claudeCommand, args, {
+      const providerEnv = providerConfig.env_vars || {};
+      const claudeProcess = spawn(cliCommand, args, {
         cwd: workingDir,
         env: {
           ...process.env,
+          ...providerEnv,
           TERM: 'xterm-256color',
           FORCE_COLOR: '1',
           COLORTERM: 'truecolor'
@@ -103,7 +175,7 @@ class ClaudeBridge {
         if (process.env.DEBUG) {
           console.log(`Session ${sessionId} output:`, data);
         }
-        
+
         // Buffer data to check for trust prompt
         dataBuffer += data;
         

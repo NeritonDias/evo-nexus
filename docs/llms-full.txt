@@ -500,7 +500,7 @@ Discovery → Planning → Solutioning → Build → Verify → Retro
 
 **Cycle orchestration** — `@helm-conductor` sits above the phases and answers "what next?", "who does it?", and "what's blocked?". Call Helm when you have multiple active features or need sprint sequencing.
 
-**Feature folders** — non-trivial work lives in `workspace/features/{feature-slug}/` where all artifacts of one feature are grouped together. Standalone artifacts continue to live in `workspace/development/{type}/`.
+**Feature folders** — non-trivial work lives in `workspace/development/features/{feature-slug}/` where all artifacts of one feature are grouped together. Standalone artifacts continue to live in `workspace/development/{type}/`.
 
 ## The 25 `dev-*` Skills
 
@@ -1971,6 +1971,10 @@ Status board for all 18 integrations. Shows which are connected (green), which n
 
 ![Integrations](../imgs/doc-integrations.png)
 
+### Providers
+
+Pick and configure which LLM backend powers EvoNexus — Anthropic (default), or any of 6 alternates via [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude): OpenRouter, OpenAI, Gemini, Codex Auth, AWS Bedrock, Vertex AI. Each provider card shows install status (claude vs openclaude), configured/unconfigured flags, and a Test button that runs `<binary> --version` with the merged env. Switching provider takes effect immediately — both the terminal-server and the ADW runner re-read `config/providers.json` on every session spawn, no restart needed. Secrets are masked in the UI and in every API response. See [providers.md](providers.md) for the full reference.
+
 ### Chat
 
 Embedded Claude Code terminal powered by xterm.js + WebSocket. Run Claude Code commands, invoke agents with slash commands, and see output in real time -- all from the browser.
@@ -2026,6 +2030,83 @@ View and edit workspace configuration:
 - **.env editor** -- visual key-value editor for environment variables (see [env-editor.md](env-editor.md))
 - **Makefile targets** -- parsed list of all available `make` commands
 - **Commands** -- slash command definitions from `.claude/commands/`
+
+
+---
+
+# AI Providers
+
+The **Providers** page lets you choose which LLM backend powers EvoNexus, configure its credentials, and test the connection — all from the dashboard. It lives under **System → Providers** in the sidebar and requires the `config:manage` permission.
+
+EvoNexus uses Anthropic's `claude` CLI by default. To run on any other backend (OpenRouter, OpenAI, Gemini, AWS Bedrock, Google Vertex AI, Codex Auth), it switches to [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude) — a drop-in binary that speaks the same CLI protocol but dispatches to the provider of your choice via environment variables.
+
+## Supported Providers
+
+| Provider | Binary | Notes |
+|---|---|---|
+| **Anthropic** (default) | `claude` | Native Anthropic auth, no extra config |
+| **OpenRouter** | `openclaude` | 200+ models via one API — Claude, GPT, Gemini, Llama, etc. |
+| **OpenAI** | `openclaude` | GPT-4o, GPT-4.1, o3 via OpenAI API |
+| **Google Gemini** | `openclaude` | Gemini 2.5 Pro/Flash via Google AI |
+| **Codex Auth** | `openclaude` | Reuses Codex CLI's OAuth session to access OpenAI models |
+| **AWS Bedrock** | `openclaude` | Claude via AWS Bedrock |
+| **Google Vertex AI** | `openclaude` | Claude via GCP Vertex AI |
+
+## Install OpenClaude (one-time)
+
+If you plan to use any non-Anthropic provider, install OpenClaude globally:
+
+```bash
+npm install -g @gitlawb/openclaude
+```
+
+The Providers page shows a banner at the top indicating whether `claude` and `openclaude` are installed and in `$PATH`. If `openclaude` is missing, the banner shows the install command.
+
+## Activating a Provider
+
+1. Open **System → Providers** in the sidebar
+2. Click **Configure** on the provider you want to use
+3. Fill in the required fields (API key, base URL, model, region — depending on provider). Secrets are masked in the form and in every API response; placeholders like `sk-...` guide the format
+4. Click **Save & Activate**
+
+The active provider is stored in `config/providers.json`. Both the terminal-server and the ADW runner re-read this file on every session spawn, so switching takes effect **immediately** — no restart needed.
+
+A green "Active" badge marks the currently selected provider. Every other provider can still be configured and tested without affecting the active one.
+
+## Testing a Provider
+
+Each provider card has a **Test** button that runs `<binary> --version` with the configured env vars merged into the environment, then reports success or failure inline. This is a sanity check — it verifies that the binary is installed, in `$PATH`, and that the env var injection works. It does **not** validate that your API key actually authenticates against the remote service (use the terminal after activating for that).
+
+## Security: Allowlists and Secret Masking
+
+Both the Python runner (`ADWs/runner.py`) and the JS terminal bridge (`dashboard/terminal-server/src/claude-bridge.js`) enforce two allowlists when reading `config/providers.json`:
+
+- **CLI allowlist** — only `claude` and `openclaude` are accepted as spawn targets. Any other value falls back to `claude`.
+- **Env var allowlist** — only the 13 variables listed in [env-variables.md](../reference/env-variables.md#ai-provider-configuration) are injected. Anything else is silently dropped.
+
+The REST API that backs the Providers page masks secrets (`*_KEY`, `*_SECRET`, `*_TOKEN`) as `first6****last4` on every response. When you open the config modal, the form starts empty for those fields — type a new value to replace, or leave empty to keep the current one. Values containing `****` are treated as masked placeholders and skipped on save (so a round-trip through the UI doesn't accidentally overwrite a real secret with the mask string).
+
+The backend also rejects any env var value containing shell metacharacters (`;`, `&`, `|`, backtick, `$`, newlines) — defense in depth against injection if someone points EvoNexus at a compromised `providers.json`.
+
+## Logout Warning
+
+When you switch away from Anthropic to any other provider, OpenClaude inherits your Anthropic Claude Code login state. To avoid confusion, run `/logout` inside Claude Code **once** after activating a non-Anthropic provider if you were previously logged in. The dashboard surfaces this warning on any provider marked `requires_logout`.
+
+## Where It's Stored
+
+- `config/providers.json` — active provider + per-provider CLI + env vars (**gitignored**, contains secrets)
+- `config/providers.example.json` — template copied on first boot if no real file exists (checked into git)
+- `.env` — unchanged by this feature. AI provider env vars live in `providers.json`, not `.env`
+
+## Configuring at Install Time
+
+The interactive setup wizard (`make setup`) asks which provider to use as step 3. If you pick anything other than Anthropic, it checks whether OpenClaude is installed, offers to install it, then prompts for the provider-specific keys and saves them to `config/providers.json`. You can re-run the wizard or use the dashboard to change providers later.
+
+## Related
+
+- [Environment Variables Reference](../reference/env-variables.md#ai-provider-configuration)
+- [Getting Started](../getting-started.md) — step 3 covers provider choice
+- [OpenClaude on npm](https://www.npmjs.com/package/@gitlawb/openclaude)
 
 
 ---
@@ -2193,16 +2274,32 @@ make setup
 The wizard asks for:
 - Your name and company
 - Timezone and language
+- **Which AI provider to use** (Anthropic by default; alternatives via OpenClaude)
 - Which agents to enable
 - Which integrations to configure
 
 It generates:
 - `config/workspace.yaml` — central config
 - `config/routines.yaml` — routine schedules
+- `config/providers.json` — active AI provider + backend CLI config
 - `.env` — API keys (fill in after setup)
 - `CLAUDE.md` — context file for Claude
 
-### 2. Configure API Keys
+### 2. Choose Your AI Provider
+
+The wizard asks which backend should power EvoNexus. **Anthropic is the default** — if you already have Claude Code authenticated, you don't need to do anything else.
+
+For any other provider (OpenRouter, OpenAI, Gemini, AWS Bedrock, Vertex AI, Codex Auth), EvoNexus uses [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude), a drop-in binary compatible with the Claude CLI protocol. Install it once:
+
+```bash
+npm install -g @gitlawb/openclaude
+```
+
+Then select the provider in the wizard (or later from the **Providers** page in the dashboard) and fill in the keys. The active provider is stored in `config/providers.json` and both the terminal-server and the ADW runner re-read it on every session spawn — no restart required when switching.
+
+See [docs/dashboard/providers.md](dashboard/providers.md) for the full provider reference and [docs/reference/env-variables.md](reference/env-variables.md#ai-provider-configuration) for all provider-related env vars.
+
+### 3. Configure API Keys
 
 Edit `.env` with your keys:
 
@@ -2216,7 +2313,7 @@ At minimum, you need:
 - `STRIPE_SECRET_KEY` — for financial routines
 - Social OAuth keys — via the dashboard Integrations page
 
-### 3. Start the Dashboard
+### 4. Start the Dashboard
 
 ```bash
 make dashboard-app
@@ -2226,7 +2323,7 @@ Open http://localhost:8080 — the first run shows a setup wizard where you crea
 
 ![Dashboard](imgs/doc-overview.png)
 
-### 4. Start Automated Routines
+### 5. Start Automated Routines
 
 ```bash
 make scheduler
@@ -2234,7 +2331,7 @@ make scheduler
 
 This starts the scheduler that runs routines at their configured times (see `config/routines.yaml`).
 
-### 5. Use Claude Code — start with `/oracle`
+### 6. Use Claude Code — start with `/oracle`
 
 Open Claude Code in this directory. It reads `CLAUDE.md` automatically and has access to all agents and skills.
 
@@ -5603,6 +5700,10 @@ Optional semantic search powered by [MemPalace](https://github.com/milla-jovovic
 
 Two-tier persistence. `CLAUDE.md` holds working memory (who you are, active projects, key people). The `memory/` directory stores deeper context (people profiles, glossary, project history). Both survive across sessions.
 
+### AI Providers
+
+EvoNexus runs on Anthropic's `claude` CLI by default, but can switch to any of 6 alternate LLM backends (OpenRouter, OpenAI, Gemini, AWS Bedrock, Google Vertex AI, Codex Auth) via [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude). The active provider is stored in `config/providers.json` and can be changed from the Providers page in the dashboard — both the terminal-server and the ADW runner re-read the config on every session spawn, so switching takes effect immediately. No vendor lock-in, your choice of model, your keys. See [docs/dashboard/providers.md](dashboard/providers.md) for the full reference.
+
 ## Open Source
 
 EvoNexus is MIT-licensed, built by [Evolution Foundation](https://evolutionfoundation.com.br). The source is at [github.com/EvolutionAPI/evo-nexus](https://github.com/EvolutionAPI/evo-nexus). This is an unofficial community project — not affiliated with or endorsed by Anthropic.
@@ -5914,6 +6015,34 @@ The wizard runs `setup.py`, which generates CLAUDE.md inline from `config/worksp
 # Environment Variables Reference
 
 All environment variables are defined in `.env` (generated by `make setup`). See `.env.example` for the template.
+
+## AI Provider Configuration
+
+EvoNexus uses the `claude` CLI by default (Anthropic native auth). To switch to any other backend, the active provider is read from `config/providers.json` — **not from `.env`** directly. The dashboard's Providers page and `make setup` both write to that file.
+
+The env vars below are the ones EvoNexus injects into the spawned CLI process based on the active provider. You don't set them in `.env` yourself — they live inside `config/providers.json` under each provider's `env_vars` key, and the terminal-server / ADW runner merge them into the subprocess environment at spawn time. Only the variable names in this allowlist are accepted (both the Python runner and the JS bridge enforce the same list):
+
+| Variable | Used by | Description |
+|----------|---------|-------------|
+| `CLAUDE_CODE_USE_OPENAI` | OpenRouter, OpenAI, Codex Auth | Flag telling OpenClaude to dispatch to the OpenAI-compatible protocol |
+| `CLAUDE_CODE_USE_GEMINI` | Gemini | Flag telling OpenClaude to dispatch to Gemini |
+| `CLAUDE_CODE_USE_BEDROCK` | AWS Bedrock | Flag telling OpenClaude to dispatch to Bedrock |
+| `CLAUDE_CODE_USE_VERTEX` | Google Vertex AI | Flag telling OpenClaude to dispatch to Vertex |
+| `OPENAI_BASE_URL` | OpenRouter | Override the API base URL (e.g. `https://openrouter.ai/api/v1`) |
+| `OPENAI_API_KEY` | OpenRouter, OpenAI, Codex Auth | API key for the OpenAI-compatible provider |
+| `OPENAI_MODEL` | OpenRouter, OpenAI | Model identifier (e.g. `anthropic/claude-sonnet-4`, `gpt-4.1`) |
+| `GEMINI_API_KEY` | Gemini | Google AI API key |
+| `GEMINI_MODEL` | Gemini | Model identifier (e.g. `gemini-2.5-pro`) |
+| `AWS_REGION` | Bedrock | AWS region (e.g. `us-east-1`) |
+| `AWS_BEARER_TOKEN_BEDROCK` | Bedrock | Bedrock bearer token (not the standard IAM access key) |
+| `ANTHROPIC_VERTEX_PROJECT_ID` | Vertex AI | GCP project ID |
+| `CLOUD_ML_REGION` | Vertex AI | GCP region (e.g. `us-east5`) |
+
+**How to configure**: use the **Providers** page in the dashboard — it reads/writes `config/providers.json` for you, masks secrets in API responses, and has a "Test connection" button that runs `<provider-cli> --version` with the merged env. Alternatively, edit `config/providers.json` directly (it starts as a copy of `config/providers.example.json` on first run).
+
+**Anthropic is the default** — when the active provider is `anthropic`, no env vars are injected and the spawned CLI is the native `claude` binary with its own auth. You don't need any of the variables above for the default path.
+
+See [docs/dashboard/providers.md](../dashboard/providers.md) for the full provider setup flow.
 
 ## Omie ERP
 

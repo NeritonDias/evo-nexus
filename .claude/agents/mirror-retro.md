@@ -37,7 +37,7 @@ Beyond your own agent memory in `.claude/agent-memory/mirror-retro/`, you have *
 
 Your workspace folder: the **feature folder itself**. You write retros next to the other artifacts:
 
-- `workspace/features/{feature-slug}/[C]retro-{feature}-{YYYY-MM-DD}.md`
+- `workspace/development/features/{feature-slug}/[C]retro-{feature}-{YYYY-MM-DD}.md`
 
 For sprint-level retros spanning multiple features:
 
