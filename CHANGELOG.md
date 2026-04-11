@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2026-04-11
+
+### Fixed
+
+- **`/api/overview` endpoint** — dropped from ~16s to ~29ms (≈500× faster). `_recent_reports` was rglob'ing the entire `workspace/` tree, which on an active install holds vendored third-party repos under `workspace/projects/` (mcp-dev-brasil, oh-my-claudecode, evoai-services, etc.) — 16.853 of 17.116 MD/HTML files (98.5%) lived there and had nothing to do with "recent reports". The scan now skips top-level `projects/` (vendored repos) and `meetings/` (raw Fathom transcripts), iterates remaining areas, and formats the `date` field from the actual `mtime` instead of `path.split("/")[-1][:10]` (which was returning garbage like `"README.md"`).
+- **Site typecheck errors** — `site/src/pages/Home.tsx` had 3 lucide icons (`MessageSquare`, `GitBranch`, `Database`) passing an invalid `title` prop. Wrapped them in `<span title="...">` to keep the hover tooltip and pass `tsc --noEmit`.
+- **Dashboard frontend build** — `dashboard/frontend/src/pages/Providers.tsx` was importing `type LucideIcon` without using it, which caused `make dashboard-app` to fail with `TS6133`. Unused import removed.
+- **Terminal startup garbage (WIP, 2 attempts included)** — on starting any agent terminal from the dashboard, bytes like `0?1;2c` / `000000` / `^[[0^[[0...` showed up in the prompt and status bar. Root cause is xterm.js auto-replying to terminal queries (DA1 `\x1b[c`, DA2 `\x1b[>c`, DSR `\x1b[5n`/`\x1b[6n`, window ops `\x1b[...t`) via `term.onData`, which the frontend was forwarding to the pty as if it were keyboard input. This release ships two defensive layers — passing `cols`/`rows` upfront on `start_claude` so the pty is born at the right size, and registering CSI handlers via `term.parser.registerCsiHandler({ final: 'c' | 'n' | 't' }, () => true)` to intercept queries at the parser level — plus a regex filter on `onData` as a second line of defense. **The bug is not fully resolved in this release.** Some payloads still slip through (likely via a non-CSI `triggerDataEvent` path that hasn't been pinned down yet). A debug log was added to `AgentTerminal.tsx` to capture the exact bytes in the next iteration.
+
+### Changed
+
+- **Feature folder convention** — `workspace/features/{slug}/` is now `workspace/development/features/{slug}/` across all engineering layer prompts (`.claude/rules/dev-phases.md`, `.claude/agents/compass-planner.md`, `.claude/agents/helm-conductor.md`, `.claude/commands/helm-conductor.md`, `.claude/agents/mirror-retro.md`, `docs/agents/engineering-layer.md`). Keeps all engineering artifacts (features, plans, architecture, reviews, verifications, retros) grouped under one development/ root.
+
+### Docs
+
+- **Multi-provider documentation** — README, `docs/introduction.md`, `docs/getting-started.md`, `docs/reference/env-variables.md`, `docs/dashboard/overview.md` updated with the OpenClaude-based multi-provider story introduced in v0.14.0. New `docs/dashboard/providers.md` documents the Providers page (supported providers, activation flow, security model with CLI + env var allowlists, logout warning). Site landing page replaces the "Full Control" feature card with "Multi-Provider, No Lock-In" highlighting the new capability.
+
 ## [0.14.0] - 2026-04-10
 
 ### Added
