@@ -154,12 +154,23 @@ export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA
               }
             } else {
               // Start Claude with --agent <agent>
+              // Pass cols/rows up-front so the pty is born at the right
+              // size — otherwise claude's DA1 (\x1b[c) / cursor-position
+              // queries during startup can echo back into the prompt as
+              // literal text ("0?1;2c0?1;2c") before the first resize
+              // message arrives.
               setStatus('starting')
+              const fit = fitRef.current
+              if (fit) {
+                try { fit.fit() } catch {}
+              }
               ws.send(JSON.stringify({
                 type: 'start_claude',
                 options: {
                   dangerouslySkipPermissions: true,
                   agent,
+                  cols: term!.cols,
+                  rows: term!.rows,
                 },
               }))
             }
