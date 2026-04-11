@@ -62,6 +62,28 @@ export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA
     termRef.current = term
     fitRef.current = fit
 
+    // Silence terminal query replies at the parser level — before
+    // xterm.js gets a chance to generate them. The pty already knows
+    // its own capabilities; forwarding emulator-side replies made
+    // claude see them as keyboard input and print bytes like "0?1;2c"
+    // or "000000" into the prompt on startup.
+    //
+    // Registering a handler that returns `true` marks the CSI as
+    // "handled" and prevents the default sendDeviceAttributesPrimary /
+    // sendDeviceAttributesSecondary / deviceStatus / reportWindow*
+    // paths from firing. No reply is emitted at all.
+    //
+    // - final 'c'            → DA1 (\x1b[c) and DA2 (\x1b[>c)
+    // - final 'n'            → DSR status (\x1b[5n) and cursor pos (\x1b[6n)
+    // - final 't'            → window manipulation reports (xterm
+    //                          CSI Ps ; Ps ; Ps t)
+    const noReply = () => true
+    term.parser.registerCsiHandler({ final: 'c' }, noReply)
+    term.parser.registerCsiHandler({ final: 'c', prefix: '>' }, noReply)
+    term.parser.registerCsiHandler({ final: 'n' }, noReply)
+    term.parser.registerCsiHandler({ final: 'n', prefix: '?' }, noReply)
+    term.parser.registerCsiHandler({ final: 't' }, noReply)
+
     const onResize = () => {
       try {
         fit.fit()
@@ -76,7 +98,15 @@ export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA
     }
     window.addEventListener('resize', onResize)
 
+    // Second line of defense: even though the parser-level handlers
+    // above should prevent every known query reply, drop any onData
+    // payload that still looks like a terminal auto-reply. Real user
+    // keyboard input (arrows \x1b[A-D, Home/End \x1b[H/F, function
+    // keys \x1b[<n>~, modified arrows \x1b[1;2A) don't match either
+    // alternative.
+    const AUTO_REPLY_RE = /^\x1b\[(\?|>)[0-9;]*[a-zA-Z]$|^\x1b\[[0-9;]*[nRct]$/
     term.onData((data) => {
+      if (AUTO_REPLY_RE.test(data)) return
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'input', data }))
       }

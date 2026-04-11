@@ -84,7 +84,7 @@ Discovery → Planning → Solutioning → Build → Verify → Retro
 
 **Cycle orchestration** — `@helm-conductor` sits above the phases and answers "what next?", "who does it?", and "what's blocked?". Call Helm when you have multiple active features or need sprint sequencing.
 
-**Feature folders** — non-trivial work lives in `workspace/features/{feature-slug}/` where all artifacts of one feature are grouped together. Standalone artifacts continue to live in `workspace/development/{type}/`.
+**Feature folders** — non-trivial work lives in `workspace/development/features/{feature-slug}/` where all artifacts of one feature are grouped together. Standalone artifacts continue to live in `workspace/development/{type}/`.
 
 ## The 25 `dev-*` Skills
 

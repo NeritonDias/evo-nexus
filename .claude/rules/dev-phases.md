@@ -84,7 +84,7 @@ Call `@helm-conductor` when you have multiple active features or are unsure whic
 Every non-trivial piece of work lives in its own feature folder:
 
 ```
-workspace/features/{feature-slug}/
+workspace/development/features/{feature-slug}/
 ├── [C]discovery-{feature}.md       ← Phase 1 (Echo)
 ├── [C]prd-{feature}.md             ← Phase 2 (Compass)
 ├── [C]plan-{feature}.md            ← Phase 2 (Compass)
@@ -110,7 +110,7 @@ workspace/features/{feature-slug}/
 
 Before starting work, every engineering agent should check for prior artifacts in the active feature folder:
 
-1. **Is there a feature folder for this work?** Look for `workspace/features/{slug}/`
+1. **Is there a feature folder for this work?** Look for `workspace/development/features/{slug}/`
 2. **If yes**, read in order: discovery → PRD → plan → architecture → any prior reviews/verifications
 3. **Inherit** constraints, decisions, and open questions — don't re-litigate them
 4. **If unclear** which feature this is, ask the user or call `@helm-conductor`
@@ -129,7 +129,7 @@ When one agent hands off to another, the handoff includes:
 - **Expected output:** what the next agent should produce and where
 
 Example handoff:
-> "Compass → Bolt: plan saved to `workspace/features/dark-mode/[C]plan-dark-mode.md`. Architecture pending (Apex). Open question: token storage strategy (see plan §Open Questions). Expected: implementation against steps 1-5 + self-verification."
+> "Compass → Bolt: plan saved to `workspace/development/features/dark-mode/[C]plan-dark-mode.md`. Architecture pending (Apex). Open question: token storage strategy (see plan §Open Questions). Expected: implementation against steps 1-5 + self-verification."
 
 ---
 
