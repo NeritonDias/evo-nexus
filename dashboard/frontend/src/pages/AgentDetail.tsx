@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import Markdown from '../components/Markdown'
 import AgentTerminal from '../components/AgentTerminal'
 import { getAgentMeta } from '../lib/agent-meta'
+import { AgentAvatar } from '../components/AgentAvatar'
 
 interface MemoryFile {
   name: string
@@ -70,7 +71,6 @@ export default function AgentDetail() {
   if (!name) return null
 
   const meta = getAgentMeta(name)
-  const Icon = meta.icon
   const agentColor = meta.color
 
   if (loading) {
@@ -98,7 +98,7 @@ export default function AgentDetail() {
   return (
     <div className="flex h-full w-full flex-col bg-[#0C111D]">
       {/* ── HERO STRIP ─────────────────────────────────────────────── */}
-      <header className="flex-shrink-0 h-14 flex items-center px-4 lg:px-6 gap-4 border-b border-[#21262d] bg-[#0d1117]">
+      <header className="flex-shrink-0 h-20 flex items-center px-4 lg:px-6 gap-4 border-b border-[#21262d] bg-[#0d1117]">
         <Link
           to="/agents"
           className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-[#667085] hover:text-[#e6edf3] transition-colors"
@@ -109,30 +109,25 @@ export default function AgentDetail() {
 
         <span className="text-[#21262d]">·</span>
 
-        {/* Sigil */}
+        {/* Avatar */}
         <div
-          className="flex h-8 w-8 items-center justify-center rounded-md border"
-          style={{
-            borderColor: `${agentColor}40`,
-            backgroundColor: `${agentColor}10`,
-            boxShadow: `inset 0 0 8px ${agentColor}15`,
-          }}
+          className="rounded-full flex-shrink-0"
+          style={{ padding: 2, background: `${agentColor}40` }}
         >
-          <Icon size={15} style={{ color: agentColor }} />
+          <AgentAvatar name={name} size={60} />
         </div>
 
-        <h1 className="text-[14px] font-semibold text-[#e6edf3] tracking-tight truncate">
-          {formatName(name)}
-        </h1>
-
-        <span className="text-[#21262d]">·</span>
-
-        <code
-          className="font-mono text-[11px] tracking-tight"
-          style={{ color: agentColor }}
-        >
-          {meta.command}
-        </code>
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <h1 className="text-[16px] font-semibold text-[#e6edf3] tracking-tight truncate">
+            {formatName(name)}
+          </h1>
+          <code
+            className="font-mono text-[11px] tracking-tight"
+            style={{ color: agentColor }}
+          >
+            {meta.command}
+          </code>
+        </div>
 
         {/* Memory count — right aligned */}
         <div className="ml-auto flex items-center gap-4">

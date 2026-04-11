@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
+import { AgentAvatar } from '../components/AgentAvatar'
 
 type Category = 'business' | 'engineering' | 'custom'
 type EngTier = 'reasoning' | 'execution' | 'speed'
@@ -289,7 +290,6 @@ function formatAgentName(name: string): string {
 
 function AgentCard({ agent, isRunning }: { agent: Agent; isRunning: boolean }) {
   const meta = getMeta(agent.name, agent)
-  const Icon = meta.icon
   const isActive = agent.memory_count > 0
   const tier = getEngineeringTier(agent.name)
 
@@ -311,13 +311,10 @@ function AgentCard({ agent, isRunning }: { agent: Agent; isRunning: boolean }) {
         }}
       />
 
-      {/* Top row: icon + status */}
+      {/* Top row: avatar + status */}
       <div className="relative flex items-start justify-between mb-3">
-        <div
-          className="flex h-8 w-8 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
-          style={{ backgroundColor: meta.colorMuted }}
-        >
-          <Icon size={16} style={{ color: meta.color }} />
+        <div className="transition-transform duration-300 group-hover:scale-105">
+          <AgentAvatar name={agent.name} size={56} />
         </div>
 
         {/* Status dot + running badge */}
@@ -418,8 +415,6 @@ function SkeletonCard() {
 }
 
 function OracleHeroCard({ agent, isRunning }: { agent: Agent; isRunning: boolean }) {
-  const meta = getMeta(agent.name, agent)
-  const Icon = meta.icon
   return (
     <Link
       to={`/agents/${agent.name}`}
@@ -435,12 +430,9 @@ function OracleHeroCard({ agent, isRunning }: { agent: Agent; isRunning: boolean
       />
 
       <div className="relative flex items-center gap-5 px-6 py-5">
-        {/* Icon */}
-        <div
-          className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-[#F59E0B]/40 bg-[#F59E0B]/10 transition-transform duration-300 group-hover:scale-105"
-          style={{ boxShadow: '0 0 24px rgba(245,158,11,0.2)' }}
-        >
-          <Icon size={24} style={{ color: '#F59E0B' }} />
+        {/* Avatar */}
+        <div className="transition-transform duration-300 group-hover:scale-105" style={{ filter: 'drop-shadow(0 0 12px rgba(245,158,11,0.3))' }}>
+          <AgentAvatar name={agent.name} size={56} />
         </div>
 
         {/* Content */}
