@@ -4,12 +4,12 @@ Agents are the core of EvoNexus. Each agent is a specialized AI persona with its
 
 EvoNexus organizes agents in **two ortogonal layers**:
 
-- **Business Layer (16 agents)** — operations, finance, community, marketing, HR, legal, product, data, sales. Built and maintained by EvoNexus.
+- **Business Layer (17 agents)** — operations, finance, community, marketing, HR, legal, product, data, sales, learning retention. Built and maintained by EvoNexus.
 - **Engineering Layer (21 agents)** — software development, code review, testing, debugging, security, design, cycle orchestration, retrospective. 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by Yeachan Heo) + 2 native (Helm, Mirror). Follows a canonical 6-phase workflow. See [Engineering Layer](engineering-layer.md) for details.
 
 The two layers are independent — business tasks route to business agents, engineering tasks to engineering agents — but cross-layer handoffs are common (e.g., `@nova` writes a PRD → `@apex-architect` does the architecture review → `@bolt-executor` implements → `@mirror-retro` captures lessons).
 
-**Total: 37 agents** + custom agents you create.
+**Total: 38 agents** + custom agents you create.
 
 ## What Is an Agent?
 
@@ -26,7 +26,7 @@ When invoked, Claude Code loads the agent's system prompt and operates within th
 
 Each agent has a corresponding command in `.claude/commands/`:
 
-**Business Layer (16):**
+**Business Layer (17):**
 
 ```
 /clawdia-assistant       — Ops hub: agenda, emails, tasks, decisions
@@ -37,6 +37,7 @@ Each agent has a corresponding command in `.claude/commands/`:
 /sage-strategy           — Strategy: OKRs, roadmap, competitive analysis
 /nex-sales               — Sales: pipeline, proposals, qualification
 /mentor-courses          — Courses: learning paths, modules
+/lumen-learning          — Learning retention: spaced repetition, fact capture, quizzes
 /kai-personal-assistant  — Personal: health, habits, routine
 /oracle                  — Workspace knowledge: docs, how-to, configuration
 /mako-marketing          — Marketing: campaigns, SEO, email, brand
@@ -131,7 +132,7 @@ To create a custom agent, use the `create-agent` skill or see [Creating Agents](
 .claude/agent-memory/custom-devops/  # Persistent memory
 ```
 
-## Business Layer — 16 Core Agents
+## Business Layer — 17 Core Agents
 
 | Agent | Command | Domain | Color |
 |-------|---------|--------|-------|
@@ -143,6 +144,7 @@ To create a custom agent, use the `create-agent` skill or see [Creating Agents](
 | [**Sage**](sage.md) | `/sage-strategy` | Strategy: OKRs, roadmap, competitive analysis | orange |
 | [**Nex**](nex.md) | `/nex-sales` | Sales: pipeline, proposals, qualification | red |
 | [**Mentor**](mentor.md) | `/mentor-courses` | Courses: learning paths, modules, academy | purple |
+| [**Lumen**](lumen-learning.md) | `/lumen-learning` | Learning retention: spaced repetition (SM-2), fact capture, quizzes | yellow |
 | [**Kai**](kai.md) | `/kai-personal-assistant` | Personal: health, habits, routine (isolated) | blue |
 | [**Oracle**](oracle.md) | `/oracle` | Workspace knowledge: docs, how-to, configuration | amber |
 | [**Mako**](mako.md) | `/mako-marketing` | Marketing: campaigns, SEO, email sequences, brand | orange |
@@ -225,6 +227,8 @@ See the dedicated [Engineering Layer](engineering-layer.md) page for pipelines, 
 **Nova** handles product management. Feature specs/PRDs, metrics reviews, roadmap updates, product brainstorming, and stakeholder updates.
 
 **Dex** is the data and BI agent. Data analysis, SQL queries, interactive dashboards, statistical analysis, and data validation.
+
+**Lumen** is the knowledge retention agent. It captures atomic facts from pasted content, runs SM-2 spaced repetition review sessions, generates retrieval-practice quizzes, and reports retention metrics per deck. Use Lumen to lock in what you read — Mentor creates learning content, Lumen makes it stick.
 
 ## Preloaded Skills
 

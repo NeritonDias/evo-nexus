@@ -2,7 +2,6 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar from './components/Sidebar'
 import Overview from './pages/Overview'
-import Reports from './pages/Reports'
 import Agents from './pages/Agents'
 import AgentDetail from './pages/AgentDetail'
 import Routines from './pages/Routines'
@@ -15,7 +14,6 @@ import Templates from './pages/Templates'
 import Scheduler from './pages/Scheduler'
 import Tasks from './pages/Tasks'
 import Memory from './pages/Memory'
-import Files from './pages/Files'
 import Systems from './pages/Systems'
 import Setup from './pages/Setup'
 import Login from './pages/Login'
@@ -27,11 +25,13 @@ import MemPalace from './pages/MemPalace'
 import Triggers from './pages/Triggers'
 import Backups from './pages/Backups'
 import Providers from './pages/Providers'
+import Workspace from './pages/Workspace'
 
 function AppContent() {
   const location = useLocation()
   const isDocs = location.pathname === '/docs' || location.pathname.startsWith('/docs/')
   const isAgentDetail = /^\/agents\/[^/]+$/.test(location.pathname)
+  const isWorkspace = location.pathname === '/workspace' || location.pathname.startsWith('/workspace/')
   const { user, loading, needsSetup, hasPermission } = useAuth()
 
   // Docs are public — render without auth
@@ -68,14 +68,14 @@ function AppContent() {
       {/* Pages — responsive margin */}
       <main
         className={
-          isAgentDetail
+          isAgentDetail || isWorkspace
             ? 'flex-1 ml-0 lg:ml-60 pt-14 lg:pt-0 h-screen overflow-hidden'
             : 'flex-1 ml-0 lg:ml-60 p-4 lg:p-8 pt-16 lg:pt-8 overflow-auto'
         }
       >
         <Routes>
           <Route path="/" element={<Overview />} />
-          <Route path="/workspace/*" element={<Reports />} />
+          <Route path="/workspace/*" element={<Workspace />} />
           <Route path="/agents" element={<Agents />} />
           <Route path="/agents/:name" element={<AgentDetail />} />
           <Route path="/routines" element={<Routines />} />
@@ -90,7 +90,6 @@ function AppContent() {
           <Route path="/scheduler" element={<Scheduler />} />
           <Route path="/memory" element={<Memory />} />
           <Route path="/mempalace" element={<MemPalace />} />
-          <Route path="/files" element={<Files />} />
           <Route path="/systems" element={<Systems />} />
           {hasPermission('config', 'view') && <Route path="/backups" element={<Backups />} />}
           <Route path="/providers" element={<Providers />} />

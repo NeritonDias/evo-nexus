@@ -13,6 +13,13 @@ workspace/**
 !workspace/**/
 !workspace/**/.gitkeep
 
+# ── Learning loop — user fact data (gitignored, may contain third-party content) ──
+workspace/learning/facts/
+workspace/learning/decks/
+workspace/learning/.state/
+# README is intentionally tracked (exception to workspace/** rule)
+!workspace/learning/README.md
+
 # ── Agent memory (runtime, personal) ──────
 .claude/agent-memory/
 memory/**

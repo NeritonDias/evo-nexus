@@ -48,6 +48,9 @@ weekly:             ## 📊 Full weekly review (@clawdia)
 backup-daily:       ## 💾 Daily backup routine (scheduled, systematic)
 	$(PYTHON) $(ADW_DIR)/backup.py
 
+learn-weekly:       ## 📚 Learning loop weekly report — overdue facts + stats (Sundays 09:45 BRT)
+	$(PYTHON) $(ADW_DIR)/custom/learning_weekly.py
+
 # ── Dynamic Routine Runner ────────────────
 # Run any routine (core or custom) by its ID.
 # IDs are derived from script names. Use `make list-routines` to see all.
@@ -236,5 +239,5 @@ docker-build:       ## 🐳 Build the image
 help:               ## 📖 Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' Makefile | sort | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: morning eod memory memory-lint weekly run list-routines daily scheduler dashboard-app terminal-logs terminal-stop telegram telegram-stop telegram-attach discord-channel discord-channel-stop discord-channel-attach imessage imessage-stop imessage-attach backup backup-s3 restore backup-list backup-daily logs logs-detail logs-tail metrics clean-logs docker-dashboard docker-telegram docker-down docker-logs docker-run docker-build help docs-build setup team-strategy team-dashboard team-weekly
+.PHONY: morning eod memory memory-lint weekly run list-routines daily scheduler dashboard-app terminal-logs terminal-stop telegram telegram-stop telegram-attach discord-channel discord-channel-stop discord-channel-attach imessage imessage-stop imessage-attach backup backup-s3 restore backup-list backup-daily logs logs-detail logs-tail metrics clean-logs docker-dashboard docker-telegram docker-down docker-logs docker-run docker-build help docs-build setup team-strategy team-dashboard team-weekly learn-weekly
 .DEFAULT_GOAL := help

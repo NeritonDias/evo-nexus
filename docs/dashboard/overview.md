@@ -31,7 +31,7 @@ When no users exist in the database, the dashboard redirects to a setup wizard a
 
 1. **Workspace info** -- name, company, timezone
 2. **Admin account** -- create your first user (username + password)
-3. **Agents** -- choose which of the 16 agents to enable
+3. **Agents** -- choose which of the 17 agents to enable
 4. **Integrations** -- select which services to connect
 
 After setup completes, you are logged in as admin and can access all pages.

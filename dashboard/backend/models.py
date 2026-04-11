@@ -76,7 +76,7 @@ ALL_RESOURCES = {
     "services": ["view", "execute", "manage"],
     "systems": ["view", "execute", "manage"],
     "integrations": ["view", "execute", "manage"],
-    "reports": ["view", "manage"],
+    "workspace": ["view", "manage"],
     "agents": ["view", "manage"],
     "memory": ["view", "manage"],
     "skills": ["view", "manage"],
@@ -84,7 +84,6 @@ ALL_RESOURCES = {
     "config": ["view", "manage"],
     "users": ["view", "manage"],
     "audit": ["view"],
-    "files": ["view", "manage"],
     "templates": ["view"],
     "routines": ["view", "execute"],
     "scheduler": ["view", "execute"],
@@ -106,13 +105,12 @@ BUILTIN_ROLES = {
             "services": ["view", "execute"],
             "systems": ["view", "execute"],
             "integrations": ["view", "execute"],
-            "reports": ["view"],
+            "workspace": ["view"],
             "agents": ["view"],
             "memory": ["view"],
             "skills": ["view"],
             "costs": ["view"],
             "config": ["view"],
-            "files": ["view"],
             "templates": ["view"],
             "routines": ["view", "execute"],
             "scheduler": ["view", "execute"],
@@ -124,13 +122,12 @@ BUILTIN_ROLES = {
     "viewer": {
         "description": "Read-only access to dashboards",
         "permissions": {
-            "reports": ["view"],
+            "workspace": ["view"],
             "agents": ["view"],
             "memory": ["view"],
             "skills": ["view"],
             "costs": ["view"],
             "config": ["view"],
-            "files": ["view"],
             "templates": ["view"],
             "services": ["view"],
             "systems": ["view"],
@@ -354,6 +351,16 @@ def seed_roles():
         if existing:
             # Merge new resources into existing permissions without removing custom ones
             current = existing.permissions or {}
+
+            # --- Migração workspace-file-manager: files+reports → workspace ---
+            legacy_actions = set(current.get("files", [])) | set(current.get("reports", []))
+            if legacy_actions:
+                merged = set(current.get("workspace", [])) | legacy_actions
+                current["workspace"] = sorted(merged)
+            current.pop("files", None)
+            current.pop("reports", None)
+            # --- fim migração ---
+
             default = config["permissions"]
             for resource, actions in default.items():
                 if resource not in current:

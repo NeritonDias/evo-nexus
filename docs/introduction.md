@@ -10,9 +10,9 @@ Most "AI assistants" are chatbots. You ask a question, you get an answer, and th
 
 ## What EvoNexus Is
 
-EvoNexus is a multi-agent workspace compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It turns a single Claude Code installation into a team of **37 specialized agents** organized in two ortogonal layers — one for business operations, one for software engineering.
+EvoNexus is a multi-agent workspace compatible with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and other LLM tooling. It turns a single Claude Code installation into a team of **38 specialized agents** organized in two ortogonal layers — one for business operations, one for software engineering.
 
-The **Business Layer** has 16 agents that own distinct domains (finance, projects, community, social media, strategy, sales, courses, personal wellness, marketing, HR, customer success, legal, product, data, knowledge) and produce real operational outputs: HTML reports, triaged inboxes, synced meeting notes, financial snapshots, community health checks.
+The **Business Layer** has 17 agents that own distinct domains (finance, projects, community, social media, strategy, sales, courses, learning retention, personal wellness, marketing, HR, customer success, legal, product, data, knowledge) and produce real operational outputs: HTML reports, triaged inboxes, synced meeting notes, financial snapshots, community health checks.
 
 The **Engineering Layer** has 21 agents for software development (architecture, planning, implementation, code review, testing, debugging, security, design, cycle orchestration, retrospective) — 19 derived from [oh-my-claudecode](https://github.com/yeachan-heo/oh-my-claudecode) (MIT, by Yeachan Heo) + 2 native (`helm-conductor` for cycle orchestration and `mirror-retro` for blameless retrospectives). The layer follows a canonical 6-phase workflow (Discovery → Planning → Solutioning → Build → Verify → Retro) that takes a brief all the way to a verified, reviewed, tested feature with captured lessons.
 
@@ -33,7 +33,7 @@ A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer h
 |---------|------------|
 | You ask, it answers | Agents run routines on schedule |
 | Forgets between sessions | Persistent memory across sessions |
-| One conversation thread | 37 agents with isolated domains (16 business + 21 engineering) |
+| One conversation thread | 38 agents with isolated domains (17 business + 21 engineering) |
 | Generic helper | Specialized roles per layer: ops, finance, code review, security audit, debugging |
 | No integrations | 18+ integrations (Google, GitHub, Stripe, Discord, etc.) |
 | Text output | HTML reports, dashboards, structured artifacts |
@@ -44,7 +44,7 @@ A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer h
 
 ### Agents
 
-16 specialized agents, each with a system prompt, slash command, persistent memory, and domain-specific skills:
+17 specialized agents, each with a system prompt, slash command, persistent memory, and domain-specific skills:
 
 | Agent | Domain | Command |
 |-------|--------|---------|
@@ -64,6 +64,7 @@ A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer h
 | Lex | Legal — contracts, compliance, NDA, risk | `/lex` |
 | Nova | Product — specs, roadmaps, metrics, research | `/nova` |
 | Dex | Data / BI — analysis, SQL, dashboards | `/dex` |
+| Lumen | Learning Retention — spaced repetition (SM-2), fact capture, quizzes | `/lumen-learning` |
 
 ### Skills
 

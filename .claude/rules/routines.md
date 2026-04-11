@@ -33,6 +33,7 @@ Managed by the scheduler (`make scheduler`) — see `ROUTINES.md` for full detai
 | Mon/Wed/Fri 09:15 | GitHub Review | `make github` | @atlas |
 | Monday 09:30 | Community Weekly | `make community-week` | @pulse |
 | Sunday 09:00 | Memory Lint | `make memory-lint` | @clawdia |
+| Sunday 09:45 | Learning Review Weekly | `make learn-weekly` | learn-* skills |
 | Sunday 10:00 | Health Check-in | `make health` | @kai |
 
 ## Monthly (Day 1)

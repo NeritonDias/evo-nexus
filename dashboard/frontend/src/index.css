@@ -9,6 +9,12 @@
   --text-primary: #F9FAFB;
   --text-secondary: #D0D5DD;
   --text-muted: #667085;
+  /* Workspace File Manager tokens */
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --surface-hover: #1e2d3d;
+  --surface-active: #1a2744;
+  --border-accent: #00FFA7;
 }
 
 * {

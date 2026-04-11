@@ -59,10 +59,9 @@ const navGroups: NavGroup[] = [
     label: 'Data',
     collapsible: true,
     items: [
-      { to: '/workspace', label: 'Workspace', icon: FolderOpen, resource: 'reports' },
+      { to: '/workspace', label: 'Workspace', icon: FolderOpen, resource: 'workspace' },
       { to: '/memory', label: 'Memory', icon: Brain, resource: 'memory' },
       { to: '/mempalace', label: 'Knowledge', icon: Library, resource: 'mempalace' },
-      { to: '/files', label: 'Files', icon: FolderOpen, resource: 'files' },
       { to: '/costs', label: 'Costs', icon: DollarSign, resource: 'costs' },
     ],
   },
