@@ -16,6 +16,8 @@
 | **Todoist** | CLI | Task management (Evolution project) |
 | **Stripe** | API | Charges, subscriptions, MRR |
 | **Omie** | API | ERP — clients, invoices (NF-e), financials |
+| **Bling** | API (OAuth2 auto-refresh) | Brazilian ERP — products, orders, NF-e, contacts, stock. Run `make bling-auth` once to connect |
+| **Asaas** | API | Brazilian payments — Pix, boleto, credit card, subscriptions, marketplace split |
 | **YouTube** | API (OAuth) | Channel analytics |
 | **Instagram** | API (OAuth) | Profile analytics |
 | **LinkedIn** | API (OAuth) | Profile/org analytics |

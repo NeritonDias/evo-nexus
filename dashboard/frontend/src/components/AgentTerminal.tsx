@@ -7,6 +7,7 @@ import '@xterm/xterm/css/xterm.css'
 interface AgentTerminalProps {
   agent: string
   workingDir?: string
+  accentColor?: string
 }
 
 const CC_WEB_HTTP = import.meta.env.DEV
@@ -19,7 +20,7 @@ const CC_WEB_WS = import.meta.env.DEV
 
 type Status = 'connecting' | 'ready' | 'starting' | 'running' | 'error' | 'exited'
 
-export default function AgentTerminal({ agent, workingDir }: AgentTerminalProps) {
+export default function AgentTerminal({ agent, workingDir, accentColor = '#00FFA7' }: AgentTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -37,9 +38,10 @@ export default function AgentTerminal({ agent, workingDir }: AgentTerminalProps)
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       fontSize: 13,
       theme: {
-        background: '#0d1117',
+        background: '#0C111D',
         foreground: '#e6edf3',
-        cursor: '#00FFA7',
+        cursor: accentColor,
+        cursorAccent: '#0C111D',
         black: '#484f58',
         red: '#ff7b72',
         green: '#7ee787',
@@ -115,7 +117,7 @@ export default function AgentTerminal({ agent, workingDir }: AgentTerminalProps)
       } catch (e: any) {
         if (cancelled) return
         setStatus('error')
-        setErrorMsg(`Could not reach cc-web at ${CC_WEB_HTTP}. Is it running?`)
+        setErrorMsg(`Could not reach terminal-server at ${CC_WEB_HTTP}. Is it running?`)
         return
       }
 
@@ -227,36 +229,52 @@ export default function AgentTerminal({ agent, workingDir }: AgentTerminalProps)
     }
   }, [agent, workingDir])
 
+  const statusDotColor =
+    status === 'running'
+      ? accentColor
+      : status === 'starting' || status === 'connecting'
+      ? '#F59E0B'
+      : status === 'error'
+      ? '#ef4444'
+      : '#4b5563'
+
+  const statusLabel =
+    status === 'connecting' ? 'connecting…' :
+    status === 'starting'   ? 'starting…' :
+    status === 'running'    ? 'live' :
+    status === 'error'      ? 'error' :
+    status === 'exited'     ? 'exited' : ''
+
   return (
-    <div className="relative flex h-full w-full flex-col rounded-xl border border-[#344054] bg-[#0d1117] overflow-hidden">
-      <div className="flex-shrink-0 flex items-center justify-between px-3 py-1.5 border-b border-[#21262d] bg-[#161b22] text-[11px]">
-        <div className="flex items-center gap-2 text-[#8b949e]">
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{
-              backgroundColor:
-                status === 'running' ? '#22C55E' :
-                status === 'starting' || status === 'connecting' ? '#F59E0B' :
-                status === 'error' ? '#ef4444' :
-                status === 'exited' ? '#6B7280' : '#6B7280',
-              boxShadow: status === 'running' ? '0 0 6px rgba(34,197,94,0.6)' : 'none',
-            }}
-          />
-          <span>
-            {status === 'connecting' && 'Connecting…'}
-            {status === 'starting' && 'Starting Claude…'}
-            {status === 'running' && `claude --agent ${agent}`}
-            {status === 'error' && 'Error'}
-            {status === 'exited' && 'Exited'}
-          </span>
-        </div>
+    <div className="relative flex h-full w-full flex-col overflow-hidden">
+      {/* Status bar */}
+      <div className="flex-shrink-0 h-8 flex items-center gap-3 px-4 border-b border-[#21262d] bg-[#0d1117]">
+        <span
+          className="inline-block h-1.5 w-1.5 rounded-full"
+          style={{
+            backgroundColor: statusDotColor,
+            boxShadow: status === 'running' ? `0 0 6px ${accentColor}aa` : 'none',
+          }}
+        />
+        <code className="font-mono text-[10.5px] text-[#8b949e] truncate">
+          claude --agent {agent}
+        </code>
+        <span className="text-[#21262d]">·</span>
+        <span className="text-[10px] uppercase tracking-[0.12em] text-[#667085]">
+          {statusLabel}
+        </span>
         {errorMsg && (
-          <span className="text-[#ef4444] truncate max-w-[60%]" title={errorMsg}>
+          <span
+            className="ml-auto text-[10px] text-[#ef4444] truncate max-w-[50%]"
+            title={errorMsg}
+          >
             {errorMsg}
           </span>
         )}
       </div>
-      <div ref={containerRef} className="flex-1 min-h-0 p-2" />
+
+      {/* xterm */}
+      <div ref={containerRef} className="flex-1 min-h-0 px-4 py-3 bg-[#0C111D]" />
     </div>
   )
 }

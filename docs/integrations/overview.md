@@ -44,6 +44,8 @@ Direct HTTP calls to service APIs, executed by skills and routines via Python sc
 |---|---|---|
 | Stripe | @flux | `int-stripe`, `fin-daily-pulse`, `fin-weekly-report` |
 | Omie | @flux | `int-omie`, `fin-monthly-close-kickoff` |
+| Bling | @flux | `int-bling`, `fin-daily-pulse`, `fin-monthly-close-kickoff` |
+| Asaas | @flux | `int-asaas`, `fin-daily-pulse`, `fin-weekly-report` |
 | Discord | @pulse | `discord-get-messages`, `pulse-daily`, `pulse-weekly` |
 | Fathom | @clawdia | `int-fathom`, `int-sync-meetings` |
 | YouTube | @pixel | `int-youtube`, `social-youtube-report` |
@@ -112,6 +114,8 @@ See individual integration guides for setup steps:
 **Financial & ERP:**
 - [Stripe](stripe.md) -- MRR, charges, subscriptions, churn
 - [Omie](omie.md) -- Brazilian ERP: clients, invoices, financials, stock
+- [Bling](bling.md) -- Brazilian ERP: products, orders, NF-e, stock (OAuth2 with auto-refresh)
+- [Asaas](asaas.md) -- Brazilian payments: Pix, boleto, credit card, subscriptions, marketplace split
 
 **Meetings & Tasks:**
 - [Fathom](fathom.md) -- Meeting recordings, transcripts, action items
