@@ -1,29 +1,44 @@
 """Overview endpoint — summary data for the dashboard home."""
 
 import json
+from datetime import datetime
 from flask import Blueprint, jsonify
 from routes._helpers import WORKSPACE, safe_read
 
 bp = Blueprint("overview", __name__)
 
+# Top-level workspace dirs skipped when scanning for recent reports.
+# - projects: vendored third-party repos (tens of thousands of files, not reports)
+# - meetings: raw Fathom transcripts, not dashboard-facing reports
+_REPORTS_SKIP_DIRS = {"projects", "meetings"}
+
+
 def _recent_reports(limit: int = 10) -> list[dict]:
-    """Scan workspace/ recursively for recent HTML/MD report files."""
+    """Scan workspace/ for recent HTML/MD report files.
+
+    Uses shallow iteration over top-level folders and skips _REPORTS_SKIP_DIRS
+    to keep the endpoint fast — rglob'ing the whole workspace with the
+    vendored projects/ repos inside takes 15+ seconds.
+    """
     files = []
     workspace_dir = WORKSPACE / "workspace"
     if not workspace_dir.is_dir():
-        return files[:limit]
-    for f in workspace_dir.rglob("*"):
-        if f.is_file() and f.suffix.lower() in (".html", ".md") and not f.name.startswith("."):
-            try:
-                files.append({
-                    "name": f.name,
-                    "path": str(f.relative_to(WORKSPACE)),
-                    "area": f.relative_to(workspace_dir).parts[0] if f.relative_to(workspace_dir).parts else "other",
-                    "extension": f.suffix,
-                    "modified": f.stat().st_mtime,
-                })
-            except Exception:
-                continue
+        return files
+    for area_dir in workspace_dir.iterdir():
+        if not area_dir.is_dir() or area_dir.name in _REPORTS_SKIP_DIRS or area_dir.name.startswith("."):
+            continue
+        for f in area_dir.rglob("*"):
+            if f.is_file() and f.suffix.lower() in (".html", ".md") and not f.name.startswith("."):
+                try:
+                    files.append({
+                        "name": f.name,
+                        "path": str(f.relative_to(WORKSPACE)),
+                        "area": area_dir.name,
+                        "extension": f.suffix,
+                        "modified": f.stat().st_mtime,
+                    })
+                except Exception:
+                    continue
     files.sort(key=lambda x: x.get("modified", 0), reverse=True)
     return files[:limit]
 
@@ -91,7 +106,15 @@ def overview():
     reports = _recent_reports()
 
     return jsonify({
-        "recent_reports": [{"title": r["name"], "path": r["path"], "date": r["path"].split("/")[-1][:10] if "/" in r["path"] else "", "area": r["area"]} for r in reports],
+        "recent_reports": [
+            {
+                "title": r["name"],
+                "path": r["path"],
+                "date": datetime.fromtimestamp(r["modified"]).strftime("%Y-%m-%d %H:%M"),
+                "area": r["area"],
+            }
+            for r in reports
+        ],
         "metrics": _build_overview_metrics(raw_metrics, ic),
         "routines": _build_routines(raw_metrics),
         "integration_count": ic,
