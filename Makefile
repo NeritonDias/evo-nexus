@@ -108,8 +108,23 @@ daily:              ## ☀️  Combo: sync meetings + review todoist
 scheduler:          ## ⏰ Start routine scheduler (runs in background)
 	$(PYTHON) scheduler.py
 
-dashboard-app:      ## 🖥️  Start Dashboard App (React + Flask, localhost:8080)
-	cd dashboard/frontend && npm run build && cd ../backend && $(PYTHON) app.py
+dashboard-app:      ## 🖥️  Start Dashboard App (React + Flask + terminal-server, localhost:8080)
+	@cd dashboard/frontend && npm run build
+	@echo "▶ Starting terminal-server on :32352 (background)..."
+	@pkill -f "dashboard/terminal-server/bin/server.js" 2>/dev/null || true
+	@node dashboard/terminal-server/bin/server.js --dev > /tmp/terminal-server.log 2>&1 & echo $$! > /tmp/terminal-server.pid
+	@trap 'echo "▶ Stopping terminal-server..."; kill $$(cat /tmp/terminal-server.pid) 2>/dev/null; rm -f /tmp/terminal-server.pid' EXIT INT TERM; \
+		cd dashboard/backend && $(PYTHON) app.py
+
+terminal-logs:      ## 📜 Tail terminal-server logs
+	@tail -f /tmp/terminal-server.log
+
+terminal-stop:      ## 🛑 Stop terminal-server (if orphaned)
+	@pkill -f "dashboard/terminal-server/bin/server.js" 2>/dev/null && echo "✅ terminal-server stopped" || echo "ℹ terminal-server not running"
+	@rm -f /tmp/terminal-server.pid
+
+bling-auth:         ## 🔐 Bling OAuth2 login (one-time: capture access + refresh tokens into .env)
+	@python3 .claude/skills/int-bling/scripts/bling_auth.py
 
 telegram:           ## 📨 Start Telegram bot in background (screen)
 	@if screen -list | grep -q '\.telegram'; then \
@@ -221,5 +236,5 @@ docker-build:       ## 🐳 Build the image
 help:               ## 📖 Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' Makefile | sort | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: morning eod memory memory-lint weekly run list-routines daily scheduler dashboard-app telegram telegram-stop telegram-attach discord-channel discord-channel-stop discord-channel-attach imessage imessage-stop imessage-attach backup backup-s3 restore backup-list backup-daily logs logs-detail logs-tail metrics clean-logs docker-dashboard docker-telegram docker-down docker-logs docker-run docker-build help docs-build setup team-strategy team-dashboard team-weekly
+.PHONY: morning eod memory memory-lint weekly run list-routines daily scheduler dashboard-app terminal-logs terminal-stop telegram telegram-stop telegram-attach discord-channel discord-channel-stop discord-channel-attach imessage imessage-stop imessage-attach backup backup-s3 restore backup-list backup-daily logs logs-detail logs-tail metrics clean-logs docker-dashboard docker-telegram docker-down docker-logs docker-run docker-build help docs-build setup team-strategy team-dashboard team-weekly
 .DEFAULT_GOAL := help

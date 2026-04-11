@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-04-10
+
+### Added
+
+- **`dashboard/terminal-server/`** — lean terminal bridge powering the dashboard's per-agent xterm session. Fork of `vultuk/claude-code-web` stripped down from ~3.500 lines / 158 npm packages to ~440 lines / 74 packages, keeping only what the dashboard consumes: `POST /api/sessions/for-agent`, `GET/DELETE /api/sessions/:id`, and a WebSocket with `join_session` / `start_claude` / `input` / `resize` / `ping` / `stop`. Removed codex & cursor bridges, usage analytics, auth, HTTPS, ngrok, PWA, folder browser, and the entire legacy web UI. Spawns the local `claude` CLI via `node-pty` and persists sessions to `~/.claude-code-web/sessions.json`. New Makefile targets `terminal-logs` / `terminal-stop`. A `postinstall` hook restores the `darwin-arm64`/`darwin-x64` `node-pty` `spawn-helper` executable bit so `posix_spawnp` doesn't fail on fresh installs.
+- **`make bling-auth`** — one-shot OAuth2 bootstrap for the Bling integration. Runs `.claude/skills/int-bling/scripts/bling_auth.py` to capture the initial access + refresh tokens into `.env`; subsequent refreshes are automatic via the skill.
+- **Docs** — new `docs/integrations/bling.md` and `docs/integrations/asaas.md` with endpoint coverage, auth setup, and example calls. `docs/integrations/overview.md` expanded with the two Brazilian integrations.
+- **Frontend** — new `dashboard/frontend/src/lib/agent-meta.ts` centralizing the agent icon/color/command/label metadata used by `Agents.tsx`, `AgentDetail.tsx`, and the refreshed `AgentTerminal.tsx`.
+
+### Changed
+
+- **`int-bling` skill** — upgraded from manual v1 Bearer token to OAuth2 with automatic refresh. Access token expires in 6 hours; the skill now reads `BLING_CLIENT_ID` / `BLING_CLIENT_SECRET` / `BLING_REFRESH_TOKEN` from `.env` and refreshes on 401, persisting the new token pair back to disk. `.env.example` documents the new variables and points to `make bling-auth` for first-time setup.
+- **`.claude/rules/integrations.md`** — Bling row updated to reflect OAuth2 auto-refresh + `make bling-auth`. Asaas row now mentions marketplace split.
+- **`dashboard/frontend/src/App.tsx`, `pages/Agents.tsx`, `pages/AgentDetail.tsx`, `components/AgentTerminal.tsx`** — refactored to consume the new `agent-meta.ts` module and the leaner terminal-server endpoints. Error messages updated from `cc-web` → `terminal-server`.
+- **`Makefile`** — `dashboard-app` target now boots `dashboard/terminal-server/bin/server.js --dev` instead of the old `claude-code-web/bin/cc-web.js`. Helper targets renamed `cc-web-logs` → `terminal-logs`, `cc-web-stop` → `terminal-stop`.
+- **`.gitignore`** — ignores `dashboard/terminal-server/node_modules/` and its `package-lock.json`.
+
+### Fixed
+
+- **Terminal spawn failures on fresh installs** — `node-pty`'s `spawn-helper` prebuild was being extracted without the execute bit on macOS, causing `posix_spawnp failed` when the dashboard tried to start a claude session. Fixed by adding a `postinstall` script that re-applies `chmod +x` on both `darwin-arm64` and `darwin-x64` prebuilds.
+
 ## [0.13.3] - 2026-04-10
 
 ### Added

@@ -17,23 +17,49 @@ Integration with Bling ERP via REST API v3 (OAuth2 Bearer).
 
 ## Setup
 
-Requires environment variable:
+This skill uses a Python client (`scripts/bling_client.py`) that handles OAuth2 Bearer auth with **automatic refresh on 401**. You do OAuth **once** via the CLI, then the skill refreshes tokens transparently forever.
 
-```bash
-export BLING_ACCESS_TOKEN="your_oauth2_access_token"
-```
-
-### How to obtain the token
+### One-time OAuth setup
 
 1. Create an app at https://developer.bling.com.br → "Meus Apps"
-2. Complete the OAuth2 Authorization Code flow to obtain an access token
-3. Note: access tokens expire and must be refreshed periodically via the OAuth2 refresh flow
-4. For manual/testing use, you can generate a token directly in the Bling developer portal
+2. Set the app's redirect URI to: `http://localhost:8787/callback`
+3. Copy the Client ID and Client Secret into `.env`:
+   ```bash
+   BLING_CLIENT_ID=...
+   BLING_CLIENT_SECRET=...
+   ```
+4. Run the login helper:
+   ```bash
+   make bling-auth
+   ```
+   This opens your browser, captures the authorization code via a local callback server, exchanges it for `access_token` + `refresh_token`, and persists both to `.env`.
 
-**Auth header used in all requests:**
+After this step, `.env` contains:
+```bash
+BLING_CLIENT_ID=...
+BLING_CLIENT_SECRET=...
+BLING_ACCESS_TOKEN=...
+BLING_REFRESH_TOKEN=...
 ```
-Authorization: Bearer ${BLING_ACCESS_TOKEN}
+
+### How the auto-refresh works
+
+`scripts/bling_client.py` is the single entry point for all API calls. On any `HTTP 401`, it:
+1. Exchanges `BLING_REFRESH_TOKEN` for a new `access_token` + `refresh_token` at `https://www.bling.com.br/Api/v3/oauth/token` (Basic auth with Client ID/Secret)
+2. Persists both back to `.env` and `os.environ`
+3. Retries the original request once
+
+Bling rotates the refresh token on every refresh, so **always** use this client — never call the API with raw `curl` unless you're debugging, otherwise you risk the `.env` tokens going stale.
+
+### Calling the client
+
+```bash
+python3 .claude/skills/int-bling/scripts/bling_client.py GET /produtos --params page=1 limit=50
+python3 .claude/skills/int-bling/scripts/bling_client.py POST /contatos --body '{"nome":"Acme","tipo":"J","numeroDocumento":"12345678000100"}'
+python3 .claude/skills/int-bling/scripts/bling_client.py PUT /produtos/123 --body '{"preco":99.90}'
 ```
+
+The client prints the JSON response to stdout and logs errors to stderr.
 
 ---
 

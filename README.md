@@ -48,7 +48,7 @@ It turns a single Claude Code installation into a team of **37 specialized agent
 - **~140 Skills + Custom** — organized by domain prefix (`social-`, `fin-`, `int-`, `prod-`, `mkt-`, `gog-`, `obs-`, `discord-`, `pulse-`, `sage-`, `hr-`, `legal-`, `ops-`, `cs-`, `data-`, `pm-`). Includes `prod-activation-plan` — the canonical skill for producing phased activation plans (index + folder-per-phase + file-per-item) used by Oracle
 - **7 Core + 20 Custom Routines** — daily, weekly, and monthly ADWs managed by a scheduler (core routines ship with the repo; custom routines are user-created and gitignored)
 - **Web Dashboard** — React + Flask app with auth, roles, web terminal, service management
-- **17 Integrations** — Google Calendar, Gmail, Linear, GitHub, Discord, Telegram, Stripe, Omie, Fathom, Todoist, YouTube, Instagram, LinkedIn, Evolution API, Evolution Go, Evo CRM, and more
+- **19 Integrations** — Google Calendar, Gmail, Linear, GitHub, Discord, Telegram, Stripe, Omie, Bling, Asaas, Fathom, Todoist, YouTube, Instagram, LinkedIn, Evolution API, Evolution Go, Evo CRM, and more
 - **2 core + custom HTML report templates** — dark-themed dashboards for every domain
 - **Persistent Memory** — two-tier system (CLAUDE.md + memory/) with LLM Wiki pattern: ingest propagation, weekly lint, centralized index, and operation log
 - **Knowledge Base** — optional semantic search via [MemPalace](https://github.com/milla-jovovich/mempalace) (local ChromaDB vectors, one-click install)
@@ -83,6 +83,8 @@ Connect your existing tools via MCP servers, API clients, or OAuth:
 | **Telegram** | MCP + Bot | Notifications, messages, commands |
 | **Stripe** | API | Charges, subscriptions, MRR, customers |
 | **Omie** | API | ERP — clients, invoices, financials, stock |
+| **Bling** | API (OAuth2) | Brazilian ERP — products, orders, NF-e, contacts, stock (auto-refresh via `make bling-auth`) |
+| **Asaas** | API | Brazilian payments — Pix, boleto, credit card, subscriptions, marketplace split |
 | **Fathom** | API | Meeting recordings, transcripts, summaries |
 | **Todoist** | CLI | Task management, priorities, projects |
 | **YouTube** | OAuth | Channel stats, videos, engagement |

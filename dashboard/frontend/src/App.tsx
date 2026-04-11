@@ -30,6 +30,7 @@ import Backups from './pages/Backups'
 function AppContent() {
   const location = useLocation()
   const isDocs = location.pathname === '/docs' || location.pathname.startsWith('/docs/')
+  const isAgentDetail = /^\/agents\/[^/]+$/.test(location.pathname)
   const { user, loading, needsSetup, hasPermission } = useAuth()
 
   // Docs are public — render without auth
@@ -65,7 +66,11 @@ function AppContent() {
 
       {/* Pages — responsive margin */}
       <main
-        className="flex-1 ml-0 lg:ml-60 p-4 lg:p-8 pt-16 lg:pt-8 overflow-auto"
+        className={
+          isAgentDetail
+            ? 'flex-1 ml-0 lg:ml-60 pt-14 lg:pt-0 h-screen overflow-hidden'
+            : 'flex-1 ml-0 lg:ml-60 p-4 lg:p-8 pt-16 lg:pt-8 overflow-auto'
+        }
       >
         <Routes>
           <Route path="/" element={<Overview />} />

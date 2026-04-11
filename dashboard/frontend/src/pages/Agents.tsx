@@ -423,34 +423,34 @@ function OracleHeroCard({ agent, isRunning }: { agent: Agent; isRunning: boolean
   return (
     <Link
       to={`/agents/${agent.name}`}
-      className="group relative block overflow-hidden rounded-2xl border border-[#F59E0B]/30 bg-gradient-to-br from-[#1a1710] via-[#161b22] to-[#161b22] p-6 transition-all duration-300 hover:border-[#F59E0B]/60"
+      className="group relative block overflow-hidden rounded-2xl border border-[#F59E0B]/25 bg-[#11110c] transition-all duration-300 hover:border-[#F59E0B]/50"
       style={{
-        boxShadow: '0 0 40px rgba(245,158,11,0.08), inset 0 1px 0 rgba(245,158,11,0.1)',
+        boxShadow: '0 0 32px rgba(245,158,11,0.06), inset 0 1px 0 rgba(245,158,11,0.08)',
       }}
     >
       {/* Ambient glow */}
       <div
-        className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-40 blur-3xl transition-opacity duration-500 group-hover:opacity-60"
-        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.25), transparent 70%)' }}
+        className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl opacity-30 transition-opacity duration-500 group-hover:opacity-50"
+        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.35), transparent 65%)' }}
       />
 
-      <div className="relative flex items-start gap-5">
+      <div className="relative flex items-center gap-5 px-6 py-5">
         {/* Icon */}
         <div
-          className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl border border-[#F59E0B]/40 bg-[#F59E0B]/10 transition-transform duration-300 group-hover:scale-105"
-          style={{ boxShadow: '0 0 24px rgba(245,158,11,0.25)' }}
+          className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-[#F59E0B]/40 bg-[#F59E0B]/10 transition-transform duration-300 group-hover:scale-105"
+          style={{ boxShadow: '0 0 24px rgba(245,158,11,0.2)' }}
         >
-          <Icon size={28} style={{ color: '#F59E0B' }} />
+          <Icon size={24} style={{ color: '#F59E0B' }} />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-1">
-            <span className="rounded-full bg-[#F59E0B]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#F59E0B] border border-[#F59E0B]/30">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="rounded-full bg-[#F59E0B]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[#F59E0B] border border-[#F59E0B]/30">
               Start Here
             </span>
             {isRunning && (
-              <span className="flex items-center gap-1 rounded-full bg-[#00FFA7]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#00FFA7] border border-[#00FFA7]/20">
+              <span className="flex items-center gap-1 rounded-full bg-[#00FFA7]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#00FFA7] border border-[#00FFA7]/20">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00FFA7] opacity-75" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#00FFA7]" />
@@ -458,25 +458,20 @@ function OracleHeroCard({ agent, isRunning }: { agent: Agent; isRunning: boolean
                 Running
               </span>
             )}
+            <code className="ml-auto sm:ml-0 font-mono text-[11px] text-[#F59E0B]/80">/oracle</code>
           </div>
-          <h2 className="text-2xl font-bold text-[#F9FAFB] mb-1 group-hover:text-white transition-colors">
+          <h2 className="text-[22px] font-bold text-[#F9FAFB] leading-tight mb-0.5 group-hover:text-white transition-colors">
             Oracle
           </h2>
-          <p className="text-[13px] text-[#8b949e] mb-3 max-w-2xl">
-            {agent.description || 'The entry point to EvoNexus. Oracle is a business consultant that onboards new users, maps workspace capabilities to your pain points, and delivers a phased implementation plan.'}
+          <p className="text-[12.5px] text-[#8b949e] leading-snug">
+            Your entry point to EvoNexus. Interviews you, maps workspace capabilities to your pain points, and delivers a phased implementation plan.
           </p>
-          <div className="flex items-center gap-3">
-            <code className="rounded-md bg-[#0d1117] px-2.5 py-1 font-mono text-[11px] text-[#F59E0B] border border-[#F59E0B]/20">
-              /oracle
-            </code>
-            <span className="text-[11px] text-[#667085]">
-              {agent.memory_count} {agent.memory_count === 1 ? 'memory' : 'memories'}
-            </span>
-            <span className="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-[#F59E0B] opacity-70 group-hover:opacity-100 transition-opacity">
-              Open Oracle
-              <span className="transition-transform duration-300 group-hover:translate-x-0.5">→</span>
-            </span>
-          </div>
+        </div>
+
+        {/* CTA arrow */}
+        <div className="hidden sm:flex flex-shrink-0 items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] font-semibold text-[#F59E0B]/70 group-hover:text-[#F59E0B] transition-colors">
+          Open
+          <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
         </div>
       </div>
     </Link>
