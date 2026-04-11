@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   LayoutDashboard, Bot, Clock, Zap, Layout, Calendar, CalendarClock,
-  Brain, Plug, DollarSign, Settings, FolderOpen, MessageSquare,
+  Brain, Plug, DollarSign, Settings, FolderOpen,
   Monitor, Users, ScrollText, LogOut, Menu, X, Shield, BookOpen, Library,
   ArrowUpCircle, ChevronDown, Webhook, HardDriveDownload,
 } from 'lucide-react'
@@ -39,7 +39,6 @@ const navGroups: NavGroup[] = [
     collapsible: false,
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard, resource: null },
-      { to: '/chat', label: 'Chat', icon: MessageSquare, resource: 'chat', desktopOnly: true },
     ],
   },
   {

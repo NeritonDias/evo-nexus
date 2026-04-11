@@ -151,11 +151,6 @@ app.register_blueprint(tasks_bp)
 app.register_blueprint(triggers_bp)
 app.register_blueprint(backups_bp)
 
-# --------------- Terminal WebSocket ---------------
-from routes.terminal import bp as terminal_bp, init_websocket
-app.register_blueprint(terminal_bp)
-init_websocket(app)
-
 # --------------- Social Auth blueprints ---------------
 from auth.youtube import bp as youtube_auth_bp
 from auth.instagram import bp as instagram_auth_bp

@@ -16,7 +16,6 @@ import Scheduler from './pages/Scheduler'
 import Tasks from './pages/Tasks'
 import Memory from './pages/Memory'
 import Files from './pages/Files'
-import Chat from './pages/Chat'
 import Systems from './pages/Systems'
 import Setup from './pages/Setup'
 import Login from './pages/Login'
@@ -30,7 +29,6 @@ import Backups from './pages/Backups'
 
 function AppContent() {
   const location = useLocation()
-  const isChat = location.pathname === '/chat'
   const isDocs = location.pathname === '/docs' || location.pathname.startsWith('/docs/')
   const { user, loading, needsSetup, hasPermission } = useAuth()
 
@@ -65,18 +63,9 @@ function AppContent() {
     <div className="flex min-h-screen bg-[#0C111D]">
       <Sidebar />
 
-      {/* Chat — desktop only, lives OUTSIDE routes */}
-      <div
-        className="flex-1 ml-0 lg:ml-60 hidden lg:flex"
-        style={{ display: isChat ? undefined : 'none', flexDirection: 'column', height: '100vh' }}
-      >
-        <Chat />
-      </div>
-
-      {/* Other pages — responsive margin */}
+      {/* Pages — responsive margin */}
       <main
         className="flex-1 ml-0 lg:ml-60 p-4 lg:p-8 pt-16 lg:pt-8 overflow-auto"
-        style={{ display: isChat ? 'none' : 'block' }}
       >
         <Routes>
           <Route path="/" element={<Overview />} />
@@ -101,7 +90,6 @@ function AppContent() {
           {hasPermission('users', 'view') && <Route path="/users" element={<Users />} />}
           {hasPermission('audit', 'view') && <Route path="/audit" element={<Audit />} />}
           {hasPermission('users', 'manage') && <Route path="/roles" element={<Roles />} />}
-          <Route path="/chat" element={null} />
         </Routes>
       </main>
     </div>

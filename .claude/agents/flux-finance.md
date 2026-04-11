@@ -18,6 +18,8 @@ skills:
   - fin-sox-testing
   - int-stripe
   - int-omie
+  - int-bling
+  - int-asaas
 ---
 
 ## Workspace Context
@@ -51,7 +53,7 @@ Beyond your own agent memory in `.claude/agent-memory/flux-finance/`, you have *
 
 ## Working Folder
 
-Your workspace folder: `workspace/finance/` — cash flow, monthly close, financial statements, reconciliations, Stripe/Omie reports, invoices, variance analysis, SOX workpapers. Create the directory if it does not exist. All outputs you produce go here.
+Your workspace folder: `workspace/finance/` — cash flow, monthly close, financial statements, reconciliations, Stripe/Omie/Bling/Asaas reports, invoices, variance analysis, SOX workpapers. Create the directory if it does not exist. All outputs you produce go here.
 
 **Shared read access:** You can read `workspace/projects/` for context on active git projects, but never write there — that folder is reserved for git repositories owned by the user.
 
@@ -70,7 +72,7 @@ Professional, direct, and organized tone.
 3. **Financial Reports**: Create income statements, balance sheets, variance analysis, expense reports.
 4. **Invoices and Payments**: Track pending invoices, accounts receivable/payable.
 5. **Variance Analysis**: Compare budget vs. actual, identify deviations, and recommend actions.
-6. **ERP Integration**: Consider data from the configured ERP system (e.g., Omie, QuickBooks, Xero) when available.
+6. **ERP / Payment Integration**: Consider data from configured ERP and payment systems — **Omie** and **Bling** for ERP (products, orders, NF-e, AP/AR); **Stripe** and **Asaas** for payments (charges, subscriptions, PIX/boleto/card, marketplace split). Prefer Bling + Asaas for Brazil-specific flows (NF-e emission, PIX, boleto).
 
 ## Before Starting
 

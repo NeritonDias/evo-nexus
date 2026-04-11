@@ -417,6 +417,72 @@ function SkeletonCard() {
   )
 }
 
+function OracleHeroCard({ agent, isRunning }: { agent: Agent; isRunning: boolean }) {
+  const meta = getMeta(agent.name, agent)
+  const Icon = meta.icon
+  return (
+    <Link
+      to={`/agents/${agent.name}`}
+      className="group relative block overflow-hidden rounded-2xl border border-[#F59E0B]/30 bg-gradient-to-br from-[#1a1710] via-[#161b22] to-[#161b22] p-6 transition-all duration-300 hover:border-[#F59E0B]/60"
+      style={{
+        boxShadow: '0 0 40px rgba(245,158,11,0.08), inset 0 1px 0 rgba(245,158,11,0.1)',
+      }}
+    >
+      {/* Ambient glow */}
+      <div
+        className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-40 blur-3xl transition-opacity duration-500 group-hover:opacity-60"
+        style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.25), transparent 70%)' }}
+      />
+
+      <div className="relative flex items-start gap-5">
+        {/* Icon */}
+        <div
+          className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl border border-[#F59E0B]/40 bg-[#F59E0B]/10 transition-transform duration-300 group-hover:scale-105"
+          style={{ boxShadow: '0 0 24px rgba(245,158,11,0.25)' }}
+        >
+          <Icon size={28} style={{ color: '#F59E0B' }} />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-1">
+            <span className="rounded-full bg-[#F59E0B]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#F59E0B] border border-[#F59E0B]/30">
+              Start Here
+            </span>
+            {isRunning && (
+              <span className="flex items-center gap-1 rounded-full bg-[#00FFA7]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#00FFA7] border border-[#00FFA7]/20">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00FFA7] opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#00FFA7]" />
+                </span>
+                Running
+              </span>
+            )}
+          </div>
+          <h2 className="text-2xl font-bold text-[#F9FAFB] mb-1 group-hover:text-white transition-colors">
+            Oracle
+          </h2>
+          <p className="text-[13px] text-[#8b949e] mb-3 max-w-2xl">
+            {agent.description || 'The entry point to EvoNexus. Oracle is a business consultant that onboards new users, maps workspace capabilities to your pain points, and delivers a phased implementation plan.'}
+          </p>
+          <div className="flex items-center gap-3">
+            <code className="rounded-md bg-[#0d1117] px-2.5 py-1 font-mono text-[11px] text-[#F59E0B] border border-[#F59E0B]/20">
+              /oracle
+            </code>
+            <span className="text-[11px] text-[#667085]">
+              {agent.memory_count} {agent.memory_count === 1 ? 'memory' : 'memories'}
+            </span>
+            <span className="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-[#F59E0B] opacity-70 group-hover:opacity-100 transition-opacity">
+              Open Oracle
+              <span className="transition-transform duration-300 group-hover:translate-x-0.5">→</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 type FilterValue = 'all' | Category
 
 const FILTERS: { value: FilterValue; label: string; icon: LucideIcon }[] = [
@@ -540,6 +606,7 @@ export default function Agents() {
   }, [agents, filter, query])
 
   const grouped = useMemo(() => {
+    let oracle: Agent | null = null
     const business: Agent[] = []
     const engineering: Record<EngTier, Agent[]> & { other: Agent[] } = {
       reasoning: [],
@@ -549,6 +616,10 @@ export default function Agents() {
     }
     const custom: Agent[] = []
     for (const a of filtered) {
+      if (a.name === 'oracle') {
+        oracle = a
+        continue
+      }
       const cat = getCategory(a)
       if (cat === 'business') business.push(a)
       else if (cat === 'custom') custom.push(a)
@@ -565,7 +636,7 @@ export default function Agents() {
     engineering.execution.sort(sorter)
     engineering.speed.sort(sorter)
     engineering.other.sort(sorter)
-    return { business, engineering, custom }
+    return { oracle, business, engineering, custom }
   }, [filtered])
 
   const isRunning = (name: string) =>
@@ -689,6 +760,9 @@ export default function Agents() {
         </div>
       ) : (
         <div className="space-y-10">
+          {grouped.oracle && (
+            <OracleHeroCard agent={grouped.oracle} isRunning={isRunning(grouped.oracle.name)} />
+          )}
           {grouped.business.length > 0 && (
             <section>
               <SectionHeader
