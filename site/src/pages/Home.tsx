@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Terminal, Bot, BrainCircuit, Calendar, LayoutDashboard,
   Workflow, Database, Activity, Code, Clock, Zap, Menu,
-  Copy, Check, X, FileText, GitBranch, Cpu, MessageSquare, Shield
+  Copy, Check, X, FileText, GitBranch, Cpu, MessageSquare, Shield, Layers
 } from "lucide-react";
 import {
   SiGooglecalendar, SiGmail, SiGithub, SiLinear, SiDiscord,
@@ -316,7 +316,7 @@ export default function Home() {
                 { icon: Cpu, title: "MCP Integrations", desc: "Model Context Protocol connects Claude to external tools and APIs with a standardized interface. First-class support built in." },
                 { icon: Terminal, title: "Slash Commands", desc: "Type /clawdia-assistant, /flux-finance, or /apex-architect to activate agents instantly. Natural command interface directly in the terminal." },
                 { icon: Database, title: "Persistent Memory", desc: "Two-tier memory system: session context for current work, long-term memory across conversations. Your agents remember everything." },
-                { icon: Shield, title: "Full Control", desc: "No vendor lock-in, no API intermediaries. Claude Code CLI runs locally on your machine. Your data never leaves your infrastructure." },
+                { icon: Layers, title: "Multi-Provider, No Lock-In", desc: "Runs on Anthropic's Claude by default, or swap to OpenRouter, OpenAI, Gemini, Bedrock, or Vertex AI via OpenClaude. One click in the Providers page — no code changes. Your keys, your choice, your data never leaves your infrastructure." },
               ].map((item, i) => (
                 <div key={i} className="group relative p-6 rounded-xl border border-border bg-card/50 hover:bg-card hover:border-primary/30 transition-all">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:shadow-[0_0_15px_rgba(0,255,167,0.2)] transition-shadow">

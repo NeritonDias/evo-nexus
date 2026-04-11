@@ -87,6 +87,10 @@ Optional semantic search powered by [MemPalace](https://github.com/milla-jovovic
 
 Two-tier persistence. `CLAUDE.md` holds working memory (who you are, active projects, key people). The `memory/` directory stores deeper context (people profiles, glossary, project history). Both survive across sessions.
 
+### AI Providers
+
+EvoNexus runs on Anthropic's `claude` CLI by default, but can switch to any of 6 alternate LLM backends (OpenRouter, OpenAI, Gemini, AWS Bedrock, Google Vertex AI, Codex Auth) via [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude). The active provider is stored in `config/providers.json` and can be changed from the Providers page in the dashboard — both the terminal-server and the ADW runner re-read the config on every session spawn, so switching takes effect immediately. No vendor lock-in, your choice of model, your keys. See [docs/dashboard/providers.md](dashboard/providers.md) for the full reference.
+
 ## Open Source
 
 EvoNexus is MIT-licensed, built by [Evolution Foundation](https://evolutionfoundation.com.br). The source is at [github.com/EvolutionAPI/evo-nexus](https://github.com/EvolutionAPI/evo-nexus). This is an unofficial community project — not affiliated with or endorsed by Anthropic.
