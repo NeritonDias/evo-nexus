@@ -18,6 +18,7 @@ skills:
   - gog-followups
   - gog-tasks
   - int-fathom
+  - workspace-share
   - int-sync-meetings
   - int-todoist
   - schedule-task

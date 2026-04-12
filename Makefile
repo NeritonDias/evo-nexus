@@ -112,7 +112,7 @@ scheduler:          ## ⏰ Start routine scheduler (runs in background)
 	$(PYTHON) scheduler.py
 
 dashboard-app:      ## 🖥️  Start Dashboard App (React + Flask + terminal-server, localhost:8080)
-	@cd dashboard/frontend && npm run build
+	@cd dashboard/frontend && npm install --silent && npm run build
 	@echo "▶ Starting terminal-server on :32352 (background)..."
 	@pkill -f "dashboard/terminal-server/bin/server.js" 2>/dev/null || true
 	@node dashboard/terminal-server/bin/server.js --dev > /tmp/terminal-server.log 2>&1 & echo $$! > /tmp/terminal-server.pid

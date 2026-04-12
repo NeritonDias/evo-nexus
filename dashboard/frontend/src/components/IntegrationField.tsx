@@ -65,7 +65,7 @@ export default function IntegrationField({
             'focus:outline-none focus:ring-1',
             'transition-colors duration-150',
             sensitive ? 'pr-10' : '',
-            hasError
+            hasError && required && !value
               ? 'border-red-500/50 focus:border-red-500/70 focus:ring-red-500/30'
               : 'border-[#21262d] focus:border-[#00FFA7]/40 focus:ring-[#00FFA7]/20',
           ].join(' ')}

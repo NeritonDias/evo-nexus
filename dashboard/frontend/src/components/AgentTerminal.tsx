@@ -10,12 +10,16 @@ interface AgentTerminalProps {
   accentColor?: string
 }
 
-const CC_WEB_HTTP = import.meta.env.DEV
-  ? 'http://localhost:32352'
+// In dev mode OR local production (localhost/127.0.0.1), connect directly to terminal-server port.
+// In real deployments (behind reverse proxy), use /terminal path on the same origin.
+const isLocal = import.meta.env.DEV || /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)
+
+const CC_WEB_HTTP = isLocal
+  ? `http://${window.location.hostname}:32352`
   : `${window.location.origin}/terminal`
 
-const CC_WEB_WS = import.meta.env.DEV
-  ? 'ws://localhost:32352'
+const CC_WEB_WS = isLocal
+  ? `ws://${window.location.hostname}:32352`
   : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/terminal`
 
 type Status = 'connecting' | 'ready' | 'starting' | 'running' | 'error' | 'exited'

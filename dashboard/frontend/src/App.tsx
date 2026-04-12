@@ -26,13 +26,25 @@ import Backups from './pages/Backups'
 import Providers from './pages/Providers'
 import Workspace from './pages/Workspace'
 import Settings from './pages/Settings'
+import ShareView from './pages/ShareView'
+import ShareLinks from './pages/ShareLinks'
 
 function AppContent() {
   const location = useLocation()
   const isDocs = location.pathname === '/docs' || location.pathname.startsWith('/docs/')
+  const isShare = location.pathname.startsWith('/share/')
   const isAgentDetail = /^\/agents\/[^/]+$/.test(location.pathname)
   const isWorkspace = location.pathname === '/workspace' || location.pathname.startsWith('/workspace/')
   const { user, loading, needsSetup, hasPermission } = useAuth()
+
+  // Share links are public — render without auth or sidebar
+  if (isShare) {
+    return (
+      <Routes>
+        <Route path="/share/:token" element={<ShareView />} />
+      </Routes>
+    )
+  }
 
   // Docs are public — render without auth
   if (isDocs) {
@@ -97,6 +109,7 @@ function AppContent() {
           {hasPermission('users', 'view') && <Route path="/users" element={<Users />} />}
           {hasPermission('audit', 'view') && <Route path="/audit" element={<Audit />} />}
           {hasPermission('users', 'manage') && <Route path="/roles" element={<Roles />} />}
+          {hasPermission('workspace', 'manage') && <Route path="/shares" element={<ShareLinks />} />}
         </Routes>
       </main>
     </div>

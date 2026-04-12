@@ -22,6 +22,7 @@ INTEGRATIONS = [
     {"name": "Evolution API", "key": "EVOLUTION_API_KEY", "category": "messaging"},
     {"name": "Evolution Go", "key": "EVOLUTION_GO_KEY", "category": "messaging"},
     {"name": "Evo CRM", "key": "EVO_CRM_TOKEN", "category": "crm"},
+    {"name": "AI Image Creator", "key": "AI_IMG_CREATOR_", "category": "creative", "prefix": True},
 ]
 
 

@@ -67,6 +67,16 @@ with app.app_context():
     from routes.triggers import sync_triggers_from_yaml
     sync_triggers_from_yaml()
 
+    # Cleanup: remove old disabled share records (expired + disabled + older than 30 days)
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    from models import FileShare as _FileShare
+    _cutoff = _dt.now(_tz.utc) - _td(days=30)
+    _FileShare.query.filter(
+        _FileShare.enabled == False,  # noqa: E712
+        _FileShare.created_at < _cutoff,
+    ).delete()
+    db.session.commit()
+
 # --------------- Licensing (register-only, no heartbeat) ───
 from licensing import auto_register_if_needed
 
@@ -136,8 +146,13 @@ def auth_middleware():
     if path.startswith("/ws/"):
         return None
 
-    # Public API paths (exact match or prefix match for docs/webhooks)
-    if path in PUBLIC_PATHS or path.startswith("/api/docs") or path.startswith("/api/triggers/webhook/"):
+    # Public API paths (exact match or prefix match for docs/webhooks/shares)
+    if (
+        path in PUBLIC_PATHS
+        or path.startswith("/api/docs")
+        or path.startswith("/api/triggers/webhook/")
+        or (path.startswith("/api/shares/") and "/view" in path)
+    ):
         return None
 
     # Setup redirect — if no users, only allow setup endpoints
@@ -176,6 +191,7 @@ from routes.triggers import bp as triggers_bp
 from routes.backups import bp as backups_bp
 from routes.providers import bp as providers_bp
 from routes.settings import bp as settings_bp
+from routes.shares import bp as shares_bp
 
 app.register_blueprint(overview_bp)
 app.register_blueprint(workspace_bp)
@@ -198,6 +214,7 @@ app.register_blueprint(triggers_bp)
 app.register_blueprint(backups_bp)
 app.register_blueprint(providers_bp)
 app.register_blueprint(settings_bp)
+app.register_blueprint(shares_bp)
 
 # --------------- Social Auth blueprints ---------------
 from auth.youtube import bp as youtube_auth_bp
