@@ -11,6 +11,7 @@
     "subtitle": "Finance, marketing, legal, sales, community, engineering. 38 specialized agents ready to work. Open source. One command.",
     "cta": "Get Started, it's free",
     "viewGithub": "View on GitHub",
+    "discord": "Join 17,000+ developers on Discord",
     "stats": {
       "community": "Community members",
       "agents": "AI Agents",
@@ -170,6 +171,10 @@
   },
   "integrations": {
     "label": "Connects with everything you use"
+  },
+  "banner": {
+    "text": "An Evolution Foundation open source project.",
+    "cta": "Learn more"
   },
   "footer": {
     "tagline": "An Evolution Foundation project.",

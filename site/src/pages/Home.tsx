@@ -75,6 +75,8 @@ export default function Home() {
 
   const GITHUB_URL = "https://github.com/EvolutionAPI/evo-nexus";
   const DOCS_URL = "/docs";
+  const DISCORD_URL = "https://discord.gg/evolution-api";
+  const EVOLUTION_URL = "https://evolutionfoundation.com.br";
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -120,8 +122,23 @@ export default function Home() {
         )}
       </AnimatePresence>
 
+      {/* Top Banner */}
+      <div className="fixed top-0 w-full z-[60] bg-primary text-primary-foreground">
+        <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-center gap-3 text-sm font-medium">
+          <span>{t("banner.text")}</span>
+          <a
+            href={EVOLUTION_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2 font-bold hover:opacity-80 transition-opacity"
+          >
+            {t("banner.cta")}
+          </a>
+        </div>
+      </div>
+
       {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${isScrolled ? 'bg-background/80 backdrop-blur-md border-border' : 'bg-transparent border-transparent'}`}>
+      <nav className={`fixed w-full z-50 transition-all duration-300 border-b ${isScrolled ? 'bg-background/80 backdrop-blur-md border-border' : 'bg-transparent border-transparent'}`} style={{ top: '36px' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={EvoNexusLogo} alt="EvoNexus" className="h-8" />
@@ -191,7 +208,7 @@ export default function Home() {
         </AnimatePresence>
       </nav>
 
-      <main className="relative z-10 pt-32 pb-24 flex flex-col gap-32">
+      <main className="relative z-10 pb-24 flex flex-col gap-32 pt-40">
         {/* Hero Section */}
         <section className="max-w-7xl mx-auto px-6 text-center flex flex-col items-center">
           <FadeIn>
@@ -221,7 +238,7 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">
               <Button
                 size="lg"
                 className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg px-8 h-14 shadow-[0_0_20px_rgba(0,255,167,0.4)]"
@@ -237,6 +254,17 @@ export default function Home() {
                 </a>
               </Button>
             </div>
+
+            {/* Discord CTA */}
+            <a
+              href={DISCORD_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-16"
+            >
+              <SiDiscord className="w-4 h-4" />
+              {t("hero.discord")}
+            </a>
           </FadeIn>
 
           <FadeIn delay={0.2} className="w-full max-w-3xl mx-auto text-left">

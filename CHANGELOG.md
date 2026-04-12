@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1] - 2026-04-12
+
+### Added
+
+- **i18n support for landing page** — English, Portuguese (BR), and Spanish with language switcher in nav. Preference saved in localStorage.
+- **Per-integration icons in dashboard** — each integration card now shows a distinct icon and color (24 mappings: Stripe purple, Discord blue, WhatsApp green, etc.)
+- **Discord CTA in hero** — "Join 17,000+ developers on Discord" link below main CTAs
+- **Evolution Foundation banner** — persistent top banner linking to evolutionfoundation.com.br
+
+### Changed
+
+- **Landing page copy overhaul** — new headline "Run your business with AI agents", rewritten subtitle listing business areas (finance, marketing, legal, sales, community, engineering), removed em-dashes, fixed buzzwords
+- **Integration count updated** — 18 → 23 integrations (added WhatsApp, LinkedIn, Figma, Amplitude, Intercom, HubSpot, DocuSign, Bling, Asaas; removed Evolution API/Go/CRM from public LP)
+- **Skills count corrected** — 150+ → 175+ across all pages and translations
+- **Background simplified** — removed noise.svg + grid overlay, kept minimal gradient only
+- **Agents showcase link** — "See all 38 agents" now points to /docs/agents/overview instead of broken /agents route
+- **Config page removed from dashboard** — redundant with Integration drawer (from v0.17.0)
+- **Canvas agent memory files** — removed from dashboard/frontend/.claude/ (wrong location)
+
+### Fixed
+
+- **Lucide icon name** — `Github` → `GitFork` (Github not exported in current Lucide version)
+
 ## [0.17.0] - 2026-04-12
 
 ### Added
