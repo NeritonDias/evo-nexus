@@ -72,6 +72,23 @@ At minimum, you need:
 
 ### 4. Start the Dashboard
 
+**On a VPS (remote):** The setup wizard automatically creates a dedicated `evonexus` system user (Claude Code refuses `--dangerously-skip-permissions` as root) and installs a **systemd service** that starts on boot:
+
+```bash
+systemctl status evo-nexus      # check status
+systemctl restart evo-nexus     # restart
+journalctl -u evo-nexus -f      # follow logs
+su - evonexus                   # switch to service user
+```
+
+You can also install the systemd service manually on an existing installation:
+
+```bash
+sudo bash install-service.sh
+```
+
+**Local (macOS/Linux):**
+
 ```bash
 make dashboard-app
 ```
@@ -81,6 +98,8 @@ Open http://localhost:8080 — the first run shows a setup wizard where you crea
 ![Dashboard](imgs/doc-overview.webp)
 
 ### 5. Start Automated Routines
+
+On a VPS, the scheduler runs automatically inside the dashboard service. Locally:
 
 ```bash
 make scheduler

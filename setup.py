@@ -715,6 +715,44 @@ def create_folders(config: dict):
     print(f"  {GREEN}✓{RESET} Created workspace folders ({count})")
 
 
+def _setup_systemd_service(service_user, install_dir, logs_dir):
+    """Create and start a systemd service for EvoNexus."""
+    service_home = f"/home/{service_user}"
+    service_name = "evo-nexus"
+    service_file = f"/etc/systemd/system/{service_name}.service"
+
+    print(f"  {DIM}Creating systemd service...{RESET}")
+
+    with open(service_file, "w") as f:
+        f.write(f"""[Unit]
+Description=EvoNexus Dashboard + Scheduler + Terminal Server
+After=network.target
+Documentation=https://github.com/EvolutionAPI/evo-nexus
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User={service_user}
+Group={service_user}
+WorkingDirectory={install_dir}
+Environment=PATH={service_home}/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME={service_home}
+ExecStart=/bin/bash {install_dir}/start-services.sh
+ExecStop=/bin/bash -c 'pkill -f "terminal-server/bin/server.js" 2>/dev/null; pkill -f "dashboard/backend.*app.py" 2>/dev/null'
+StandardOutput=append:{logs_dir}/service.log
+StandardError=append:{logs_dir}/service.log
+
+[Install]
+WantedBy=multi-user.target
+""")
+
+    os.system("systemctl daemon-reload")
+    os.system(f"systemctl enable {service_name} >/dev/null 2>&1")
+    os.system(f"systemctl start {service_name}")
+    print(f"  {GREEN}✓{RESET} Systemd service created and enabled (auto-starts on boot)")
+    print(f"  {DIM}  Manage with: systemctl {{start|stop|restart|status}} {service_name}{RESET}")
+
+
 def main():
     banner()
 
@@ -845,41 +883,82 @@ def main():
     # Data dir for SQLite
     (WORKSPACE / "dashboard" / "data").mkdir(parents=True, exist_ok=True)
 
-    # Fix ownership BEFORE starting services.
-    # When running with sudo, all files (including .venv, node_modules,
-    # frontend dist, data dir) are created as root. The services MUST
-    # run as the original user, so we chown everything now.
+    # Determine the service user.
+    # Priority: SUDO_USER (ran with sudo) > create 'evonexus' user (root on VPS) > current user
     sudo_user = os.environ.get("SUDO_USER", "")
-    if sudo_user and os.getuid() == 0:
-        print(f"  {DIM}Fixing file ownership for {sudo_user}...{RESET}")
-        os.system(f"chown -R {sudo_user}:{sudo_user} {WORKSPACE}")
-        # Ensure .venv binaries are executable after chown
-        os.system(f"chmod -R u+x {WORKSPACE}/.venv/bin/ 2>/dev/null")
-        run_as = f"su - {sudo_user} -c"
-        print(f"  {GREEN}✓{RESET} Ownership fixed")
+    service_user = sudo_user  # may be empty
+
+    if os.getuid() == 0 and not sudo_user and is_remote:
+        # Running as root directly (common on VPS) — create dedicated user
+        service_user = "evonexus"
+        print(f"\n  {DIM}Creating dedicated service user '{service_user}'...{RESET}")
+        ret = os.system(f"id {service_user} >/dev/null 2>&1")
+        if ret != 0:
+            os.system(f"useradd -m -s /bin/bash {service_user}")
+            print(f"  {GREEN}✓{RESET} User '{service_user}' created")
+        else:
+            print(f"  {DIM}✓ User '{service_user}' already exists{RESET}")
+
+        # Copy installation to user home
+        service_home = f"/home/{service_user}"
+        service_dir = f"{service_home}/evo-nexus"
+        if str(WORKSPACE.resolve()) != service_dir:
+            print(f"  {DIM}Copying installation to {service_dir}...{RESET}")
+            os.system(f"rm -rf {service_dir}")
+            os.system(f"cp -a {WORKSPACE} {service_dir}")
+            print(f"  {GREEN}✓{RESET} Copied to {service_dir}")
+        # Update WORKSPACE reference for start-services.sh
+        install_dir = Path(service_dir)
+
+        # Install uv + claude-code for the service user
+        ret = os.system(f"su - {service_user} -c 'command -v uv' >/dev/null 2>&1")
+        if ret != 0:
+            print(f"  {DIM}Installing uv for {service_user}...{RESET}")
+            os.system(f"su - {service_user} -c 'curl -LsSf https://astral.sh/uv/install.sh | sh' >/dev/null 2>&1")
+            print(f"  {GREEN}✓{RESET} uv installed")
+
+        ret = os.system(f"su - {service_user} -c 'export PATH=$HOME/.local/bin:$PATH && command -v claude' >/dev/null 2>&1")
+        if ret != 0:
+            print(f"  {DIM}Installing Claude Code for {service_user}...{RESET}")
+            os.system(f"su - {service_user} -c 'npm install -g @anthropic-ai/claude-code --prefix ~/.local' >/dev/null 2>&1")
+            print(f"  {GREEN}✓{RESET} Claude Code installed")
+
+        # Sync deps as service user
+        print(f"  {DIM}Syncing dependencies as {service_user}...{RESET}")
+        os.system(f"su - {service_user} -c 'export PATH=$HOME/.local/bin:$PATH && cd {service_dir} && uv sync -q' 2>/dev/null")
+
+        # Fix ownership
+        os.system(f"chown -R {service_user}:{service_user} {service_dir}")
+        os.system(f"chown -R {service_user}:{service_user} {service_home}")
     else:
-        run_as = "bash -c"
+        install_dir = WORKSPACE
+
+    # Fix ownership BEFORE starting services.
+    if service_user and os.getuid() == 0:
+        target_dir = install_dir if service_user == "evonexus" else WORKSPACE
+        print(f"  {DIM}Fixing file ownership for {service_user}...{RESET}")
+        os.system(f"chown -R {service_user}:{service_user} {target_dir}")
+        os.system(f"chmod -R u+x {target_dir}/.venv/bin/ 2>/dev/null")
+        print(f"  {GREEN}✓{RESET} Ownership fixed")
 
     # Start dashboard services
-    logs_dir = WORKSPACE / "logs"
+    logs_dir = install_dir / "logs"
     logs_dir.mkdir(exist_ok=True)
-    if sudo_user and os.getuid() == 0:
-        os.system(f"chown -R {sudo_user}:{sudo_user} {logs_dir}")
+    if service_user and os.getuid() == 0:
+        os.system(f"chown -R {service_user}:{service_user} {logs_dir}")
+
     print(f"\n  {DIM}Starting dashboard services...{RESET}")
-    # Stop any existing services (systemd, background processes)
-    os.system("systemctl stop evonexus 2>/dev/null; systemctl disable evonexus 2>/dev/null")
+    # Stop any existing services
+    os.system("systemctl stop evo-nexus 2>/dev/null")
     os.system("pkill -f 'terminal-server/bin/server.js' 2>/dev/null")
     os.system("pkill -f 'app.py' 2>/dev/null")
     os.system("sleep 1")
-    if sudo_user:
-        print(f"  {DIM}(services will run as {sudo_user}, not root){RESET}")
 
-    # Start terminal-server
-    # Create a startup script that persists processes properly
-    startup_script = WORKSPACE / "start-services.sh"
+    # Create start-services.sh
+    startup_script = install_dir / "start-services.sh"
     startup_script.write_text(f"""#!/bin/bash
 export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin"
-cd {WORKSPACE}
+cd {install_dir}
 
 # Kill existing services
 pkill -f 'terminal-server/bin/server.js' 2>/dev/null
@@ -894,14 +973,19 @@ nohup node dashboard/terminal-server/bin/server.js > {logs_dir}/terminal-server.
 
 # Start Flask dashboard
 cd dashboard/backend
-nohup {WORKSPACE}/.venv/bin/python app.py > {logs_dir}/dashboard.log 2>&1 &
+nohup {install_dir}/.venv/bin/python app.py > {logs_dir}/dashboard.log 2>&1 &
 """, encoding="utf-8")
     os.chmod(startup_script, 0o755)
 
-    if sudo_user:
-        os.system(f"su - {sudo_user} -c '{startup_script}'")
+    # Create systemd service (remote/VPS only, when we have a service user)
+    if is_remote and service_user and os.getuid() == 0:
+        _setup_systemd_service(service_user, install_dir, logs_dir)
+    elif service_user:
+        print(f"  {DIM}(services will run as {service_user}){RESET}")
+        os.system(f"su - {service_user} -c '{startup_script}'")
     else:
         os.system(str(startup_script))
+
     import time as _time
     _time.sleep(3)
     # Verify
@@ -920,6 +1004,15 @@ nohup {WORKSPACE}/.venv/bin/python app.py > {logs_dir}/dashboard.log 2>&1 &
     dashboard_url = access_config.get('url', f'http://localhost:{dashboard_port}')
 
     if is_remote:
+        svc_msg = ""
+        if service_user == "evonexus":
+            svc_msg = f"""
+  Servico systemd:
+    {DIM}systemctl status evo-nexus{RESET}     — verificar status
+    {DIM}systemctl restart evo-nexus{RESET}    — reiniciar
+    {DIM}journalctl -u evo-nexus -f{RESET}     — ver logs
+    {DIM}su - evonexus{RESET}                  — acessar usuario do servico
+"""
         print(f"""
   {GREEN}{'='*50}{RESET}
   {GREEN}Setup concluido!{RESET}
@@ -933,7 +1026,7 @@ nohup {WORKSPACE}/.venv/bin/python app.py > {logs_dir}/dashboard.log 2>&1 &
     1. Acesse o link acima e crie sua conta de administrador
     2. Va em {BOLD}Providers{RESET} e configure o AI Provider
     3. Abra um agente e comece a usar!
-""")
+{svc_msg}""")
     else:
         print(f"""
   {GREEN}Done!{RESET} Next steps:
