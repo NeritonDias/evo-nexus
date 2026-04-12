@@ -130,23 +130,33 @@ Resolved issues from paid support are a gold mine for the FAQ — these are real
 - Mark source as "Linear — Paid Support"
 - Prioritize inclusion in FAQ (paying clients = high relevance)
 
-### Step 3 — Analyze and classify
+### Step 3 — Analyze and classify (MANDATORY validation gate)
 
 For each question found:
 
 1. **Already in the FAQ?** → If yes, check if the answer needs updating
-2. **Is it recurring?** → If it appeared 2+ times (Discord or GitHub), add with priority
-3. **Has an answer?** → If someone answered on Discord/GitHub, use as a base
+2. **Is it recurring?** → If it appeared 2+ times (Discord, GitHub, or WhatsApp), add with priority
+3. **HAS A REAL, VERIFIED ANSWER?** → **This is a HARD GATE. If this check fails, SKIP the question — do NOT add to FAQ.** Required by source:
+   - **GitHub issues:** must link to the specific comment URL with the solution, and the comment must be from a team member (org member, maintainer) OR the issue must be in state `closed` with label `solved`/`resolved`. Issues with no replies or only community speculation → SKIP.
+   - **Linear (Evolution Suporte):** only issues with `state=Done` AND a resolution comment from the assignee. Cite the issue ID + resolution comment.
+   - **Discord:** must cite the exact username + timestamp + message link of the **reply** (not the question). The reply must come from a team member or a verified helper. Questions without a reply, or with only "+1"/"same here" → SKIP.
+   - **WhatsApp:** since messages don't have stable links, require the responder's name + approximate timestamp AND the literal reply text. If only the question exists with no reply → SKIP.
+   - **No answer found within 24h?** → SKIP and count under "pending documentation" in the Step 6 report. Do not create an FAQ entry.
 4. **Which category?** → Classify in the correct FAQ category
 
-### Step 4 — Update FAQ
+### Step 4 — Update FAQ (no paraphrasing)
 
-For each new question to be added:
-- Formulate a clear question in PT-BR
-- Write an objective and actionable answer
-- Include source (Discord/GitHub + link if possible)
+For each new question that passed the Step 3 gate:
+- Formulate a clear question in PT-BR (rewriting the question is fine)
+- **DO NOT rewrite, paraphrase or "improve" the answer.** Extract the literal text of the answer from the source and cite it. Light formatting (bullet list, code fences) is OK, but the content must come from the source.
+- If the source answer is partial or unclear for one aspect, add `[pending: {specific missing detail}]` inline and flag for follow-up — do not fill the gap with generic knowledge.
+- Include source with the verifiable reference (comment URL, username + timestamp, Linear issue ID)
 - Include date
 - Add to the correct category
+
+For existing questions:
+- Update the answer only if there is new verified information from a source (same Step 3 rules apply)
+- Mark as "updated" with new date
 
 For existing questions:
 - Update the answer if there is new information
@@ -169,12 +179,18 @@ Present a short summary:
 Questions in FAQ: {total}
 New added: {N}
 Updated: {N}
-Sources: Discord ({N} questions) + GitHub ({N} issues)
+Skipped (no verified answer): {N}
+Sources: Discord ({N}) + GitHub ({N}) + WhatsApp ({N}) + Linear ({N})
 
 New:
 - {question 1} → {category}
 - {question 2} → {category}
+
+Skipped (pending documentation):
+- {question} — reason: no reply in source / reply from non-team / etc.
 ```
+
+The "Skipped" block is mandatory — it gives visibility on questions the community is asking but no one has answered, which is itself a signal worth tracking.
 
 ## Rules
 

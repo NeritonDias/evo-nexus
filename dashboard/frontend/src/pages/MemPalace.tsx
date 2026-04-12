@@ -4,15 +4,25 @@ import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 
 interface MiningStatus {
-  pid: number
+  pid: number | null
   started_at: string
-  sources: string[]
+  phase?: 'scanning' | 'mining' | 'done'
+  sources?: string[]
+  current_source?: string | null
+  current_file?: string | null
+  files_done?: number
+  files_total?: number
+  files_skipped?: number
+  drawers_added?: number
+  elapsed_seconds?: number
+  eta_seconds?: number | null
+  rate_files_per_sec?: number
 }
 
 interface PalaceStats {
-  total_drawers: number
-  wings: string[]
-  rooms: string[]
+  total_drawers?: number
+  wings?: string[]
+  rooms?: string[]
 }
 
 interface StatusData {
@@ -42,8 +52,8 @@ interface SearchResult {
 
 interface SearchResponse {
   query: string
-  filters: Record<string, string | null>
-  results: SearchResult[]
+  filters?: Record<string, string | null>
+  results?: SearchResult[]
 }
 
 type Tab = 'status' | 'sources' | 'search'
@@ -94,10 +104,10 @@ export default function MemPalace() {
     Promise.all([loadStatus(), loadSources()]).finally(() => setLoading(false))
   }, [loadStatus, loadSources])
 
-  // Poll while mining is active
+  // Poll while mining is active — fast (1s) so the progress bar feels live
   useEffect(() => {
     if (!status?.mining) return
-    const id = setInterval(loadStatus, 5000)
+    const id = setInterval(loadStatus, 1000)
     return () => clearInterval(id)
   }, [status?.mining, loadStatus])
 
@@ -251,7 +261,7 @@ export default function MemPalace() {
                     <Layers size={14} className="text-[#00FFA7]" />
                     <span className="text-xs text-[#667085] uppercase tracking-wider">Wings</span>
                   </div>
-                  <p className="text-2xl font-bold text-[#F9FAFB]">{status.stats?.wings.length || 0}</p>
+                  <p className="text-2xl font-bold text-[#F9FAFB]">{status.stats?.wings?.length || 0}</p>
                   {status.stats?.wings && status.stats.wings.length > 0 && (
                     <p className="text-xs text-[#667085] mt-1 truncate">{status.stats.wings.join(', ')}</p>
                   )}
@@ -261,7 +271,7 @@ export default function MemPalace() {
                     <Grid3X3 size={14} className="text-[#00FFA7]" />
                     <span className="text-xs text-[#667085] uppercase tracking-wider">Rooms</span>
                   </div>
-                  <p className="text-2xl font-bold text-[#F9FAFB]">{status.stats?.rooms.length || 0}</p>
+                  <p className="text-2xl font-bold text-[#F9FAFB]">{status.stats?.rooms?.length || 0}</p>
                   {status.stats?.rooms && status.stats.rooms.length > 0 && (
                     <p className="text-xs text-[#667085] mt-1 truncate">{status.stats.rooms.join(', ')}</p>
                   )}
@@ -275,19 +285,92 @@ export default function MemPalace() {
                 </div>
               </div>
 
-              {/* Mining status */}
-              {status.mining && (
-                <div className="bg-[#00FFA7]/5 border border-[#00FFA7]/20 rounded-xl p-4 flex items-center gap-3">
-                  <RefreshCw size={16} className="text-[#00FFA7] animate-spin" />
-                  <div>
-                    <p className="text-sm text-[#F9FAFB] font-medium">Mining in progress...</p>
-                    <p className="text-xs text-[#667085]">
-                      Started {new Date(status.mining.started_at).toLocaleTimeString()}
-                      {' — '}{status.mining.sources.length} source(s)
-                    </p>
+              {/* Mining status with progress bar + ETA */}
+              {status.mining && (() => {
+                const m = status.mining
+                const done = m.files_done ?? 0
+                const total = m.files_total ?? 0
+                const percent = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0
+                const currentFileName = m.current_file
+                  ? m.current_file.split('/').slice(-1)[0]
+                  : null
+                const currentFileDir = m.current_file
+                  ? m.current_file.split('/').slice(-3, -1).join('/')
+                  : null
+                const fmtDuration = (secs?: number | null) => {
+                  if (secs == null || !isFinite(secs) || secs < 0) return '—'
+                  const s = Math.round(secs)
+                  if (s < 60) return `${s}s`
+                  const m = Math.floor(s / 60)
+                  const r = s % 60
+                  if (m < 60) return `${m}m ${r}s`
+                  const h = Math.floor(m / 60)
+                  return `${h}h ${m % 60}m`
+                }
+                const isScanning = m.phase === 'scanning' || (total === 0 && done === 0)
+                return (
+                  <div className="bg-[#00FFA7]/5 border border-[#00FFA7]/20 rounded-xl p-5 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <RefreshCw size={16} className="text-[#00FFA7] animate-spin shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-[#F9FAFB] font-medium">
+                          {isScanning ? 'Scanning files...' : 'Mining in progress'}
+                        </p>
+                        <p className="text-xs text-[#667085] truncate">
+                          Started {new Date(m.started_at).toLocaleTimeString()}
+                          {' · '}{m.sources?.length ?? 0} source(s)
+                          {m.drawers_added != null && m.drawers_added > 0 && (
+                            <> · {m.drawers_added.toLocaleString()} drawers added</>
+                          )}
+                        </p>
+                      </div>
+                      {!isScanning && (
+                        <div className="text-right shrink-0">
+                          <p className="text-2xl font-bold text-[#00FFA7] tabular-nums">{percent}%</p>
+                          <p className="text-[10px] text-[#667085] tabular-nums">
+                            {done.toLocaleString()} / {total.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Progress bar */}
+                    {!isScanning && (
+                      <div className="h-2 bg-[#0C111D] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#00FFA7] transition-all duration-500 ease-out"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Current file */}
+                    {currentFileName && (
+                      <div className="flex items-baseline gap-2 text-xs">
+                        <span className="text-[#667085] shrink-0">Processing:</span>
+                        <span className="text-[#D0D5DD] font-mono truncate" title={m.current_file || undefined}>
+                          {currentFileDir && <span className="text-[#667085]">{currentFileDir}/</span>}
+                          {currentFileName}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Metrics row */}
+                    <div className="flex items-center gap-4 text-xs text-[#667085] tabular-nums">
+                      <span>⏱ {fmtDuration(m.elapsed_seconds)} elapsed</span>
+                      {!isScanning && m.eta_seconds != null && (
+                        <span>ETA {fmtDuration(m.eta_seconds)}</span>
+                      )}
+                      {!isScanning && (m.rate_files_per_sec ?? 0) > 0 && (
+                        <span>{(m.rate_files_per_sec ?? 0).toFixed(1)} files/s</span>
+                      )}
+                      {(m.files_skipped ?? 0) > 0 && (
+                        <span>{m.files_skipped} skipped</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* Version info */}
               <div className="flex items-center gap-4 text-xs text-[#667085]">
@@ -429,28 +512,28 @@ export default function MemPalace() {
                   </button>
                 </div>
                 {/* Filters */}
-                {status?.stats && (status.stats.wings.length > 0 || status.stats.rooms.length > 0) && (
+                {status?.stats && ((status.stats.wings?.length ?? 0) > 0 || (status.stats.rooms?.length ?? 0) > 0) && (
                   <div className="flex gap-3 mt-3">
-                    {status.stats.wings.length > 0 && (
+                    {(status.stats.wings?.length ?? 0) > 0 && (
                       <select
                         value={searchWing}
                         onChange={(e) => setSearchWing(e.target.value)}
                         className="bg-[#0C111D] border border-[#344054] rounded-lg px-3 py-1.5 text-xs text-[#D0D5DD] focus:border-[#00FFA7] focus:outline-none"
                       >
                         <option value="">All wings</option>
-                        {status.stats.wings.map((w) => (
+                        {status.stats.wings?.map((w) => (
                           <option key={w} value={w}>{w}</option>
                         ))}
                       </select>
                     )}
-                    {status.stats.rooms.length > 0 && (
+                    {(status.stats.rooms?.length ?? 0) > 0 && (
                       <select
                         value={searchRoom}
                         onChange={(e) => setSearchRoom(e.target.value)}
                         className="bg-[#0C111D] border border-[#344054] rounded-lg px-3 py-1.5 text-xs text-[#D0D5DD] focus:border-[#00FFA7] focus:outline-none"
                       >
                         <option value="">All rooms</option>
-                        {status.stats.rooms.map((r) => (
+                        {status.stats.rooms?.map((r) => (
                           <option key={r} value={r}>{r}</option>
                         ))}
                       </select>
@@ -463,15 +546,15 @@ export default function MemPalace() {
               {searchResults && (
                 <div>
                   <p className="text-xs text-[#667085] mb-3">
-                    {searchResults.results.length} result(s) for "{searchResults.query}"
+                    {searchResults.results?.length ?? 0} result(s) for "{searchResults.query}"
                   </p>
-                  {searchResults.results.length === 0 ? (
+                  {(searchResults.results?.length ?? 0) === 0 ? (
                     <div className="text-center py-12 text-[#667085] text-sm">
                       No results found. Try a different query.
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {searchResults.results.map((r, i) => (
+                      {searchResults.results?.map((r, i) => (
                         <div key={i} className="bg-[#182230] border border-[#344054] rounded-xl p-4 hover:border-[#00FFA7]/30 transition-colors">
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <p className="text-xs text-[#667085] truncate flex-1">{r.source_file}</p>

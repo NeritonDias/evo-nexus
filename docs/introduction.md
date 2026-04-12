@@ -68,7 +68,7 @@ A scheduler runs routines on a daily, weekly, and monthly cadence. Cross-layer h
 
 ### Skills
 
-150+ reusable capabilities organized by prefix (`fin-`, `social-`, `int-`, `prod-`, `hr-`, `legal-`, `ops-`, `cs-`, `data-`, `pm-`, `mkt-`, etc.). Skills are markdown files that teach agents how to perform specific tasks — no plugins, no code.
+175+ reusable capabilities organized by prefix (`fin-`, `social-`, `int-`, `prod-`, `hr-`, `legal-`, `ops-`, `cs-`, `data-`, `pm-`, `mkt-`, etc.). Skills are markdown files that teach agents how to perform specific tasks — no plugins, no code.
 
 ### Routines
 
@@ -78,7 +78,7 @@ Automated workflows (ADWs) that run on schedule via a Python scheduler. Morning 
 
 A web UI (React + Flask) for managing everything: view reports, start/stop services, browse agents and skills, manage users and roles, and interact with Claude Code through an embedded terminal.
 
-![Web Dashboard](imgs/doc-overview.png)
+![Web Dashboard](imgs/doc-overview.webp)
 
 ### Knowledge Base
 

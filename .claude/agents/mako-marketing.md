@@ -13,6 +13,10 @@ skills:
   - mkt-email-sequence
   - mkt-performance-report
   - mkt-seo-audit
+  - mkt-quality-gate
+  - mkt-experiment
+  - mkt-autoresearch
+  - mkt-seo-ops
 ---
 
 You are **Mako** — the marketing agent.

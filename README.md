@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://evolutionfoundation.com.br">
-    <img src="public/cover.png" alt="Evolution Foundation" height="60"/>
+    <img src="public/cover.webp" alt="Evolution Foundation" height="60"/>
   </a>
 </p>
 
@@ -34,7 +34,7 @@ It turns a single CLI installation into a team of **38 specialized agents** orga
 ### Why EvoNexus?
 
 - **Markdown-first agents** — agents are `.md` files with system prompts, not code. No SDK, no plugin runtime, no compile step. Add an agent by dropping a file in `.claude/agents/`
-- **Skills as instructions** — reusable capabilities are markdown too. 150+ skills covering finance, community, social, engineering, data, legal, HR, ops, product, CS
+- **Skills as instructions** — reusable capabilities are markdown too. 175+ skills covering finance, community, social, engineering, data, legal, HR, ops, product, CS
 - **Multi-provider by design** — default runs on Anthropic's native `claude` CLI, but can switch to OpenRouter, OpenAI, Gemini, AWS Bedrock, Google Vertex, or Codex Auth via [OpenClaude](https://www.npmjs.com/package/@gitlawb/openclaude) without touching a line of code. Your keys, your model choice, no vendor lock-in
 - **MCP integrations** — first-class support for Google Calendar, Gmail, GitHub, Linear, Telegram, Canva, Notion, and more via the Model Context Protocol
 - **Slash commands** — `/clawdia`, `/flux`, `/pulse`, `/apex` invoke agents directly from the terminal
@@ -61,12 +61,12 @@ It turns a single CLI installation into a team of **38 specialized agents** orga
 ## Screenshots
 
 <p align="center">
-  <img src="public/print-overview.png" alt="Overview" width="49%" />
-  <img src="public/print-agents.png" alt="Agents" width="49%" />
+  <img src="public/print-overview.webp" alt="Overview" width="49%" />
+  <img src="public/print-agents.webp" alt="Agents" width="49%" />
 </p>
 <p align="center">
-  <img src="public/print-integrations.png" alt="Integrations" width="49%" />
-  <img src="public/print-costs.png" alt="Costs" width="49%" />
+  <img src="public/print-integrations.webp" alt="Integrations" width="49%" />
+  <img src="public/print-costs.webp" alt="Costs" width="49%" />
 </p>
 
 ---
@@ -155,7 +155,7 @@ This downloads and runs the interactive setup wizard automatically.
 ### Method 2 — Manual clone
 
 ```bash
-git clone https://github.com/EvolutionAPI/evo-nexus.git
+git clone --depth 1 https://github.com/EvolutionAPI/evo-nexus.git
 cd evo-nexus
 
 # Interactive setup wizard — checks prerequisites, creates config files
@@ -276,7 +276,7 @@ A full web UI at `http://localhost:8080`:
 | **Agents** | View agent definitions and system prompts |
 | **Routines** | Metrics per routine (runs, success rate, cost) + manual run |
 | **Tasks** | Schedule one-off actions (skill, prompt, script) at a specific date/time |
-| **Skills** | Browse all 150+ skills by category (~125 business + 25 dev-*) |
+| **Skills** | Browse all 175+ skills by category (~125 business + 25 dev-*) |
 | **Templates** | Preview HTML report templates |
 | **Services** | Start/stop scheduler, channels (Telegram, Discord, iMessage) with live logs |
 | **Memory** | Browse agent and global memory files |
@@ -335,7 +335,7 @@ evo-nexus/
 ├── .claude/
 │   ├── agents/          — 16 agent system prompts
 │   ├── commands/        — 16 slash commands
-│   ├── skills/          — 150+ skills by prefix (~125 business + 25 dev-*) (+ custom)
+│   ├── skills/          — 175+ skills by prefix (~125 business + 25 dev-*) (+ custom)
 │   └── templates/html/  — 2 core + custom HTML templates
 ├── ADWs/
 │   ├── runner.py        — execution engine (logs + metrics + notifications)

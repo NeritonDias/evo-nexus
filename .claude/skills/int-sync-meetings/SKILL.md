@@ -44,7 +44,7 @@ Compare with the returned `recording_id`. Process only IDs that **do not exist**
 
 **IMPORTANT:** This step is mandatory and cannot be skipped. If the ID already exists in the file, the meeting **MUST NOT be reprocessed** under any circumstances — no summary, no tasks, no notification.
 
-If there are no new meetings, send via Telegram "🎙️ Sync Meetings — No new meetings." and **stop immediately**. Do not continue to the following steps.
+If there are no new meetings, **stop immediately and stay silent** — do NOT send any Telegram notification. Do not continue to the following steps.
 
 ### Step 3 — Save raw JSON
 
@@ -191,7 +191,7 @@ Send the Step 8 summary via Telegram to the user using the `/int-telegram` skill
 - Use `reply(chat_id="YOUR_CHAT_ID", text="...")` via MCP
 - Short format: emoji + title + meeting and task count
 
-If there are no new meetings (stopped at Step 2), send: "🎙️ Sync Meetings — No new meetings."
+If there are no new meetings (stopped at Step 2), do **NOT** send any Telegram message — stay silent. Only notify when at least one new meeting was processed.
 
 ## Notes
 

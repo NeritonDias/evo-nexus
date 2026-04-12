@@ -237,36 +237,55 @@ def mine():
     else:
         targets = sources
 
-    # Build mining script using repr() to safely escape all values
-    palace_path = str(PALACE_DIR)
-    mine_calls = []
-    for t in targets:
-        wing = t.get("wing") or ""
-        if wing:
-            mine_calls.append(
-                f"mine({repr(t['path'])}, {repr(palace_path)}, wing_override={repr(wing)})"
-            )
-        else:
-            mine_calls.append(
-                f"mine({repr(t['path'])}, {repr(palace_path)})"
-            )
-
-    script = (
-        "from mempalace.miner import mine\n"
-        + "\n".join(mine_calls)
-    )
-
+    # Spawn the mining worker as a detached subprocess. The worker publishes
+    # per-file progress to MINING_STATUS_FILE so the dashboard can render a
+    # real progress bar + ETA instead of a spinner.
     PALACE_DIR.mkdir(parents=True, exist_ok=True)
-    cmd = [sys.executable, "-c", script]
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
 
+    worker_path = Path(__file__).parent / "_mempalace_worker.py"
+    worker_payload = {
+        "palace_path": str(PALACE_DIR),
+        "status_file": str(MINING_STATUS_FILE),
+        "targets": [
+            {"path": t["path"], "wing": t.get("wing") or None}
+            for t in targets
+        ],
+    }
+
+    # Seed the status file BEFORE spawning so the UI shows "scanning..."
+    # instantly instead of a gap while the worker boots.
     _set_mining_status({
-        "pid": process.pid,
+        "pid": None,
         "started_at": datetime.now(timezone.utc).isoformat(),
+        "phase": "scanning",
         "sources": [t["path"] for t in targets],
+        "current_file": None,
+        "current_source": None,
+        "files_done": 0,
+        "files_total": 0,
+        "files_skipped": 0,
+        "drawers_added": 0,
+        "elapsed_seconds": 0,
+        "eta_seconds": None,
+        "rate_files_per_sec": 0,
     })
+
+    cmd = [sys.executable, str(worker_path)]
+    process = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    assert process.stdin is not None
+    process.stdin.write(json.dumps(worker_payload).encode("utf-8"))
+    process.stdin.close()
+
+    # Patch the seed status with the real pid so /status PID-check works
+    # immediately. The worker will overwrite this on its first publish().
+    seed = json.loads(MINING_STATUS_FILE.read_text(encoding="utf-8"))
+    seed["pid"] = process.pid
+    _set_mining_status(seed)
 
     # Update last_indexed for the targeted sources
     now = datetime.now(timezone.utc).isoformat()
