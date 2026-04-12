@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { DollarSign, Zap, Activity, Calculator, type LucideIcon } from 'lucide-react'
+import { DollarSign, Zap, Activity, Calculator, Image, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -91,15 +91,53 @@ function SkeletonCard() {
   )
 }
 
+interface ImageCostEntry {
+  timestamp: string
+  model: string
+  provider: string
+  mode: string
+  output_file: string
+  size_bytes: number
+  elapsed_seconds: number
+  token_usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+}
+
+interface ImageCosts {
+  entries: ImageCostEntry[]
+  totals: { count: number; total_tokens: number; total_seconds: number; total_bytes: number }
+}
+
+function relativeTime(ts: string): string {
+  try {
+    const diff = Date.now() - new Date(ts).getTime()
+    const min = Math.floor(diff / 60000)
+    if (min < 1) return 'just now'
+    if (min < 60) return `${min}m ago`
+    const hr = Math.floor(min / 60)
+    if (hr < 24) return `${hr}h ago`
+    return `${Math.floor(hr / 24)}d ago`
+  } catch { return ts }
+}
+
+function formatBytes(b: number): string {
+  if (b < 1024) return `${b} B`
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function Costs() {
   const [data, setData] = useState<CostData | null>(null)
+  const [imageCosts, setImageCosts] = useState<ImageCosts | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/costs')
-      .then((raw) => setData(normalizeCostData(raw)))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false))
+    Promise.all([
+      api.get('/costs').catch(() => null),
+      api.get('/routines/image-costs').catch(() => null),
+    ]).then(([costRaw, imgRaw]) => {
+      if (costRaw) setData(normalizeCostData(costRaw))
+      if (imgRaw) setImageCosts(imgRaw)
+    }).finally(() => setLoading(false))
   }, [])
 
   if (loading) {
@@ -270,6 +308,60 @@ export default function Costs() {
           </table>
         </div>
       </div>
+
+      {/* Image Generation Costs */}
+      {imageCosts && imageCosts.entries.length > 0 && (
+        <div className="bg-[#161b22] border border-[#21262d] rounded-2xl overflow-hidden mt-6 transition-all duration-300 hover:shadow-[0_0_32px_rgba(0,255,167,0.04)]">
+          <div className="p-5 border-b border-[#21262d] flex items-center justify-between">
+            <h2 className="text-base font-semibold text-[#e6edf3] flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#F472B6]/10 border border-[#F472B6]/20">
+                <Image size={14} className="text-[#F472B6]" />
+              </div>
+              Image Generation
+            </h2>
+            <div className="flex items-center gap-4 text-[11px] text-[#667085]">
+              <span>{imageCosts.totals.count} images</span>
+              <span>{imageCosts.totals.total_tokens.toLocaleString()} tokens</span>
+              <span>{formatBytes(imageCosts.totals.total_bytes)}</span>
+              <span>{imageCosts.totals.total_seconds}s total</span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[#667085] text-[11px] uppercase tracking-wider font-medium">
+                  <th className="text-left p-4 pb-3">Model</th>
+                  <th className="text-left p-4 pb-3">Provider</th>
+                  <th className="text-left p-4 pb-3">Output</th>
+                  <th className="text-right p-4 pb-3">Tokens</th>
+                  <th className="text-right p-4 pb-3">Size</th>
+                  <th className="text-right p-4 pb-3">Time</th>
+                  <th className="text-right p-4 pb-3">When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...imageCosts.entries].reverse().map((e, i) => (
+                  <tr key={i} className="border-t border-[#21262d]/60 hover:bg-white/[0.02] transition-colors group">
+                    <td className="p-4">
+                      <code className="text-[11px] text-[#F472B6] font-mono bg-[#F472B6]/8 px-2 py-0.5 rounded border border-[#F472B6]/15">
+                        {e.model.split('/').pop()}
+                      </code>
+                    </td>
+                    <td className="p-4 text-[#8b949e] text-[13px]">{e.provider} <span className="text-[#667085]">({e.mode})</span></td>
+                    <td className="p-4 text-[#e6edf3] text-[13px] font-medium group-hover:text-white truncate max-w-[200px]" title={e.output_file}>
+                      {e.output_file.split('/').pop()}
+                    </td>
+                    <td className="p-4 text-right text-[#8b949e] tabular-nums text-[13px]">{e.token_usage.total_tokens.toLocaleString()}</td>
+                    <td className="p-4 text-right text-[#8b949e] tabular-nums text-[13px]">{formatBytes(e.size_bytes)}</td>
+                    <td className="p-4 text-right text-[#667085] tabular-nums text-[13px]">{e.elapsed_seconds.toFixed(1)}s</td>
+                    <td className="p-4 text-right text-[#667085] text-[13px] whitespace-nowrap">{relativeTime(e.timestamp)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

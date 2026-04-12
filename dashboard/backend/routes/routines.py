@@ -82,3 +82,35 @@ def list_adws():
                     pass
             scripts.append({"name": f.stem, "file": f.name, "description": doc})
     return jsonify(scripts)
+
+
+@bp.route("/api/routines/image-costs")
+def get_image_costs():
+    """Return AI image generation cost entries."""
+    costs_path = LOGS_DIR / "ai-image-creator-costs.json"
+    content = safe_read(costs_path)
+    if not content:
+        return jsonify({"entries": [], "totals": {}})
+    try:
+        entries = json.loads(content)
+    except json.JSONDecodeError:
+        return jsonify({"entries": [], "totals": {}})
+
+    total_tokens = 0
+    total_seconds = 0.0
+    total_bytes = 0
+    for e in entries:
+        tokens = e.get("token_usage", {})
+        total_tokens += tokens.get("total_tokens", 0)
+        total_seconds += e.get("elapsed_seconds", 0)
+        total_bytes += e.get("size_bytes", 0)
+
+    return jsonify({
+        "entries": entries,
+        "totals": {
+            "count": len(entries),
+            "total_tokens": total_tokens,
+            "total_seconds": round(total_seconds, 1),
+            "total_bytes": total_bytes,
+        },
+    })
