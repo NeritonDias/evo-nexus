@@ -173,14 +173,21 @@ def configure_access() -> dict:
     print(f"    {BOLD}1{RESET}) Local only (http://localhost:8080)")
     print(f"    {BOLD}2{RESET}) Domain with SSL (recommended for remote servers)")
 
-    choice = ask("Choice", "1")
-    if choice != "2":
+    choice = ask("Type 1 or 2", "1")
+
+    if choice not in ("1", "2"):
+        print(f"  {YELLOW}!{RESET} Invalid choice '{choice}'. Using local mode.")
         return {"mode": "local", "url": "http://localhost:8080"}
 
-    domain = ask("Domain", "")
+    if choice == "1":
+        return {"mode": "local", "url": "http://localhost:8080"}
+
+    domain = ask("Domain (e.g. nexus.example.com)", "")
     if not domain:
         print(f"  {YELLOW}!{RESET} No domain provided, using local mode")
         return {"mode": "local", "url": "http://localhost:8080"}
+    # Clean up if user pasted a full URL
+    domain = domain.strip().replace("http://", "").replace("https://", "").rstrip("/")
 
     # Step 1: Install nginx
     if not shutil.which("nginx"):

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.4] - 2026-04-12
+
+### Changed
+
+- **`make restore` stops/restarts services** — restore now kills Flask and terminal-server before extracting, then restarts via `start-services.sh` after. Prevents SQLite lock conflicts and ensures auto-migrate runs on the restored database
+- **Setup prompt clarified** — "Type 1 or 2" instead of "Choice" for Dashboard Access, rejects invalid input with clear message
+
+### Fixed
+
+- **SQLite auto-migrate fixes corrupted datetime columns** — on startup, Flask now detects and repairs NULL or non-string `created_at` values in `roles` and `users` tables. Prevents crash after restoring a backup from an older version
+
 ## [0.18.3] - 2026-04-12
 
 ### Added

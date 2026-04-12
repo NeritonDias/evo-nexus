@@ -224,7 +224,13 @@ backup-s3:          ## ☁️  Backup workspace data to local ZIP + S3 upload
 	$(PYTHON) backup.py backup --target s3
 
 restore:            ## 📥 Restore workspace from backup ZIP: make restore FILE=<path> [MODE=merge|replace]
+	@echo "▶ Stopping services before restore..."
+	@pkill -f "dashboard/terminal-server/bin/server.js" 2>/dev/null || true
+	@pkill -f "app.py" 2>/dev/null || true
+	@sleep 1
 	$(PYTHON) backup.py restore $(FILE) --mode $(or $(MODE),merge)
+	@echo "▶ Restarting services..."
+	@if [ -f start-services.sh ]; then bash start-services.sh; sleep 3; echo "✅ Services restarted"; else echo "ℹ Run ./start-services.sh or make dashboard-app to start"; fi
 
 backup-list:        ## 📋 List available backups (local or S3: make backup-list TARGET=s3)
 	$(PYTHON) backup.py list --target $(or $(TARGET),local)
