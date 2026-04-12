@@ -57,6 +57,7 @@
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
   --font-sans: var(--app-font-sans);
+  --font-heading: var(--app-font-heading);
   --font-serif: var(--app-font-serif);
   --font-mono: var(--app-font-mono);
 
@@ -124,6 +125,7 @@
   --chart-5: 27 87% 67%;
 
   --app-font-sans: 'Inter', sans-serif;
+  --app-font-heading: 'Space Grotesk', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: 'JetBrains Mono', monospace;
   --radius: .5rem; /* 8px */

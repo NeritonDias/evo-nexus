@@ -13,6 +13,17 @@ import {
   Briefcase,
   Database,
   Settings,
+  GitFork,
+  Calendar,
+  Mail,
+  ListTodo,
+  Zap,
+  Hash,
+  Send,
+  Phone,
+  Key,
+  GitBranch,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -52,6 +63,38 @@ const TYPE_META: Record<string, { icon: LucideIcon; color: string; colorMuted: s
 }
 
 const DEFAULT_TYPE = { icon: Plug, color: '#8b949e', colorMuted: 'rgba(139,148,158,0.12)', glowColor: 'rgba(139,148,158,0.15)' }
+
+// Per-integration icon + color (overrides TYPE_META when matched by name)
+const INTEGRATION_ICONS: Record<string, { icon: LucideIcon; color: string; colorMuted: string }> = {
+  'omie':           { icon: DollarSign,    color: '#34D399', colorMuted: 'rgba(52,211,153,0.12)' },
+  'stripe':         { icon: DollarSign,    color: '#635BFF', colorMuted: 'rgba(99,91,255,0.12)' },
+  'bling':          { icon: DollarSign,    color: '#3B82F6', colorMuted: 'rgba(59,130,246,0.12)' },
+  'asaas':          { icon: Zap,           color: '#FBBF24', colorMuted: 'rgba(251,191,36,0.12)' },
+  'todoist':        { icon: ListTodo,      color: '#E44332', colorMuted: 'rgba(228,67,50,0.12)' },
+  'fathom':         { icon: Video,         color: '#7C3AED', colorMuted: 'rgba(124,58,237,0.12)' },
+  'discord':        { icon: Hash,          color: '#5865F2', colorMuted: 'rgba(88,101,242,0.12)' },
+  'telegram':       { icon: Send,          color: '#26A5E4', colorMuted: 'rgba(38,165,228,0.12)' },
+  'whatsapp':       { icon: Phone,         color: '#25D366', colorMuted: 'rgba(37,211,102,0.12)' },
+  'licensing':      { icon: Key,           color: '#00FFA7', colorMuted: 'rgba(0,255,167,0.12)' },
+  'evolution api':  { icon: MessageSquare, color: '#00FFA7', colorMuted: 'rgba(0,255,167,0.12)' },
+  'evolution go':   { icon: GitBranch,     color: '#00FFA7', colorMuted: 'rgba(0,255,167,0.12)' },
+  'evo crm':        { icon: Database,      color: '#00FFA7', colorMuted: 'rgba(0,255,167,0.12)' },
+  'github':         { icon: GitFork,       color: '#E6EDF3', colorMuted: 'rgba(230,237,243,0.12)' },
+  'linear':         { icon: BookOpen,      color: '#5E6AD2', colorMuted: 'rgba(94,106,210,0.12)' },
+  'google calendar': { icon: Calendar,     color: '#4285F4', colorMuted: 'rgba(66,133,244,0.12)' },
+  'gmail':          { icon: Mail,          color: '#EA4335', colorMuted: 'rgba(234,67,53,0.12)' },
+  'youtube':        { icon: Video,         color: '#FF0000', colorMuted: 'rgba(255,0,0,0.12)' },
+  'instagram':      { icon: Camera,        color: '#E4405F', colorMuted: 'rgba(228,64,95,0.12)' },
+  'linkedin':       { icon: Briefcase,     color: '#0A66C2', colorMuted: 'rgba(10,102,194,0.12)' },
+  'notion':         { icon: BookOpen,      color: '#FFFFFF', colorMuted: 'rgba(255,255,255,0.08)' },
+  'canva':          { icon: Globe,         color: '#00C4CC', colorMuted: 'rgba(0,196,204,0.12)' },
+  'figma':          { icon: Globe,         color: '#A259FF', colorMuted: 'rgba(162,89,255,0.12)' },
+}
+
+function getIntegrationIcon(name: string) {
+  const key = Object.keys(INTEGRATION_ICONS).find(k => name.toLowerCase().includes(k))
+  return key ? INTEGRATION_ICONS[key] : null
+}
 
 function getTypeMeta(type: string) {
   if (!type) return DEFAULT_TYPE
@@ -208,7 +251,10 @@ export default function Integrations() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {integrations.map((int, i) => {
                 const typeMeta = getTypeMeta(int.type)
-                const Icon = typeMeta.icon
+                const intIcon = getIntegrationIcon(int.name)
+                const Icon = intIcon?.icon ?? typeMeta.icon
+                const iconColor = intIcon?.color ?? typeMeta.color
+                const iconBg = intIcon?.colorMuted ?? typeMeta.colorMuted
                 const isConnected = int.status === 'ok'
                 const intMeta = getIntegrationMeta(int.name)
                 const isOAuth = intMeta?.oauthFlow === true
@@ -249,9 +295,9 @@ export default function Integrations() {
                     <div className="relative flex items-start justify-between mb-3">
                       <div
                         className="flex h-10 w-10 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
-                        style={{ backgroundColor: typeMeta.colorMuted }}
+                        style={{ backgroundColor: iconBg }}
                       >
-                        <Icon size={20} style={{ color: typeMeta.color }} />
+                        <Icon size={20} style={{ color: iconColor }} />
                       </div>
                       <span
                         className="inline-block h-2.5 w-2.5 rounded-full mt-1"
