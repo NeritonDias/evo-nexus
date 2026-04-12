@@ -31,6 +31,16 @@ export const api = {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     return res.json();
   },
+  patch: async (path: string, body?: unknown) => {
+    const res = await fetch(`${API}/api${path}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
+  },
   delete: async (path: string) => {
     const res = await fetch(`${API}/api${path}`, {
       method: 'DELETE',
