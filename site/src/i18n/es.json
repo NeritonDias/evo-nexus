@@ -1,0 +1,187 @@
+{
+  "nav": {
+    "github": "GitHub",
+    "docs": "Docs",
+    "getStarted": "Comenzar"
+  },
+  "hero": {
+    "badge": "v{{version}} ya disponible",
+    "title": "Gestiona tu empresa",
+    "titleHighlight": "con agentes de IA.",
+    "subtitle": "Finanzas, marketing, legal, ventas, comunidad, ingeniería. 38 agentes especializados listos para trabajar. Open source. Un comando.",
+    "cta": "Comienza Ahora, es gratis",
+    "viewGithub": "Ver en GitHub",
+    "discord": "Únete a 17,000+ devs en Discord",
+    "stats": {
+      "community": "Miembros en la comunidad",
+      "agents": "Agentes de IA",
+      "skills": "Skills",
+      "integrations": "Integraciones"
+    }
+  },
+  "screenshots": {
+    "sectionTitle": "Centro de comando de tu equipo de IA",
+    "sectionSubtitle": "Ve y controla cada agente, rutina y costo de IA en tiempo real.",
+    "sectionNote": "Dashboard web incluido. Sin configuración extra.",
+    "clickToExpand": "Clic para ampliar",
+    "overview": "Dashboard General",
+    "multiAgents": "Multi Agentes",
+    "integrationsTitle": "Integraciones",
+    "costTracking": "Control de Costos"
+  },
+  "features": {
+    "sectionTitle": "Todo incluido. Sin lock-in.",
+    "sectionSubtitle": "EvoNexus viene con un conjunto completo de herramientas listas para usar.",
+    "agents": {
+      "title": "38 Agentes Especializados",
+      "desc": "17 agentes de negocio (ops, finanzas, marketing, ventas, legal y más) + 21 agentes de ingeniería (arquitectura, código, revisión, pruebas, seguridad y más). Cada uno con su propia memoria y alcance."
+    },
+    "skills": {
+      "title": "175+ Skills",
+      "desc": "Skills de negocio (fin-, social-, mkt-, hr-, legal-...) más 25 dev-* skills de ingeniería (autopilot, plan, ralplan, verify, ultraqa, trace...)"
+    },
+    "routines": {
+      "title": "Rutinas Automatizadas",
+      "desc": "Del briefing matutino al cierre mensual, ejecutándose en horario automáticamente"
+    },
+    "dashboard": {
+      "title": "Dashboard Web",
+      "desc": "React + Flask con auth, roles, terminal, reportes, gestión de servicios"
+    },
+    "integrations": {
+      "title": "23 Integraciones",
+      "desc": "Gmail, Calendar, GitHub, Linear, Discord, Stripe, Bling, Asaas, Omie y más"
+    },
+    "channels": {
+      "title": "Canales",
+      "desc": "Chat bidireccional via Telegram, Discord e iMessage. Habla con Claude desde tu móvil."
+    },
+    "memory": {
+      "title": "Memoria Persistente",
+      "desc": "Sistema de dos niveles que recuerda el contexto entre conversaciones y sesiones"
+    },
+    "teams": {
+      "title": "Equipos de Agentes",
+      "desc": "Ejecución paralela de múltiples agentes para rutinas de consolidación más rápidas (experimental)"
+    },
+    "scheduled": {
+      "title": "Tareas Programadas",
+      "desc": "Acciones únicas en fecha/hora específica. Programa una skill, prompt o script."
+    },
+    "openSource": {
+      "title": "100% Open Source",
+      "desc": "Licencia MIT, haz fork, personalízalo, controla toda tu infraestructura de IA."
+    }
+  },
+  "why": {
+    "sectionTitle": "Qué cambia cuando tienes un equipo de IA estructurado",
+    "sectionSubtitle": "Claude Code es poderoso. Sin estructura, reconfiguras el mismo agente cada semana. Con EvoNexus, recuerda quién eres.",
+    "markdownFirst": {
+      "title": "Agentes en Markdown",
+      "desc": "Los agentes son archivos .md simples con system prompts. Sin SDK, sin plugin runtime, sin compilación. Pon un archivo en .claude/agents/ y ya está activo."
+    },
+    "skillsAsInstructions": {
+      "title": "Skills como Instrucciones",
+      "desc": "175+ capacidades reutilizables en finanzas, comunidad, social, ingeniería, datos, legal, RRHH, ops, producto, CS. Cada una un conjunto de instrucciones en markdown. Agrega, edita o elimina editando texto."
+    },
+    "multiProvider": {
+      "title": "Multi-Provider, Sin Lock-In",
+      "desc": "Por defecto corre en la CLI nativa de Claude de Anthropic, o cambia a OpenRouter, OpenAI, Gemini, Bedrock o Vertex AI via OpenClaude. Un clic en la página de Providers, sin cambios de código. Tus claves, tu elección de modelo."
+    },
+    "mcpIntegrations": {
+      "title": "Integraciones MCP",
+      "desc": "El Model Context Protocol conecta agentes a Google Calendar, Gmail, GitHub, Linear, Telegram, Canva, Notion y más. Interfaz estandarizada con soporte nativo incluido."
+    },
+    "slashCommands": {
+      "title": "Slash Commands",
+      "desc": "Escribe /clawdia, /flux, /pulse o /apex para activar agentes instantáneamente. Interfaz de comando natural directo en la terminal. Sin menús, sin formularios."
+    },
+    "persistentMemory": {
+      "title": "Memoria Persistente",
+      "desc": "Memoria en dos niveles: CLAUDE.md para estado de trabajo, memory/ por agente para contexto a largo plazo. Sobrevive entre sesiones. Tus agentes recuerdan quién eres, en qué estás trabajando y qué se decidió."
+    }
+  },
+  "howItWorks": {
+    "sectionTitle": "De cero a operaciones con IA en minutos",
+    "step1": {
+      "title": "Instalar",
+      "desc": "El asistente de CLI configura todo"
+    },
+    "step2": {
+      "title": "Iniciar Dashboard",
+      "desc": "UI web con setup de admin y scheduler incluidos"
+    },
+    "step3": {
+      "title": "Usar Tus Agentes",
+      "code": "Di 'buenos días'",
+      "desc": "Tu equipo de IA se hace cargo de tus rutinas"
+    }
+  },
+  "agents": {
+    "sectionTitle": "Conoce a tu nuevo equipo",
+    "sectionSubtitle": "38 agentes especializados listos para gestionar tus operaciones y tu código. 17 de negocio + 21 de ingeniería.",
+    "seeAll": "Ver los 38 agentes",
+    "attribution": "19 agentes de ingeniería derivados de oh-my-claudecode (MIT, por Yeachan Heo) + 2 nativos",
+    "clawdia": {
+      "role": "Ops",
+      "desc": "Responde correos, agenda reuniones, entrega tu briefing diario antes de abrir el portátil."
+    },
+    "flux": {
+      "role": "Finanzas",
+      "desc": "Stripe, integración con ERP, reportes de flujo de caja y cierre mensual. Sin hoja de cálculo."
+    },
+    "atlas": {
+      "role": "Proyectos",
+      "desc": "PRs en GitHub, issues en Linear, seguimiento de sprint. Un agente para la vista completa del proyecto."
+    },
+    "oracle": {
+      "role": "Conocimiento",
+      "desc": "Consultor de onboarding. Entrevista tu negocio, mapea las capacidades del workspace y entrega un plan de implementación."
+    },
+    "pixel": {
+      "role": "Social",
+      "desc": "Calendario de contenido, borradores de posts, reportes de analytics en YouTube, Instagram, LinkedIn."
+    },
+    "pulse": {
+      "role": "Comunidad",
+      "desc": "Monitoreo de Discord y WhatsApp, sincronización de FAQ, análisis de sentimiento. Tu comunidad nunca duerme."
+    },
+    "apex": {
+      "role": "Arquitecto",
+      "desc": "Diseño arquitectural, debugging de solo lectura, análisis de trade-offs. Razonamiento nivel Opus."
+    },
+    "bolt": {
+      "role": "Ejecutor",
+      "desc": "Implementación con el mínimo diff viable. Archivos cambiados, tests pasando, sin scope creep."
+    }
+  },
+  "socialProof": {
+    "production": "Usado en producción",
+    "since": "desde 2024",
+    "agents": "agentes",
+    "skills": "skills",
+    "communityMembers": "miembros en la comunidad",
+    "license": "Licencia"
+  },
+  "quickstart": {
+    "sectionTitle": "Empieza en 60 segundos",
+    "sectionSubtitle": "Un comando. Eso es todo.",
+    "comment": "# O manualmente: git clone + make setup + make dashboard-app",
+    "viewGuide": "Ver Guía de Inicio Rápido"
+  },
+  "integrations": {
+    "label": "Conecta con todo lo que usas"
+  },
+  "banner": {
+    "text": "Un proyecto open source de Evolution Foundation.",
+    "cta": "Saber más"
+  },
+  "footer": {
+    "tagline": "Un proyecto de Evolution Foundation.",
+    "links": "Links",
+    "documentation": "Documentación",
+    "contributing": "Contribuir",
+    "changelog": "Changelog",
+    "disclaimer": "Toolkit no oficial para Claude Code. Sin afiliación con Anthropic."
+  }
+}
