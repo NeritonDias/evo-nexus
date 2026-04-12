@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.7] - 2026-04-12
+
+### Added
+
+- **Dedicated `evonexus` user + systemd service** — VPS setup (`is_remote=True` as root) now automatically creates a dedicated system user, installs uv + Claude Code for it, and configures a systemd service (`evo-nexus`) that auto-starts on boot. Solves the Claude Code restriction that blocks `--dangerously-skip-permissions` as root
+- **`install-service.sh`** — standalone script to install the systemd service on existing installations (`sudo bash install-service.sh`). Safe to re-run
+- **CLI update mode uses systemd** — `npx @evoapi/evo-nexus .` now detects the systemd service and uses `systemctl restart` instead of calling `start-services.sh` directly. Syncs files to the service directory when they differ
+
+### Fixed
+
+- **systemd service type** — uses `Type=oneshot` with `RemainAfterExit=yes` since `start-services.sh` launches background processes with `nohup`
+
 ## [0.18.6] - 2026-04-12
 
 ### Fixed
