@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, Copy, Check } from 'lucide-react'
 import { api } from '../lib/api'
 import FileTree from '../components/workspace/FileTree'
 import FileToolbar, { type EditorMode } from '../components/workspace/FileToolbar'
@@ -8,6 +8,7 @@ import FilePreview from '../components/workspace/FilePreview'
 import FileEditor from '../components/workspace/FileEditor'
 import ConfirmDialog, { type ConfirmVariant } from '../components/workspace/ConfirmDialog'
 import UploadDropzone from '../components/workspace/UploadDropzone'
+import FileTabs, { type TabEntry } from '../components/workspace/FileTabs'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8080' : ''
 
@@ -103,7 +104,23 @@ export default function Workspace() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [isDir, setIsDir] = useState(false)
   const [mode, setMode] = useState<EditorMode>('preview')
-  const [isDirty, setIsDirty] = useState(false)
+  // Per-tab state — restore from localStorage on mount
+  const [openTabs, setOpenTabs] = useState<TabEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('evo:workspace:tabs')
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [dirtyTabs, setDirtyTabs] = useState<Set<string>>(new Set())
+  const [tabEditorContents, setTabEditorContents] = useState<Record<string, string>>({})
+  const [tabModes, setTabModes] = useState<Record<string, EditorMode>>({})
+  // Persist tabs to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('evo:workspace:tabs', JSON.stringify(openTabs)) } catch {}
+  }, [openTabs])
+
+  // Derived: is the active tab dirty?
+  const isDirty = dirtyTabs.has(selectedPath ?? '')
   const [editorContent, setEditorContent] = useState<string | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -132,16 +149,16 @@ export default function Workspace() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000)
   }, [])
 
-  // beforeunload guard
+  // beforeunload guard — fires if any tab has unsaved changes
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
+      if (dirtyTabs.size > 0) {
         e.preventDefault()
       }
     }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [isDirty])
+  }, [dirtyTabs])
 
   // Deep-link: sync URL → selectedPath
   // URL shape: /workspace/<path>
@@ -234,28 +251,116 @@ export default function Workspace() {
     }
   }, [])
 
+  // Save current tab editor state before switching away
+  const saveCurrentTabState = useCallback(() => {
+    if (!selectedPath) return
+    setTabModes(prev => ({ ...prev, [selectedPath]: mode }))
+    if (mode === 'edit') {
+      const content = editorRef.current?.getContent() ?? editorContent ?? ''
+      setTabEditorContents(prev => ({ ...prev, [selectedPath]: content }))
+    }
+  }, [selectedPath, mode, editorContent])
+
   const handleSelect = useCallback((path: string, dir: boolean) => {
-    if (isDirty) {
-      setConfirmDialog({
-        variant: 'discard',
-        filename: selectedPath?.split('/').pop() ?? '',
-        onConfirm: () => {
-          setConfirmDialog(null)
-          setIsDirty(false)
-          setMode('preview')
-          setEditorContent(null)
-          setSelectedPath(path)
-          setIsDir(dir)
-        },
-      })
+    // Directories: just navigate, no tab
+    if (dir) {
+      saveCurrentTabState()
+      setSelectedPath(path)
+      setIsDir(true)
+      setMode('preview')
+      setEditorContent(null)
       return
     }
+
+    // Check if tab already open
+    const alreadyOpen = openTabs.some(t => t.path === path)
+
+    if (alreadyOpen) {
+      // Just switch to it
+      saveCurrentTabState()
+      const savedMode = tabModes[path] ?? 'preview'
+      const savedContent = tabEditorContents[path] ?? null
+      setSelectedPath(path)
+      setIsDir(false)
+      setMode(savedMode)
+      setEditorContent(savedMode === 'edit' ? savedContent : null)
+      return
+    }
+
+    // New file: save current state, open new tab
+    saveCurrentTabState()
+    setOpenTabs(prev => [...prev, { path }])
     setSelectedPath(path)
-    setIsDir(dir)
+    setIsDir(false)
     setMode('preview')
-    setIsDirty(false)
     setEditorContent(null)
-  }, [isDirty, selectedPath])
+  }, [openTabs, tabModes, tabEditorContents, saveCurrentTabState])
+
+  const markTabDirty = useCallback((path: string, dirty: boolean) => {
+    setDirtyTabs(prev => {
+      const next = new Set(prev)
+      if (dirty) next.add(path)
+      else next.delete(path)
+      return next
+    })
+  }, [])
+
+  const handleTabSwitch = useCallback((path: string) => {
+    if (path === selectedPath) return
+    saveCurrentTabState()
+    const savedMode = tabModes[path] ?? 'preview'
+    const savedContent = tabEditorContents[path] ?? null
+    setSelectedPath(path)
+    setIsDir(false)
+    setMode(savedMode)
+    setEditorContent(savedMode === 'edit' ? savedContent : null)
+  }, [selectedPath, tabModes, tabEditorContents, saveCurrentTabState])
+
+  const handleTabClose = useCallback((path: string) => {
+    const isCurrentlyActive = path === selectedPath
+
+    const performClose = () => {
+      setOpenTabs(prev => {
+        const idx = prev.findIndex(t => t.path === path)
+        const next = prev.filter(t => t.path !== path)
+
+        if (isCurrentlyActive && next.length > 0) {
+          // Switch to adjacent tab
+          const newActive = next[idx] ?? next[idx - 1]
+          const savedMode = tabModes[newActive.path] ?? 'preview'
+          const savedContent = tabEditorContents[newActive.path] ?? null
+          setSelectedPath(newActive.path)
+          setIsDir(false)
+          setMode(savedMode)
+          setEditorContent(savedMode === 'edit' ? savedContent : null)
+        } else if (isCurrentlyActive && next.length === 0) {
+          setSelectedPath(null)
+          setIsDir(false)
+          setMode('preview')
+          setEditorContent(null)
+        }
+
+        return next
+      })
+      // Clean up per-tab state
+      setDirtyTabs(prev => { const n = new Set(prev); n.delete(path); return n })
+      setTabEditorContents(prev => { const n = { ...prev }; delete n[path]; return n })
+      setTabModes(prev => { const n = { ...prev }; delete n[path]; return n })
+    }
+
+    if (dirtyTabs.has(path)) {
+      setConfirmDialog({
+        variant: 'discard',
+        filename: path.split('/').pop() ?? '',
+        onConfirm: () => {
+          setConfirmDialog(null)
+          performClose()
+        },
+      })
+    } else {
+      performClose()
+    }
+  }, [selectedPath, dirtyTabs, tabModes, tabEditorContents])
 
   const handleEdit = useCallback(async () => {
     if (!selectedPath || isDir) return
@@ -266,8 +371,9 @@ export default function Workspace() {
         return
       }
       setEditorContent(data.content)
+      setTabEditorContents(prev => ({ ...prev, [selectedPath]: data.content }))
       setMode('edit')
-      setIsDirty(false)
+      setTabModes(prev => ({ ...prev, [selectedPath]: 'edit' }))
     } catch {
       showToast('Erro ao carregar arquivo para edição', 'error')
     }
@@ -278,12 +384,12 @@ export default function Workspace() {
     const finalContent = content ?? editorRef.current?.getContent() ?? editorContent ?? ''
     try {
       await api.put('/workspace/file', { path: selectedPath, content: finalContent })
-      setIsDirty(false)
+      markTabDirty(selectedPath, false)
       showToast('Arquivo salvo')
     } catch {
       showToast('Erro ao salvar arquivo', 'error')
     }
-  }, [selectedPath, editorContent, showToast])
+  }, [selectedPath, editorContent, showToast, markTabDirty])
 
   const handleCancel = useCallback(() => {
     if (isDirty) {
@@ -293,15 +399,17 @@ export default function Workspace() {
         onConfirm: () => {
           setConfirmDialog(null)
           setMode('preview')
-          setIsDirty(false)
+          setTabModes(prev => selectedPath ? { ...prev, [selectedPath]: 'preview' } : prev)
+          if (selectedPath) markTabDirty(selectedPath, false)
           setEditorContent(null)
         },
       })
     } else {
       setMode('preview')
+      setTabModes(prev => selectedPath ? { ...prev, [selectedPath]: 'preview' } : prev)
       setEditorContent(null)
     }
-  }, [isDirty, selectedPath])
+  }, [isDirty, selectedPath, markTabDirty])
 
   const handleDelete = useCallback(() => {
     if (!selectedPath) return
@@ -312,11 +420,30 @@ export default function Workspace() {
       onConfirm: async () => {
         setConfirmDialog(null)
         try {
-          await api.delete(`/workspace/file?path=${encodeURIComponent(selectedPath)}`)
-          setSelectedPath(null)
-          setMode('preview')
-          setIsDirty(false)
-          setEditorContent(null)
+          const pathToDelete = selectedPath
+          await api.delete(`/workspace/file?path=${encodeURIComponent(pathToDelete)}`)
+          // Close the tab for the deleted file
+          setOpenTabs(prev => {
+            const idx = prev.findIndex(t => t.path === pathToDelete)
+            const next = prev.filter(t => t.path !== pathToDelete)
+            if (next.length > 0) {
+              const newActive = next[idx] ?? next[idx - 1]
+              const savedMode = tabModes[newActive.path] ?? 'preview'
+              const savedContent = tabEditorContents[newActive.path] ?? null
+              setSelectedPath(newActive.path)
+              setIsDir(false)
+              setMode(savedMode)
+              setEditorContent(savedMode === 'edit' ? savedContent : null)
+            } else {
+              setSelectedPath(null)
+              setMode('preview')
+              setEditorContent(null)
+            }
+            return next
+          })
+          setDirtyTabs(prev => { const n = new Set(prev); n.delete(pathToDelete); return n })
+          setTabEditorContents(prev => { const n = { ...prev }; delete n[pathToDelete]; return n })
+          setTabModes(prev => { const n = { ...prev }; delete n[pathToDelete]; return n })
           setRefreshTrigger(t => t + 1)
           showToast('Arquivo movido para .trash/')
         } catch {
@@ -324,7 +451,7 @@ export default function Workspace() {
         }
       },
     })
-  }, [selectedPath, showToast])
+  }, [selectedPath, showToast, tabModes, tabEditorContents])
 
   const handleRename = useCallback(() => {
     if (!selectedPath) return
@@ -338,7 +465,26 @@ export default function Workspace() {
         const dir = selectedPath.split('/').slice(0, -1).join('/')
         const newPath = dir ? `${dir}/${newName}` : newName
         try {
-          await api.post('/workspace/rename', { from: selectedPath, to: newPath })
+          const oldPath = selectedPath
+          await api.post('/workspace/rename', { from: oldPath, to: newPath })
+          // Update tab entry for renamed file
+          setOpenTabs(prev => prev.map(t => t.path === oldPath ? { path: newPath } : t))
+          // Migrate per-tab state to new path
+          setDirtyTabs(prev => {
+            const next = new Set(prev)
+            if (next.has(oldPath)) { next.delete(oldPath); next.add(newPath) }
+            return next
+          })
+          setTabEditorContents(prev => {
+            const n = { ...prev }
+            if (oldPath in n) { n[newPath] = n[oldPath]; delete n[oldPath] }
+            return n
+          })
+          setTabModes(prev => {
+            const n = { ...prev }
+            if (oldPath in n) { n[newPath] = n[oldPath]; delete n[oldPath] }
+            return n
+          })
           setSelectedPath(newPath)
           setRefreshTrigger(t => t + 1)
           showToast('Renomeado com sucesso')
@@ -363,8 +509,11 @@ export default function Workspace() {
         try {
           await api.post('/workspace/file', { path })
           setRefreshTrigger(t => t + 1)
+          setOpenTabs(prev => prev.some(t => t.path === path) ? prev : [...prev, { path }])
           setSelectedPath(path)
           setIsDir(false)
+          setMode('preview')
+          setEditorContent(null)
           showToast('Arquivo criado')
         } catch {
           showToast('Erro ao criar arquivo', 'error')
@@ -429,6 +578,16 @@ export default function Workspace() {
     })
   }, [])
 
+  const [copiedPath, setCopiedPath] = useState(false)
+
+  const handleCopyPath = useCallback(() => {
+    if (!selectedPath) return
+    navigator.clipboard.writeText(selectedPath).then(() => {
+      setCopiedPath(true)
+      setTimeout(() => setCopiedPath(false), 1500)
+    })
+  }, [selectedPath])
+
   const pageTitle = selectedPath
     ? `${selectedPath}${isDirty ? ' \u25CF' : ''}`
     : 'Workspace'
@@ -463,6 +622,15 @@ export default function Workspace() {
           onDownload={handleDownload}
         />
 
+        {/* File tabs */}
+        <FileTabs
+          tabs={openTabs}
+          activePath={selectedPath}
+          dirtyPaths={dirtyTabs}
+          onSwitch={handleTabSwitch}
+          onClose={handleTabClose}
+        />
+
         {/* Path title */}
         {selectedPath && (
           <div
@@ -473,7 +641,21 @@ export default function Workspace() {
               color: isDirty ? 'var(--warning)' : 'var(--text-muted)',
             }}
           >
-            <span className="truncate">{pageTitle}</span>
+            <span className="truncate flex-1">{pageTitle}</span>
+            <button
+              onClick={handleCopyPath}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors flex-shrink-0"
+              style={{
+                color: copiedPath ? 'var(--evo-green)' : 'var(--text-muted)',
+                background: 'transparent',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              title="Copiar path"
+            >
+              {copiedPath ? <Check size={12} /> : <Copy size={12} />}
+              <span>{copiedPath ? 'Copiado' : 'Copiar'}</span>
+            </button>
           </div>
         )}
 
@@ -505,7 +687,7 @@ export default function Workspace() {
             <FileEditor
               initialContent={editorContent}
               path={selectedPath}
-              onDirtyChange={setIsDirty}
+              onDirtyChange={(dirty) => markTabDirty(selectedPath, dirty)}
               onSave={handleSave}
               editorRef={editorRef}
             />

@@ -1,41 +1,55 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../lib/api'
-import { Shield, Plus, Pencil, Trash2, X, Check, Lock } from 'lucide-react'
+import { Shield, Plus, Pencil, Trash2, X, Check, Lock, Users, Code2 } from 'lucide-react'
+
+interface AgentAccess {
+  mode: 'all' | 'none' | 'selected' | 'layer'
+  agents?: string[]
+  layers?: string[]
+}
 
 interface RoleData {
   id: number
   name: string
   description: string
   permissions: Record<string, string[]>
+  agent_access: AgentAccess
   is_builtin: boolean
 }
 
 type Resources = Record<string, string[]>
+type AgentLayers = Record<string, string> // agent-name → "business" | "engineering"
 
 function countPermissions(perms: Record<string, string[]>): number {
   return Object.values(perms).reduce((sum, actions) => sum + actions.length, 0)
 }
 
+const DEFAULT_AGENT_ACCESS: AgentAccess = { mode: 'all' }
+
 export default function Roles() {
   const [roles, setRoles] = useState<RoleData[]>([])
   const [resources, setResources] = useState<Resources>({})
+  const [agentLayers, setAgentLayers] = useState<AgentLayers>({})
   const [loading, setLoading] = useState(true)
   const [editingRole, setEditingRole] = useState<RoleData | null>(null)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [editPerms, setEditPerms] = useState<Record<string, string[]>>({})
+  const [editAgentAccess, setEditAgentAccess] = useState<AgentAccess>(DEFAULT_AGENT_ACCESS)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
-      const [rolesData, resourcesData] = await Promise.all([
+      const [rolesData, resourcesData, agentLayersData] = await Promise.all([
         api.get('/roles'),
         api.get('/roles/resources'),
+        api.get('/roles/agent-layers'),
       ])
       setRoles(Array.isArray(rolesData) ? rolesData : [])
       setResources(resourcesData || {})
+      setAgentLayers(agentLayersData || {})
     } catch {
       /* ignore */
     } finally {
@@ -48,6 +62,7 @@ export default function Roles() {
   const openEdit = (role: RoleData) => {
     setEditingRole(role)
     setEditPerms(JSON.parse(JSON.stringify(role.permissions)))
+    setEditAgentAccess(JSON.parse(JSON.stringify(role.agent_access || DEFAULT_AGENT_ACCESS)))
     setNewName(role.name)
     setNewDesc(role.description || '')
     setCreating(false)
@@ -57,6 +72,7 @@ export default function Roles() {
   const openCreate = () => {
     setEditingRole(null)
     setEditPerms({})
+    setEditAgentAccess(DEFAULT_AGENT_ACCESS)
     setNewName('')
     setNewDesc('')
     setCreating(true)
@@ -105,12 +121,14 @@ export default function Roles() {
           name: newName.trim(),
           description: newDesc.trim(),
           permissions: editPerms,
+          agent_access: editAgentAccess,
         })
       } else if (editingRole) {
         await api.put(`/roles/${editingRole.id}`, {
           name: editingRole.is_builtin ? undefined : newName.trim(),
           description: newDesc.trim(),
           permissions: editPerms,
+          agent_access: editAgentAccess,
         })
       }
       closeEditor()
@@ -330,6 +348,139 @@ export default function Roles() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Agent Access section */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-[#e6edf3] mb-3">Acesso a Agentes</h3>
+
+            {/* Mode selector */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {([
+                { value: 'all', label: 'Todos' },
+                { value: 'layer', label: 'Por camada' },
+                { value: 'selected', label: 'Selecionar agentes' },
+                { value: 'none', label: 'Nenhum' },
+              ] as { value: AgentAccess['mode']; label: string }[]).map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setEditAgentAccess({ mode: value })}
+                  className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                    editAgentAccess.mode === value
+                      ? 'bg-[#00FFA7]/10 border-[#00FFA7]/40 text-[#00FFA7]'
+                      : 'border-[#21262d] text-[#667085] hover:text-[#e6edf3] hover:border-[#30363d]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Layer selector */}
+            {editAgentAccess.mode === 'layer' && (
+              <div className="flex gap-3">
+                {(['business', 'engineering'] as const).map((layer) => {
+                  const count = Object.values(agentLayers).filter((l) => l === layer).length
+                  const active = (editAgentAccess.layers || []).includes(layer)
+                  return (
+                    <button
+                      key={layer}
+                      onClick={() => {
+                        const current = editAgentAccess.layers || []
+                        const next = active
+                          ? current.filter((l) => l !== layer)
+                          : [...current, layer]
+                        setEditAgentAccess({ mode: 'layer', layers: next })
+                      }}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+                        active
+                          ? 'bg-[#00FFA7]/10 border-[#00FFA7]/40 text-[#00FFA7]'
+                          : 'border-[#21262d] text-[#667085] hover:border-[#30363d] hover:text-[#e6edf3]'
+                      }`}
+                    >
+                      {layer === 'business' ? <Users size={16} /> : <Code2 size={16} />}
+                      <div className="text-left">
+                        <div className="text-[13px] font-medium capitalize">{layer} Layer</div>
+                        <div className="text-[11px] opacity-70">{count} agentes</div>
+                      </div>
+                      {active && <Check size={14} className="ml-1" />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Individual agent selector */}
+            {editAgentAccess.mode === 'selected' && (
+              <div className="rounded-lg border border-[#21262d] overflow-hidden">
+                {(['business', 'engineering'] as const).map((layer) => {
+                  const layerAgents = Object.entries(agentLayers)
+                    .filter(([, l]) => l === layer)
+                    .map(([name]) => name)
+                    .sort()
+                  if (layerAgents.length === 0) return null
+                  const selected = editAgentAccess.agents || []
+                  const allSelected = layerAgents.every((a) => selected.includes(a))
+                  return (
+                    <div key={layer} className="border-b border-[#21262d] last:border-b-0">
+                      <div className="flex items-center justify-between px-4 py-2 bg-[#0d1117]">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#667085]">
+                          {layer === 'business' ? <Users size={12} /> : <Code2 size={12} />}
+                          {layer}
+                        </div>
+                        <button
+                          onClick={() => {
+                            const current = editAgentAccess.agents || []
+                            const next = allSelected
+                              ? current.filter((a) => !layerAgents.includes(a))
+                              : [...new Set([...current, ...layerAgents])]
+                            setEditAgentAccess({ mode: 'selected', agents: next })
+                          }}
+                          className="text-[10px] text-[#667085] hover:text-[#00FFA7] transition-colors"
+                        >
+                          {allSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-1 p-2">
+                        {layerAgents.map((agentName) => {
+                          const isSelected = selected.includes(agentName)
+                          const label = agentName
+                            .split('-')
+                            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                            .join(' ')
+                          return (
+                            <button
+                              key={agentName}
+                              onClick={() => {
+                                const current = editAgentAccess.agents || []
+                                const next = isSelected
+                                  ? current.filter((a) => a !== agentName)
+                                  : [...current, agentName]
+                                setEditAgentAccess({ mode: 'selected', agents: next })
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-colors ${
+                                isSelected
+                                  ? 'bg-[#00FFA7]/8 border-[#00FFA7]/20 text-[#e6edf3]'
+                                  : 'border-[#21262d] text-[#667085] hover:border-[#30363d] hover:text-[#e6edf3]'
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                                  isSelected ? 'bg-[#00FFA7] border-[#00FFA7]' : 'border-[#21262d]'
+                                }`}
+                              >
+                                {isSelected && <Check size={10} className="text-[#0d1117]" />}
+                              </div>
+                              <span className="text-[11px] truncate">{label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Actions */}

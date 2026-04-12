@@ -68,6 +68,7 @@ function TreeItem({ node, level, selectedPath, onSelect, onNavigate, searchTerm 
   const [expanded, setExpanded] = useState(false)
   const [children, setChildren] = useState<TreeNode[]>([])
   const [loadingChildren, setLoadingChildren] = useState(false)
+  const hasAutoExpanded = useRef(false)
   const isSelected = selectedPath === node.path
 
   const loadChildren = useCallback(async () => {
@@ -86,6 +87,21 @@ function TreeItem({ node, level, selectedPath, onSelect, onNavigate, searchTerm 
       setLoadingChildren(false)
     }
   }, [node.path, node.is_dir, loadingChildren])
+
+  // Auto-expand ancestor folders when selectedPath is inside this node
+  useEffect(() => {
+    if (
+      !hasAutoExpanded.current &&
+      node.is_dir &&
+      selectedPath &&
+      selectedPath.startsWith(node.path + '/') &&
+      !expanded
+    ) {
+      hasAutoExpanded.current = true
+      setExpanded(true)
+      loadChildren()
+    }
+  }, [selectedPath, node.is_dir, node.path, expanded, loadChildren])
 
   const handleClick = () => {
     if (node.is_dir) {

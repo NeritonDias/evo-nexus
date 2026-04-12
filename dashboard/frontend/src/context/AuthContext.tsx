@@ -12,14 +12,64 @@ interface User {
 // Backend returns permissions as Record<string, string[]>  e.g. {"chat": ["view", "execute"]}
 type Permissions = Record<string, string[]>
 
+interface AgentAccess {
+  mode: 'all' | 'none' | 'selected' | 'layer'
+  agents?: string[]
+  layers?: string[]
+}
+
+// Map agent name → layer (mirrors backend AGENT_LAYERS)
+const AGENT_LAYERS: Record<string, string> = {
+  'clawdia-assistant': 'business',
+  'flux-finance': 'business',
+  'atlas-project': 'business',
+  'kai-personal-assistant': 'business',
+  'pulse-community': 'business',
+  'sage-strategy': 'business',
+  'pixel-social-media': 'business',
+  'nex-sales': 'business',
+  'mentor-courses': 'business',
+  'lumen-learning': 'business',
+  'oracle': 'business',
+  'mako-marketing': 'business',
+  'aria-hr': 'business',
+  'zara-cs': 'business',
+  'lex-legal': 'business',
+  'nova-product': 'business',
+  'dex-data': 'business',
+  'apex-architect': 'engineering',
+  'echo-analyst': 'engineering',
+  'compass-planner': 'engineering',
+  'raven-critic': 'engineering',
+  'lens-reviewer': 'engineering',
+  'zen-simplifier': 'engineering',
+  'vault-security': 'engineering',
+  'bolt-executor': 'engineering',
+  'hawk-debugger': 'engineering',
+  'grid-tester': 'engineering',
+  'probe-qa': 'engineering',
+  'oath-verifier': 'engineering',
+  'trail-tracer': 'engineering',
+  'flow-git': 'engineering',
+  'scroll-docs': 'engineering',
+  'canvas-designer': 'engineering',
+  'prism-scientist': 'engineering',
+  'helm-conductor': 'engineering',
+  'mirror-retro': 'engineering',
+  'scout-explorer': 'engineering',
+  'quill-writer': 'engineering',
+}
+
 interface AuthContextType {
   user: User | null
   loading: boolean
   permissions: Permissions
+  agentAccess: AgentAccess
   needsSetup: boolean
   login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
   hasPermission: (resource: string, action: string) => boolean
+  hasAgentAccess: (agentName: string) => boolean
   refreshUser: () => Promise<void>
 }
 
@@ -34,6 +84,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [permissions, setPermissions] = useState<Permissions>({})
+  const [agentAccess, setAgentAccess] = useState<AgentAccess>({ mode: 'all' })
   const [loading, setLoading] = useState(true)
   const [needsSetup, setNeedsSetup] = useState(false)
 
@@ -44,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setNeedsSetup(true)
         setUser(null)
         setPermissions({})
+        setAgentAccess({ mode: 'all' })
         return
       }
       setNeedsSetup(false)
@@ -51,9 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const meRes = await api.get('/auth/me')
       setUser(meRes.user)
       setPermissions(meRes.permissions || {})
+      setAgentAccess(meRes.agent_access || { mode: 'all' })
     } catch {
       setUser(null)
       setPermissions({})
+      setAgentAccess({ mode: 'all' })
     }
   }, [])
 
@@ -71,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post('/auth/logout')
     setUser(null)
     setPermissions({})
+    setAgentAccess({ mode: 'all' })
   }, [])
 
   const hasPermission = useCallback((resource: string, action: string) => {
@@ -79,9 +134,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return Array.isArray(actions) && actions.includes(action)
   }, [user, permissions])
 
+  const hasAgentAccess = useCallback((agentName: string): boolean => {
+    if (user?.role === 'admin') return true
+    const { mode, agents, layers } = agentAccess
+    if (mode === 'all') return true
+    if (mode === 'none') return false
+    if (mode === 'selected') return (agents || []).includes(agentName)
+    if (mode === 'layer') {
+      const agentLayer = AGENT_LAYERS[agentName]
+      return agentLayer !== undefined && (layers || []).includes(agentLayer)
+    }
+    return true
+  }, [user, agentAccess])
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, permissions, needsSetup, login, logout, hasPermission, refreshUser }}
+      value={{ user, loading, permissions, agentAccess, needsSetup, login, logout, hasPermission, hasAgentAccess, refreshUser }}
     >
       {children}
     </AuthContext.Provider>
