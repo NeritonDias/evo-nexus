@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   Plus,
   Trash2,
@@ -12,9 +12,12 @@ import {
   Camera,
   Briefcase,
   Database,
+  Settings,
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
+import IntegrationDrawer from '../components/IntegrationDrawer'
+import { getIntegrationMeta } from '../lib/integrationMeta'
 
 interface Integration {
   name: string
@@ -107,12 +110,15 @@ export default function Integrations() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([])
   const [loading, setLoading] = useState(true)
+  const [envValues, setEnvValues] = useState<Record<string, string>>({})
+  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null)
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     Promise.all([
       api.get('/integrations').catch(() => ({ integrations: [] })),
       api.get('/social-accounts').catch(() => ({ platforms: [] })),
-    ]).then(([intData, socialData]) => {
+      api.get('/config/env').catch(() => ({ entries: [] })),
+    ]).then(([intData, socialData, envData]) => {
       const ints = (intData?.integrations || []).map((i: any) => ({
         name: i.name || '',
         type: i.type || i.category || '',
@@ -120,8 +126,21 @@ export default function Integrations() {
       }))
       setIntegrations(ints)
       setPlatforms(socialData?.platforms || [])
+
+      // Build env lookup map
+      const envMap: Record<string, string> = {}
+      for (const entry of (envData?.entries ?? [])) {
+        if (entry.type === 'var' && entry.key) {
+          envMap[entry.key] = entry.value ?? ''
+        }
+      }
+      setEnvValues(envMap)
     }).finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleDisconnect = async (platformId: string, index: number) => {
     try {
@@ -137,6 +156,15 @@ export default function Integrations() {
 
   return (
     <div className="max-w-[1400px] mx-auto">
+      <IntegrationDrawer
+        integration={selectedIntegration}
+        envValues={envValues}
+        onClose={() => setSelectedIntegration(null)}
+        onSaved={() => {
+          setSelectedIntegration(null)
+          loadData()
+        }}
+      />
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#e6edf3] tracking-tight">Integrations</h1>
@@ -182,11 +210,29 @@ export default function Integrations() {
                 const typeMeta = getTypeMeta(int.type)
                 const Icon = typeMeta.icon
                 const isConnected = int.status === 'ok'
+                const intMeta = getIntegrationMeta(int.name)
+                const isOAuth = intMeta?.oauthFlow === true
+                const isConfigurable = !isOAuth && intMeta?.fields && intMeta.fields.length > 0
 
                 return (
                   <div
                     key={i}
-                    className="group relative rounded-xl border border-[#21262d] bg-[#161b22] p-5 transition-all duration-300 hover:border-transparent"
+                    onClick={() => {
+                      if (intMeta) setSelectedIntegration(int)
+                    }}
+                    role={intMeta ? 'button' : undefined}
+                    tabIndex={intMeta ? 0 : undefined}
+                    onKeyDown={(e) => {
+                      if (intMeta && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault()
+                        setSelectedIntegration(int)
+                      }
+                    }}
+                    aria-label={intMeta ? `Configurar ${int.name}` : undefined}
+                    className={[
+                      'group relative rounded-xl border border-[#21262d] bg-[#161b22] p-5 transition-all duration-300 hover:border-transparent',
+                      intMeta ? 'cursor-pointer' : '',
+                    ].join(' ')}
                   >
                     {/* Hover glow */}
                     <div
@@ -221,25 +267,39 @@ export default function Integrations() {
                       {int.name}
                     </h3>
 
-                    {/* Bottom badges */}
-                    <div className="relative flex items-center gap-2">
-                      <span
-                        className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full border"
-                        style={{
-                          backgroundColor: typeMeta.colorMuted,
-                          color: typeMeta.color,
-                          borderColor: `${typeMeta.color}33`,
-                        }}
-                      >
-                        {int.type}
-                      </span>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                        isConnected
-                          ? 'bg-[#00FFA7]/10 text-[#00FFA7] border-[#00FFA7]/25'
-                          : 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/25'
-                      }`}>
-                        {isConnected ? 'Connected' : 'Not configured'}
-                      </span>
+                    {/* Bottom badges + configure affordance */}
+                    <div className="relative flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full border"
+                          style={{
+                            backgroundColor: typeMeta.colorMuted,
+                            color: typeMeta.color,
+                            borderColor: `${typeMeta.color}33`,
+                          }}
+                        >
+                          {int.type}
+                        </span>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                          isConnected
+                            ? 'bg-[#00FFA7]/10 text-[#00FFA7] border-[#00FFA7]/25'
+                            : 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/25'
+                        }`}>
+                          {isConnected ? 'Connected' : 'Not configured'}
+                        </span>
+                      </div>
+
+                      {/* Hover affordance */}
+                      {isOAuth ? (
+                        <span className="flex items-center gap-1 text-[11px] text-[#667085] group-hover:text-[#00FFA7] opacity-0 group-hover:opacity-100 transition-all duration-200">
+                          Conectar
+                        </span>
+                      ) : isConfigurable ? (
+                        <span className="flex items-center gap-1 text-[11px] text-[#667085] group-hover:text-[#00FFA7] opacity-0 group-hover:opacity-100 transition-all duration-200">
+                          <Settings size={11} />
+                          Configurar
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 )

@@ -48,6 +48,19 @@ with app.app_context():
     db.create_all()
     db.session.execute(db.text("PRAGMA journal_mode=WAL"))
     db.session.commit()
+
+    # --- Auto-migrate: add new columns to existing tables ---
+    import sqlite3 as _sqlite3
+    _db_path = app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")
+    _conn = _sqlite3.connect(_db_path)
+    _cur = _conn.cursor()
+    _existing_cols = {row[1] for row in _cur.execute("PRAGMA table_info(roles)").fetchall()}
+    if "agent_access_json" not in _existing_cols:
+        _cur.execute("ALTER TABLE roles ADD COLUMN agent_access_json TEXT DEFAULT '{\"mode\": \"all\"}'")
+        _conn.commit()
+    _conn.close()
+    # --- End auto-migrate ---
+
     seed_roles()
     seed_systems()
     # Sync trigger definitions from YAML config

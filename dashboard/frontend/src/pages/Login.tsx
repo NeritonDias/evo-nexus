@@ -112,20 +112,9 @@ export default function Login() {
 
           {/* Header */}
           <div className="px-7 pt-7 pb-5 border-b border-[#152030]">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[#00FFA7]/10 flex items-center justify-center">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#00FFA7" opacity="0.8"/>
-                  <path d="M2 17l10 5 10-5" stroke="#00FFA7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
-                  <path d="M2 12l10 5 10-5" stroke="#00FFA7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-white tracking-tight leading-none">
-                  <span className="text-[#00FFA7]">Evo</span>Nexus
-                </h1>
-                <p className="text-[11px] text-[#4a5a6e] mt-0.5">Sign in to continue</p>
-              </div>
+            <div className="flex flex-col items-center gap-3">
+              <img src="/EVO_NEXUS.png" alt="EvoNexus" className="h-8 w-auto" />
+              <p className="text-[11px] text-[#4a5a6e]">Sign in to continue</p>
             </div>
           </div>
 

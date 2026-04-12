@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   LayoutDashboard, Bot, Clock, Zap, Layout, Calendar, CalendarClock,
-  Brain, Plug, DollarSign, Settings, FolderOpen, Cpu,
+  Brain, Plug, DollarSign, FolderOpen, Cpu,
   Monitor, Users, ScrollText, LogOut, Menu, X, Shield, BookOpen, Library,
   ArrowUpCircle, ChevronDown, Webhook, HardDriveDownload,
 } from 'lucide-react'
@@ -74,7 +74,6 @@ const navGroups: NavGroup[] = [
       { to: '/providers', label: 'Providers', icon: Cpu, resource: 'config' },
       { to: '/integrations', label: 'Integrations', icon: Plug, resource: 'integrations' },
       { to: '/scheduler', label: 'Services', icon: Calendar, resource: 'scheduler' },
-      { to: '/config', label: 'Config', icon: Settings, resource: 'config' },
       { to: '/backups', label: 'Backups', icon: HardDriveDownload, resource: 'config' },
     ],
   },

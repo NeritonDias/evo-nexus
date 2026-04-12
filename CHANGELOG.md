@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-04-12
+
+### Added
+
+- **Multi-file tabs in Workspace** — open multiple files simultaneously with a tab bar. Tabs persist in localStorage across page refreshes. Per-tab dirty state, editor content, and mode tracking. Middle-click to close, unsaved changes confirmation.
+- **Integration config drawer** — integration cards are now clickable, opening a side drawer with integration-specific form fields (masked API keys with reveal toggle). Save writes to `.env` with safe merge. OAuth integrations show "Connect" button instead. Backend test endpoint (`POST /api/integrations/<name>/test`) with real connectivity tests for Stripe, Omie, Evolution API, and Todoist.
+- **Agent-level permissions** — new `agent_access` field on roles with 4 modes: all, by layer (business/engineering), per-agent selection, or none. Locked agents appear with reduced opacity + lock icon in the dashboard. Direct URL access to locked agents shows "Acesso restrito" page. 38 agents mapped across business (17) and engineering (21) layers.
+- **S3 backup browser** — new "Remote Backups (S3)" section on the Backups page lists existing backups in the configured S3 bucket. Download directly from S3. New backend endpoints `GET /api/backups/s3` and `GET /api/backups/s3/<key>/download`.
+- **Backup storage provider config** — collapsible "Storage Provider" panel on the Backups page with S3 Bucket, Access Key, Secret Key, and Region fields (masked with reveal toggle).
+- **Copy file path button** — click "Copiar" in the file path bar to copy the full path to clipboard.
+
+### Changed
+
+- **Tree view preserves state on refresh** — when page reloads, all ancestor folders of the selected file auto-expand to restore the navigation context.
+- **Config page removed** — redundant with the new Integration drawer. `.env` vars for dashboard credentials (DASHBOARD_API_TOKEN) are no longer editable from the frontend (security improvement).
+- **Logo consistency** — Login and Setup pages now use the official `EVO_NEXUS.png` logo instead of a generic inline SVG.
+
+### Fixed
+
+- **DB migration for agent_access** — auto-migrate adds `agent_access_json` column to existing SQLite databases on startup (ALTER TABLE before seed_roles).
+
 ## [0.16.0] - 2026-04-12
 
 ### Added

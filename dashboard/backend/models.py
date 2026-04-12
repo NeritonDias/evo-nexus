@@ -92,14 +92,60 @@ ALL_RESOURCES = {
     "mempalace": ["view", "manage"],
 }
 
+# Agent layer mapping (file-stem names)
+AGENT_LAYERS: dict[str, str] = {
+    # Business layer
+    "clawdia-assistant": "business",
+    "flux-finance": "business",
+    "atlas-project": "business",
+    "kai-personal-assistant": "business",
+    "pulse-community": "business",
+    "sage-strategy": "business",
+    "pixel-social-media": "business",
+    "nex-sales": "business",
+    "mentor-courses": "business",
+    "lumen-learning": "business",
+    "oracle": "business",
+    "mako-marketing": "business",
+    "aria-hr": "business",
+    "zara-cs": "business",
+    "lex-legal": "business",
+    "nova-product": "business",
+    "dex-data": "business",
+    # Engineering layer
+    "apex-architect": "engineering",
+    "echo-analyst": "engineering",
+    "compass-planner": "engineering",
+    "raven-critic": "engineering",
+    "lens-reviewer": "engineering",
+    "zen-simplifier": "engineering",
+    "vault-security": "engineering",
+    "bolt-executor": "engineering",
+    "hawk-debugger": "engineering",
+    "grid-tester": "engineering",
+    "probe-qa": "engineering",
+    "oath-verifier": "engineering",
+    "trail-tracer": "engineering",
+    "flow-git": "engineering",
+    "scroll-docs": "engineering",
+    "canvas-designer": "engineering",
+    "prism-scientist": "engineering",
+    "helm-conductor": "engineering",
+    "mirror-retro": "engineering",
+    "scout-explorer": "engineering",
+    "quill-writer": "engineering",
+}
+
 # Default permissions for built-in roles (used when seeding)
 BUILTIN_ROLES = {
     "admin": {
         "description": "Full access to all resources",
         "permissions": {r: actions[:] for r, actions in ALL_RESOURCES.items()},
+        "agent_access": {"mode": "all"},
     },
     "operator": {
         "description": "Can view and execute, but not manage users or audit",
+        "agent_access": {"mode": "all"},
         "permissions": {
             "chat": ["view", "execute"],
             "services": ["view", "execute"],
@@ -121,6 +167,7 @@ BUILTIN_ROLES = {
     },
     "viewer": {
         "description": "Read-only access to dashboards",
+        "agent_access": {"mode": "none"},
         "permissions": {
             "workspace": ["view"],
             "agents": ["view"],
@@ -319,6 +366,7 @@ class Role(db.Model):
     name = db.Column(db.String(50), unique=True, nullable=False)
     description = db.Column(db.String(200))
     permissions_json = db.Column(db.Text, nullable=False, default="{}")
+    agent_access_json = db.Column(db.Text, nullable=True, default='{"mode": "all"}')
     is_builtin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -333,12 +381,25 @@ class Role(db.Model):
     def permissions(self, value: dict):
         self.permissions_json = json.dumps(value)
 
+    @property
+    def agent_access(self) -> dict:
+        try:
+            result = json.loads(self.agent_access_json) if self.agent_access_json else None
+            return result if result else {"mode": "all"}
+        except (json.JSONDecodeError, TypeError):
+            return {"mode": "all"}
+
+    @agent_access.setter
+    def agent_access(self, value: dict):
+        self.agent_access_json = json.dumps(value)
+
     def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
             "description": self.description,
             "permissions": self.permissions,
+            "agent_access": self.agent_access,
             "is_builtin": self.is_builtin,
             "created_at": self.created_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if self.created_at else None,
         }
@@ -366,6 +427,11 @@ def seed_roles():
                 if resource not in current:
                     current[resource] = actions
             existing.permissions = current
+
+            # --- Migração agent_access: set default for existing roles ---
+            if existing.agent_access_json is None:
+                existing.agent_access = config.get("agent_access", {"mode": "all"})
+            # --- fim migração ---
         else:
             role = Role(
                 name=name,
@@ -373,6 +439,7 @@ def seed_roles():
                 is_builtin=True,
             )
             role.permissions = config["permissions"]
+            role.agent_access = config.get("agent_access", {"mode": "all"})
             db.session.add(role)
     db.session.commit()
 
@@ -407,9 +474,41 @@ def get_role_permissions(role_name: str) -> dict:
     return {}
 
 
+def get_role_agent_access(role_name: str) -> dict:
+    """Get agent_access config for a role from DB, fallback to builtin defaults."""
+    role = Role.query.filter_by(name=role_name).first()
+    if role:
+        return role.agent_access
+    builtin = BUILTIN_ROLES.get(role_name)
+    if builtin:
+        return builtin.get("agent_access", {"mode": "all"})
+    return {"mode": "all"}
+
+
 def has_permission(role: str, resource: str, action: str) -> bool:
     perms = get_role_permissions(role)
     return action in perms.get(resource, [])
+
+
+def has_agent_access(role_name: str, agent_name: str) -> bool:
+    """Check if a role has access to a specific agent."""
+    if role_name == "admin":
+        return True
+    config = get_role_agent_access(role_name)
+    mode = config.get("mode", "all")
+    if mode == "all":
+        return True
+    if mode == "none":
+        return False
+    if mode == "selected":
+        agents = config.get("agents", [])
+        return agent_name in agents
+    if mode == "layer":
+        layers = config.get("layers", [])
+        agent_layer = AGENT_LAYERS.get(agent_name)
+        return agent_layer is not None and agent_layer in layers
+    # Unknown mode — default to all
+    return True
 
 
 def audit(user, action: str, resource: str = None, detail: str = None):

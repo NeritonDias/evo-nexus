@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from flask import Blueprint, request, jsonify, abort
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, AuditLog, Role, has_permission, audit, needs_setup, get_role_permissions, ALL_RESOURCES
+from models import db, User, AuditLog, Role, has_permission, audit, needs_setup, get_role_permissions, get_role_agent_access, ALL_RESOURCES, AGENT_LAYERS
 
 bp = Blueprint("auth", __name__)
 
@@ -188,9 +188,11 @@ def logout():
 @login_required
 def me():
     perms = get_role_permissions(current_user.role)
+    agent_access = get_role_agent_access(current_user.role)
     return jsonify({
         "user": current_user.to_dict(),
         "permissions": perms,
+        "agent_access": agent_access,
     })
 
 
@@ -340,6 +342,14 @@ def list_resources():
     return jsonify(ALL_RESOURCES)
 
 
+@bp.route("/api/roles/agent-layers")
+@login_required
+@require_permission("users", "view")
+def list_agent_layers():
+    """Return AGENT_LAYERS mapping for frontend grouping."""
+    return jsonify(AGENT_LAYERS)
+
+
 @bp.route("/api/roles", methods=["POST"])
 @login_required
 @require_permission("users", "manage")
@@ -358,6 +368,7 @@ def create_role():
 
     role = Role(name=name, description=description)
     role.permissions = permissions
+    role.agent_access = data.get("agent_access", {"mode": "all"})
     db.session.add(role)
     db.session.commit()
 
@@ -376,6 +387,8 @@ def update_role(role_id):
         role.description = data["description"]
     if "permissions" in data:
         role.permissions = data["permissions"]
+    if "agent_access" in data:
+        role.agent_access = data["agent_access"]
     if "name" in data and not role.is_builtin:
         new_name = data["name"].strip().lower()
         if new_name != role.name and Role.query.filter_by(name=new_name).first():

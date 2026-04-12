@@ -9,7 +9,6 @@ import Skills from './pages/Skills'
 import SkillDetail from './pages/SkillDetail'
 import Costs from './pages/Costs'
 import Integrations from './pages/Integrations'
-import Config from './pages/Config'
 import Templates from './pages/Templates'
 import Scheduler from './pages/Scheduler'
 import Tasks from './pages/Tasks'
@@ -85,7 +84,6 @@ function AppContent() {
           <Route path="/skills/:name" element={<SkillDetail />} />
           <Route path="/costs" element={<Costs />} />
           <Route path="/integrations" element={<Integrations />} />
-          <Route path="/config" element={<Config />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/scheduler" element={<Scheduler />} />
           <Route path="/memory" element={<Memory />} />

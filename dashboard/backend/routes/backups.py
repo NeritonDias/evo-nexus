@@ -158,6 +158,66 @@ def delete_backup(filename):
     return jsonify({"status": "deleted"})
 
 
+@bp.route("/api/backups/s3")
+def list_s3_backups():
+    """List backup files stored in S3."""
+    denied = _require("config", "view")
+    if denied:
+        return denied
+
+    bucket = os.environ.get("BACKUP_S3_BUCKET")
+    if not bucket:
+        return jsonify({"backups": [], "error": "S3 not configured"})
+
+    try:
+        import boto3
+    except ImportError:
+        return jsonify({"backups": [], "error": "boto3 not installed"})
+
+    try:
+        s3 = boto3.client("s3")
+        prefix = os.environ.get("BACKUP_S3_PREFIX", "")
+        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        backups = []
+        for obj in response.get("Contents", []):
+            key = obj["Key"]
+            if not key.endswith(".zip"):
+                continue
+            backups.append({
+                "key": key,
+                "filename": key.rsplit("/", 1)[-1],
+                "size": obj["Size"],
+                "modified": obj["LastModified"].isoformat(),
+            })
+        backups.sort(key=lambda x: x["modified"], reverse=True)
+        return jsonify({"backups": backups, "total": len(backups)})
+    except Exception as e:
+        return jsonify({"backups": [], "error": str(e)})
+
+
+@bp.route("/api/backups/s3/<path:key>/download")
+def download_s3_backup(key):
+    """Download a backup from S3 to local backups dir, then serve it."""
+    denied = _require("config", "manage")
+    if denied:
+        return denied
+
+    bucket = os.environ.get("BACKUP_S3_BUCKET")
+    if not bucket:
+        return jsonify({"error": "S3 not configured"}), 400
+
+    try:
+        import boto3
+        s3 = boto3.client("s3")
+        filename = key.rsplit("/", 1)[-1]
+        local_path = BACKUPS_DIR / filename
+        BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+        s3.download_file(bucket, key, str(local_path))
+        return send_file(str(local_path), as_attachment=True, download_name=filename)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @bp.route("/api/backups/config")
 def backup_config():
     """Return backup configuration (S3 status, etc)."""

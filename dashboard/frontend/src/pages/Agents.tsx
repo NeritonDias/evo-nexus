@@ -24,6 +24,7 @@ import {
   Sparkles,
   Navigation,
   History,
+  Lock,
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -98,6 +99,7 @@ interface Agent {
   custom?: boolean
   color?: string
   model?: string
+  locked?: boolean
 }
 
 interface AgentMeta {
@@ -292,6 +294,55 @@ function AgentCard({ agent, isRunning }: { agent: Agent; isRunning: boolean }) {
   const meta = getMeta(agent.name, agent)
   const isActive = agent.memory_count > 0
   const tier = getEngineeringTier(agent.name)
+  const locked = agent.locked === true
+
+  if (locked) {
+    return (
+      <div
+        className="group relative block rounded-xl border border-[#21262d] bg-[#161b22] p-3.5 opacity-50 grayscale cursor-not-allowed"
+        title="Sem acesso"
+      >
+        {/* Lock overlay */}
+        <div className="absolute top-2.5 right-2.5 z-10 flex items-center justify-center w-6 h-6 rounded-full bg-[#0d1117] border border-[#21262d]">
+          <Lock size={12} className="text-[#667085]" />
+        </div>
+
+        {/* Top row: avatar + status */}
+        <div className="relative flex items-start justify-between mb-3">
+          <div>
+            <AgentAvatar name={agent.name} size={56} />
+          </div>
+          <span className="inline-block h-2 w-2 rounded-full mt-7" style={{ backgroundColor: '#3F3F46' }} />
+        </div>
+
+        {/* Name + domain label */}
+        <div className="relative mb-1.5">
+          <h3 className="text-[13px] font-semibold text-[#e6edf3]">
+            {formatAgentName(agent.name)}
+          </h3>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="inline-block text-[10px] font-medium uppercase tracking-wider" style={{ color: meta.color, opacity: 0.8 }}>
+              {meta.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Description */}
+        <p className="relative mb-3 text-[11px] leading-relaxed text-[#667085] line-clamp-2">
+          {agent.description || 'No description available.'}
+        </p>
+
+        {/* Bottom row */}
+        <div className="relative flex items-center justify-between">
+          <span className="text-[10px] text-[#667085]">Sem acesso</span>
+          <div className="flex items-center gap-1 rounded-full bg-[#0d1117] px-2 py-0.5 border border-[#21262d]">
+            <Brain size={10} className="text-[#667085]" />
+            <span className="text-[10px] font-medium text-[#8b949e]">{agent.memory_count}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Link
@@ -415,6 +466,24 @@ function SkeletonCard() {
 }
 
 function OracleHeroCard({ agent, isRunning }: { agent: Agent; isRunning: boolean }) {
+  if (agent.locked) {
+    return (
+      <div
+        className="group relative block overflow-hidden rounded-2xl border border-[#21262d] bg-[#11110c] opacity-50 grayscale cursor-not-allowed"
+        title="Sem acesso"
+      >
+        <div className="relative flex items-center gap-5 px-6 py-5">
+          <AgentAvatar name={agent.name} size={56} />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[22px] font-bold text-[#F9FAFB] leading-tight mb-0.5">Oracle</h2>
+            <p className="text-[12.5px] text-[#8b949e] leading-snug">Sem acesso</p>
+          </div>
+          <Lock size={16} className="flex-shrink-0 text-[#667085]" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <Link
       to={`/agents/${agent.name}`}

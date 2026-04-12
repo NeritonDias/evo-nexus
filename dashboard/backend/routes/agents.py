@@ -1,7 +1,9 @@
 """Agents endpoint — list agents, their config and memory."""
 
 from flask import Blueprint, jsonify, abort, Response
+from flask_login import login_required, current_user
 from routes._helpers import WORKSPACE, safe_read, parse_frontmatter, file_info
+from models import has_agent_access
 
 bp = Blueprint("agents", __name__)
 
@@ -17,10 +19,12 @@ def _count_memory(name: str) -> int:
 
 
 @bp.route("/api/agents")
+@login_required
 def list_agents():
     if not AGENTS_DIR.is_dir():
         return jsonify([])
     agents = []
+    role = current_user.role if current_user.is_authenticated else "viewer"
     for f in sorted(AGENTS_DIR.iterdir()):
         if f.suffix.lower() == ".md" and f.is_file():
             content = safe_read(f) or ""
@@ -31,6 +35,7 @@ def list_agents():
                 "description": fm.get("description", ""),
                 "memory_count": _count_memory(name),
                 "custom": name.startswith("custom-"),
+                "locked": not has_agent_access(role, name),
             }
             if fm.get("color"):
                 entry["color"] = fm["color"]

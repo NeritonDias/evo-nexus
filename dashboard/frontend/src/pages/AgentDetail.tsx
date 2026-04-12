@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, ChevronRight, PanelLeft, X } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, PanelLeft, X, Lock } from 'lucide-react'
 import { api } from '../lib/api'
 import Markdown from '../components/Markdown'
 import AgentTerminal from '../components/AgentTerminal'
 import { getAgentMeta } from '../lib/agent-meta'
 import { AgentAvatar } from '../components/AgentAvatar'
+import { useAuth } from '../context/AuthContext'
 
 interface MemoryFile {
   name: string
@@ -30,6 +31,7 @@ function formatName(slug: string): string {
 
 export default function AgentDetail() {
   const { name } = useParams()
+  const { hasAgentAccess } = useAuth()
   const [content, setContent] = useState<string | null>(null)
   const [memories, setMemories] = useState<MemoryFile[]>([])
   const [memoryContents, setMemoryContents] = useState<Record<string, string>>({})
@@ -69,6 +71,27 @@ export default function AgentDetail() {
   }
 
   if (!name) return null
+
+  // Check agent access before rendering anything
+  if (!hasAgentAccess(name)) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-[#0C111D] gap-4">
+        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-[#161b22] border border-[#21262d]">
+          <Lock size={28} className="text-[#667085]" />
+        </div>
+        <div className="text-center">
+          <p className="text-[#e6edf3] font-semibold text-base mb-1">Acesso restrito</p>
+          <p className="text-[#667085] text-sm">Você não tem permissão para acessar este agente.</p>
+        </div>
+        <Link
+          to="/agents"
+          className="mt-2 text-[11px] uppercase tracking-[0.12em] text-[#00FFA7] hover:underline"
+        >
+          ← Agentes
+        </Link>
+      </div>
+    )
+  }
 
   const meta = getAgentMeta(name)
   const agentColor = meta.color
