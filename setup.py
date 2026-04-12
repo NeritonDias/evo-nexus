@@ -297,17 +297,31 @@ server {{
 """
     try:
         # Remove default nginx site if exists
-        if os.path.exists("/etc/nginx/sites-enabled/default"):
-            os.remove("/etc/nginx/sites-enabled/default")
+        for default_site in ["/etc/nginx/sites-enabled/default", "/etc/nginx/conf.d/default.conf"]:
+            if os.path.exists(default_site):
+                os.remove(default_site)
+                print(f"  {GREEN}✓{RESET} Removed nginx default site")
 
         nginx_path = "/etc/nginx/sites-enabled/evonexus"
         with open(nginx_path, "w") as f:
             f.write(nginx_config)
-        ret = os.system("nginx -t 2>/dev/null && systemctl start nginx 2>/dev/null && systemctl enable nginx 2>/dev/null")
+
+        # Test nginx config
+        ret = os.system("nginx -t 2>/tmp/nginx-test.log")
         if ret == 0:
+            os.system("systemctl reload nginx 2>/dev/null || systemctl start nginx 2>/dev/null")
+            os.system("systemctl enable nginx 2>/dev/null")
             print(f"  {GREEN}✓{RESET} Nginx configured for {domain}")
         else:
-            print(f"  {YELLOW}!{RESET} Nginx config written but start failed — check manually")
+            # nginx -t failed — likely SSL cert issue. Show the error clearly.
+            print(f"  {RED}✗{RESET} Nginx config test failed")
+            os.system("cat /tmp/nginx-test.log 2>/dev/null")
+            print(f"    {YELLOW}The config is saved at {nginx_path}{RESET}")
+            print(f"    {YELLOW}Fix the issue and run: nginx -t && systemctl reload nginx{RESET}")
+
+        # Verify the config file actually exists after writing
+        if not os.path.exists(nginx_path):
+            print(f"  {RED}✗{RESET} Nginx config file was not created at {nginx_path}")
     except PermissionError:
         print(f"  {YELLOW}!{RESET} No permission to write nginx config — run setup as root/sudo")
 

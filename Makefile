@@ -126,6 +126,44 @@ terminal-stop:      ## 🛑 Stop terminal-server (if orphaned)
 	@pkill -f "dashboard/terminal-server/bin/server.js" 2>/dev/null && echo "✅ terminal-server stopped" || echo "ℹ terminal-server not running"
 	@rm -f /tmp/terminal-server.pid
 
+stop:               ## 🛑 Stop all EvoNexus services (dashboard + terminal-server)
+	@echo "Stopping EvoNexus services..."
+	@pkill -f "dashboard/terminal-server/bin/server.js" 2>/dev/null || true
+	@pkill -f "dashboard/backend.*app.py" 2>/dev/null || true
+	@pkill -f "app.py" 2>/dev/null || true
+	@echo "✅ All services stopped"
+
+uninstall:          ## 🗑️  Full cleanup — stop services, remove nginx, data, deps (DESTRUCTIVE)
+	@echo ""
+	@echo "⚠  This will STOP all services and DELETE:"
+	@echo "   • dashboard/data/ (SQLite database)"
+	@echo "   • dashboard/frontend/node_modules/"
+	@echo "   • dashboard/terminal-server/node_modules/"
+	@echo "   • .venv/ (Python virtual environment)"
+	@echo "   • logs/"
+	@echo "   • config/workspace.yaml, config/providers.json"
+	@echo "   • /etc/nginx/sites-enabled/evonexus"
+	@echo ""
+	@read -p "  Type 'UNINSTALL' to confirm: " confirm; \
+	if [ "$$confirm" = "UNINSTALL" ]; then \
+		echo ""; \
+		echo "Stopping services..."; \
+		pkill -f "dashboard/terminal-server/bin/server.js" 2>/dev/null || true; \
+		pkill -f "dashboard/backend.*app.py" 2>/dev/null || true; \
+		pkill -f "app.py" 2>/dev/null || true; \
+		echo "Removing nginx config..."; \
+		rm -f /etc/nginx/sites-enabled/evonexus 2>/dev/null || true; \
+		systemctl reload nginx 2>/dev/null || true; \
+		echo "Removing generated files..."; \
+		rm -rf dashboard/data/ dashboard/frontend/node_modules/ dashboard/frontend/dist/ dashboard/terminal-server/node_modules/ .venv/ logs/ start-services.sh; \
+		rm -f config/workspace.yaml config/providers.json config/routines.yaml .env; \
+		rm -f CLAUDE.md; \
+		echo ""; \
+		echo "✅ EvoNexus uninstalled. Run 'make setup' to reinstall."; \
+	else \
+		echo "Aborted."; \
+	fi
+
 bling-auth:         ## 🔐 Bling OAuth2 login (one-time: capture access + refresh tokens into .env)
 	@python3 .claude/skills/int-bling/scripts/bling_auth.py
 
