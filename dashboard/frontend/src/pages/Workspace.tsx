@@ -9,6 +9,7 @@ import FileEditor from '../components/workspace/FileEditor'
 import ConfirmDialog, { type ConfirmVariant } from '../components/workspace/ConfirmDialog'
 import UploadDropzone from '../components/workspace/UploadDropzone'
 import FileTabs, { type TabEntry } from '../components/workspace/FileTabs'
+import ShareDialog from '../components/workspace/ShareDialog'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:8080' : ''
 
@@ -136,6 +137,14 @@ export default function Workspace() {
 
   // Name dialog
   const [nameDialog, setNameDialog] = useState<NameDialogProps | null>(null)
+
+  // Share dialog
+  const [showShareDialog, setShowShareDialog] = useState(false)
+
+  const handleShare = useCallback(() => {
+    if (!selectedPath || isDir) return
+    setShowShareDialog(true)
+  }, [selectedPath, isDir])
 
   // Editor content getter ref
   const editorRef = useRef<{ getContent: () => string } | null>(null)
@@ -620,6 +629,7 @@ export default function Workspace() {
           onRename={handleRename}
           onDelete={handleDelete}
           onDownload={handleDownload}
+          onShare={handleShare}
         />
 
         {/* File tabs */}
@@ -719,6 +729,14 @@ export default function Workspace() {
       )}
 
       {nameDialog && <NameDialog {...nameDialog} />}
+
+      {/* Share dialog */}
+      {showShareDialog && selectedPath && (
+        <ShareDialog
+          path={selectedPath}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
 
       {/* Upload dropzone */}
       {(showUpload || showDrag) && (

@@ -182,6 +182,18 @@ const INTEGRATION_META: IntegrationMeta[] = [
     oauthFlow: true,
     fields: [],
   },
+  {
+    id: 'ai image creator',
+    description: 'Geração de imagens AI — Gemini, FLUX.2, Riverflow, SeedDream, GPT-5',
+    docsUrl: '/docs/skills/ai-image-creator',
+    fields: [
+      { envKey: 'AI_IMG_CREATOR_CF_ACCOUNT_ID', label: 'Cloudflare Account ID', hint: 'Account ID do Cloudflare (Dashboard → Overview)', required: false },
+      { envKey: 'AI_IMG_CREATOR_CF_GATEWAY_ID', label: 'Cloudflare Gateway ID', hint: 'Nome do AI Gateway criado no Cloudflare', required: false },
+      { envKey: 'AI_IMG_CREATOR_CF_TOKEN', label: 'Cloudflare API Token', hint: 'Token com permissão AI Gateway', required: false },
+      { envKey: 'AI_IMG_CREATOR_OPENROUTER_KEY', label: 'OpenRouter API Key', hint: 'Chave sk-or-... do OpenRouter (alternativa ao CF Gateway)', required: false },
+      { envKey: 'AI_IMG_CREATOR_GEMINI_KEY', label: 'Google AI Studio Key', hint: 'Chave AI... do Google AI Studio (alternativa)', required: false },
+    ],
+  },
 ]
 
 /**

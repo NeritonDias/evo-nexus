@@ -770,30 +770,56 @@ def main():
     # Folders
     create_folders(config)
 
+    # Logs dir (for install logs)
+    (WORKSPACE / "logs").mkdir(exist_ok=True)
+
     # Install Python dependencies
     # Must run as the ORIGINAL user (not root) so .venv symlinks
     # point to user's Python, not /root/.local/share/uv/python/
-    print(f"  {DIM}Installing Python dependencies...{RESET}")
+    print(f"  {DIM}Installing Python dependencies...{RESET}", end="", flush=True)
     _sudo_user = os.environ.get("SUDO_USER", "")
     if _sudo_user and os.getuid() == 0:
-        os.system(f"su - {_sudo_user} -c 'cd {WORKSPACE} && uv sync -q'")
+        ret = os.system(f"su - {_sudo_user} -c 'cd {WORKSPACE} && uv sync -q' 2>{WORKSPACE}/logs/uv-sync.log")
     else:
-        os.system(f"cd {WORKSPACE} && uv sync -q")
-    print(f"  {GREEN}✓{RESET} Installed Python dependencies")
+        ret = os.system(f"cd {WORKSPACE} && uv sync -q 2>{WORKSPACE}/logs/uv-sync.log")
+    if ret == 0 and (WORKSPACE / ".venv" / "bin" / "python").exists():
+        print(f"\r  {GREEN}✓{RESET} Installed Python dependencies                    ")
+    else:
+        print(f"\r  {RED}✗{RESET} Python dependencies failed to install                    ")
+        print(f"    {YELLOW}This is needed for the dashboard to work.{RESET}")
+        print(f"    Try running manually: {BOLD}cd {WORKSPACE} && uv sync{RESET}")
+        print(f"    Log: {DIM}logs/uv-sync.log{RESET}")
 
     # Dashboard build
     frontend_dir = WORKSPACE / "dashboard" / "frontend"
     if (frontend_dir / "package.json").exists():
-        print(f"  {DIM}Building dashboard frontend...{RESET}", end="", flush=True)
-        os.system(f"cd {frontend_dir} && npm install --silent > /dev/null 2>&1 && npm run build --silent > /dev/null 2>&1")
-        print(f"\r  {GREEN}✓{RESET} Built dashboard frontend                    ")
+        print(f"  {DIM}Installing dashboard dependencies...{RESET}", end="", flush=True)
+        ret_install = os.system(f"cd {frontend_dir} && npm install --silent 2>{WORKSPACE}/logs/npm-install.log")
+        if ret_install != 0:
+            print(f"\r  {RED}✗{RESET} Dashboard dependencies failed                    ")
+            print(f"    {YELLOW}Try running manually: {BOLD}cd dashboard/frontend && npm install{RESET}")
+            print(f"    Log: {DIM}logs/npm-install.log{RESET}")
+        else:
+            print(f"\r  {GREEN}✓{RESET} Installed dashboard dependencies                    ")
+            print(f"  {DIM}Building dashboard frontend...{RESET}", end="", flush=True)
+            ret_build = os.system(f"cd {frontend_dir} && npm run build 2>{WORKSPACE}/logs/npm-build.log 1>/dev/null")
+            if ret_build != 0:
+                print(f"\r  {RED}✗{RESET} Dashboard build failed                    ")
+                print(f"    {YELLOW}Try running manually: {BOLD}cd dashboard/frontend && npm run build{RESET}")
+                print(f"    Log: {DIM}logs/npm-build.log{RESET}")
+            else:
+                print(f"\r  {GREEN}✓{RESET} Built dashboard frontend                    ")
 
     # Terminal-server dependencies (always needed)
     ts_dir = WORKSPACE / "dashboard" / "terminal-server"
     if (ts_dir / "package.json").exists():
         print(f"  {DIM}Installing terminal-server dependencies...{RESET}", end="", flush=True)
-        os.system(f"cd {ts_dir} && npm install --silent > /dev/null 2>&1")
-        print(f"\r  {GREEN}✓{RESET} Installed terminal-server dependencies                    ")
+        ret = os.system(f"cd {ts_dir} && npm install --silent 2>{WORKSPACE}/logs/ts-install.log")
+        if ret == 0:
+            print(f"\r  {GREEN}✓{RESET} Installed terminal-server dependencies                    ")
+        else:
+            print(f"\r  {RED}✗{RESET} Terminal-server dependencies failed                    ")
+            print(f"    Log: {DIM}logs/ts-install.log{RESET}")
 
     # Data dir for SQLite
     (WORKSPACE / "dashboard" / "data").mkdir(parents=True, exist_ok=True)

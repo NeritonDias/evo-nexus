@@ -18,6 +18,9 @@ type PreviewState =
   | { status: 'code'; content: string }
   | { status: 'text'; content: string }
   | { status: 'image' }
+  | { status: 'video' }
+  | { status: 'audio' }
+  | { status: 'pdf' }
   | { status: 'binary'; size: number; mime: string; modified: number | null }
   | { status: 'error'; message: string }
 
@@ -28,12 +31,17 @@ function formatSize(bytes: number): string {
 }
 
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp']
+const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'ogv']
+const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a', 'wma']
 
-function getPreviewType(path: string): 'markdown' | 'html' | 'code' | 'text' | 'image' {
+function getPreviewType(path: string): 'markdown' | 'html' | 'code' | 'text' | 'image' | 'video' | 'audio' | 'pdf' {
   const ext = path.split('.').pop()?.toLowerCase() ?? ''
   if (ext === 'md' || ext === 'markdown') return 'markdown'
   if (ext === 'html' || ext === 'htm') return 'html'
   if (IMAGE_EXTS.includes(ext)) return 'image'
+  if (VIDEO_EXTS.includes(ext)) return 'video'
+  if (AUDIO_EXTS.includes(ext)) return 'audio'
+  if (ext === 'pdf') return 'pdf'
   const codeExts = ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'sh', 'json', 'yaml', 'yml', 'toml', 'css', 'sql', 'rs', 'rb', 'php', 'java', 'c', 'cpp', 'h']
   if (codeExts.includes(ext)) return 'code'
   return 'text'
@@ -51,9 +59,24 @@ export default function FilePreview({ path, onDownload }: FilePreviewProps) {
     try {
       const type = getPreviewType(path)
 
-      // Images load directly via download URL — no need to fetch content
+      // Media files load directly via download URL — no need to fetch content
       if (type === 'image') {
         setState({ status: 'image' })
+        setTimeout(() => setVisible(true), 50)
+        return
+      }
+      if (type === 'video') {
+        setState({ status: 'video' })
+        setTimeout(() => setVisible(true), 50)
+        return
+      }
+      if (type === 'audio') {
+        setState({ status: 'audio' })
+        setTimeout(() => setVisible(true), 50)
+        return
+      }
+      if (type === 'pdf') {
+        setState({ status: 'pdf' })
         setTimeout(() => setVisible(true), 50)
         return
       }
@@ -197,6 +220,44 @@ export default function FilePreview({ path, onDownload }: FilePreviewProps) {
             Download
           </button>
         </div>
+      )}
+
+      {state.status === 'video' && (
+        <div className="flex items-center justify-center h-full p-8">
+          <video
+            controls
+            style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '8px' }}
+          >
+            <source src={`${API_BASE}/api/workspace/download?path=${encodeURIComponent(path)}`} />
+            Seu navegador não suporta a reprodução de vídeo.
+          </video>
+        </div>
+      )}
+
+      {state.status === 'audio' && (
+        <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
+          <div
+            className="flex items-center justify-center w-20 h-20 rounded-2xl"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+          >
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--evo-green)" strokeWidth="1.5">
+              <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+            </svg>
+          </div>
+          <audio controls style={{ width: '100%', maxWidth: '500px' }}>
+            <source src={`${API_BASE}/api/workspace/download?path=${encodeURIComponent(path)}`} />
+            Seu navegador não suporta a reprodução de áudio.
+          </audio>
+        </div>
+      )}
+
+      {state.status === 'pdf' && (
+        <iframe
+          src={`${API_BASE}/api/workspace/download?path=${encodeURIComponent(path)}`}
+          className="w-full border-0"
+          style={{ height: '100%' }}
+          title={path}
+        />
       )}
 
       {state.status === 'markdown' && (

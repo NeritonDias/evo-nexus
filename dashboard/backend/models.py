@@ -359,6 +359,34 @@ class System(db.Model):
         }
 
 
+class FileShare(db.Model):
+    __tablename__ = "file_shares"
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    path = db.Column(db.String(500), nullable=False)       # repo-relative path
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime, nullable=True)      # null = no expiration
+    view_count = db.Column(db.Integer, default=0)
+    enabled = db.Column(db.Boolean, default=True)
+
+    created_by_user = db.relationship("User", foreign_keys=[created_by_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "token": self.token,
+            "path": self.path,
+            "created_by_id": self.created_by_id,
+            "created_by": self.created_by_user.username if self.created_by_user else None,
+            "created_at": self.created_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if self.created_at else None,
+            "expires_at": self.expires_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if self.expires_at else None,
+            "view_count": self.view_count,
+            "enabled": self.enabled,
+        }
+
+
 class Role(db.Model):
     __tablename__ = "roles"
 

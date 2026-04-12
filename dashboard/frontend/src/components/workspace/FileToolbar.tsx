@@ -1,6 +1,6 @@
 import {
   FilePlus, FolderPlus, Upload, RefreshCw, Edit3, Download,
-  Pencil, Trash2, Save, X,
+  Pencil, Trash2, Save, X, Share2,
 } from 'lucide-react'
 
 export type EditorMode = 'preview' | 'edit'
@@ -20,6 +20,7 @@ interface FileToolbarProps {
   onRename: () => void
   onDelete: () => void
   onDownload: () => void
+  onShare: () => void
 }
 
 interface ToolbarButtonProps {
@@ -155,6 +156,7 @@ export default function FileToolbar({
   onRename,
   onDelete,
   onDownload,
+  onShare,
 }: FileToolbarProps) {
   const hasSelection = selectedPath !== null
   const isFile = hasSelection && !isDir
@@ -231,6 +233,15 @@ export default function FileToolbar({
           icon={<Download size={14} />}
           label="Download"
           onClick={onDownload}
+        />
+      )}
+
+      {/* Share — visible when file selected and not in edit mode */}
+      {isFile && !isEditMode && (
+        <ToolbarButton
+          icon={<Share2 size={14} />}
+          label="Compartilhar"
+          onClick={onShare}
         />
       )}
 

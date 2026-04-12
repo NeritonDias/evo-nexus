@@ -170,3 +170,20 @@ These are populated automatically when you connect accounts through the dashboar
 | Daily backup (S3) | `BACKUP_S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
 
 Google Calendar and Gmail are connected via MCP servers configured in Claude Code settings, not through `.env` variables.
+
+## AI Image Creator
+
+| Variable | Required For | Description |
+|----------|-------------|-------------|
+| `AI_IMG_CREATOR_CF_ACCOUNT_ID` | Gateway mode | Cloudflare account ID (from dashboard URL or Overview page) |
+| `AI_IMG_CREATOR_CF_GATEWAY_ID` | Gateway mode | AI Gateway name (set when creating the gateway) |
+| `AI_IMG_CREATOR_CF_TOKEN` | Gateway mode | Gateway auth token (from gateway Settings > Authentication) |
+| `AI_IMG_CREATOR_OPENROUTER_KEY` | Direct OpenRouter | OpenRouter API key (starts with `sk-or-...`) |
+| `AI_IMG_CREATOR_GEMINI_KEY` | Direct Google | Google AI Studio API key (starts with `AI...`) |
+
+Gateway mode activates when all three `AI_IMG_CREATOR_CF_*` vars are set. Falls back to direct mode if gateway fails. You only need one provider configured (either Cloudflare or at least one direct key).
+
+**How to get**:
+- **Cloudflare Gateway**: [dash.cloudflare.com](https://dash.cloudflare.com) > AI > AI Gateway > Create Gateway. See [docs/skills/ai-image-creator.md](../skills/ai-image-creator.md) for full setup.
+- **OpenRouter key**: [openrouter.ai/keys](https://openrouter.ai/keys) > Create Key.
+- **Google AI Studio key**: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) > Create API Key.

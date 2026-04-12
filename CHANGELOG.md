@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-04-12
+
+### Added
+
+- **Public share links** — generate public URLs for any workspace file (HTML, markdown, images, video, audio, PDF). Token-based with configurable expiration (1h/24h/7d/30d/permanent). New `FileShare` model, `shares` blueprint, public view page with EvoNexus branding footer, and management page to list/revoke links
+- **Media preview in workspace** — video (mp4/webm/mov), audio (mp3/wav/ogg/aac/flac), and PDF files now render inline in both the workspace file manager and public share pages
+- **Share button in toolbar** — new "Compartilhar" button in FileToolbar with modal for link generation, expiration selector, and clipboard copy
+- **Share Links management page** — new `/shares` route with table view showing all active links, view counts, expiration status, copy and revoke actions
+- **`workspace-share` skill** — conversational skill for Oracle and Clawdia to create/list/revoke share links via natural language
+- **AI Image Creator skill** — generate images via multiple AI models (Gemini, FLUX.2, Riverflow, SeedDream, GPT-5) through Cloudflare AI Gateway or OpenRouter
+- **AI Image Creator integration** — new integration card in dashboard with env var configuration for Cloudflare and OpenRouter keys
+- **Integration env vars API** — scoped `GET/PUT /api/config/env` endpoints for reading and updating `.env` variables from the integration drawer
+
+### Changed
+
+- **Setup wizard hardened** — `uv sync`, `npm install`, and `npm run build` now check exit codes and show clear error messages with log paths instead of silently succeeding on failure
+- **`make dashboard-app` runs `npm install`** — ensures frontend dependencies are up to date after `git pull` before building
+- **AgentTerminal connection** — auto-detects local vs deployed environment for terminal-server WebSocket URL (supports `localhost` and `127.0.0.1` without reverse proxy)
+
 ## [0.17.2] - 2026-04-12
 
 ### Added
