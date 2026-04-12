@@ -222,18 +222,45 @@ async function main() {
       console.log(`  ${YELLOW}!${RESET} Frontend build failed — run: cd dashboard/frontend && npm run build`);
     }
 
-    // Restart services if start-services.sh exists
+    // Restart services — prefer systemd if available, fallback to start-services.sh
+    const hasSystemd = check("systemctl is-active --quiet evo-nexus 2>/dev/null") ||
+                       check("systemctl is-enabled --quiet evo-nexus 2>/dev/null");
     const startScript = resolve(targetPath, "start-services.sh");
-    if (existsSync(startScript)) {
+
+    if (hasSystemd) {
+      console.log(`\n  ${DIM}Restarting via systemd...${RESET}`);
+      // If install dir differs from service dir, sync files
+      try {
+        const serviceDir = execSync("systemctl show evo-nexus -p WorkingDirectory --value 2>/dev/null", { encoding: "utf-8" }).trim();
+        if (serviceDir && resolve(serviceDir) !== resolve(targetPath)) {
+          console.log(`  ${DIM}Syncing to service directory ${serviceDir}...${RESET}`);
+          run(`rsync -a --delete --exclude='.venv' --exclude='node_modules' --exclude='logs' --exclude='dashboard/data' "${targetPath}/" "${serviceDir}/"`, { cwd: targetPath });
+          // Rebuild in service dir
+          const svcFrontend = resolve(serviceDir, "dashboard", "frontend");
+          if (existsSync(resolve(svcFrontend, "package.json"))) {
+            run("npm install --silent && npm run build --silent", { cwd: svcFrontend });
+          }
+          // Fix ownership
+          const serviceUser = execSync("systemctl show evo-nexus -p User --value 2>/dev/null", { encoding: "utf-8" }).trim();
+          if (serviceUser) {
+            run(`chown -R ${serviceUser}:${serviceUser} "${serviceDir}"`);
+          }
+        }
+      } catch {}
+      run("systemctl restart evo-nexus");
+    } else if (existsSync(startScript)) {
       console.log(`\n  ${DIM}Restarting services...${RESET}`);
       run(`bash ${startScript}`, { cwd: targetPath });
-      // Wait and verify
+    }
+
+    // Wait and verify
+    if (hasSystemd || existsSync(startScript)) {
       await new Promise(r => setTimeout(r, 3000));
       try {
         execSync("curl -sf http://localhost:8080/api/version", { timeout: 5000 });
         console.log(`  ${GREEN}✓${RESET} Dashboard restarted`);
       } catch {
-        console.log(`  ${YELLOW}!${RESET} Dashboard may not have started — check logs/dashboard.log`);
+        console.log(`  ${YELLOW}!${RESET} Dashboard may not have started — check: journalctl -u evo-nexus -n 20`);
       }
     }
 
@@ -274,15 +301,27 @@ async function main() {
 `);
 
       if (isRemote) {
-        // Remote mode: services already running, don't suggest make dashboard-app
-        console.log(`  ${BOLD}The dashboard is already running.${RESET}
+        // Remote mode: services already running via systemd
+        const hasSvc = check("systemctl is-enabled --quiet evo-nexus 2>/dev/null");
+        if (hasSvc) {
+          console.log(`  ${BOLD}The dashboard is running via systemd.${RESET}
+  Open the URL shown above to create your admin account.
+
+  ${BOLD}Useful commands:${RESET}
+  ${CYAN}•${RESET} ${BOLD}systemctl restart evo-nexus${RESET}  — restart services
+  ${CYAN}•${RESET} ${BOLD}systemctl status evo-nexus${RESET}   — check status
+  ${CYAN}•${RESET} ${BOLD}journalctl -u evo-nexus -f${RESET}   — follow logs
+  ${CYAN}•${RESET} ${BOLD}su - evonexus${RESET}                — switch to service user
+`);
+        } else {
+          console.log(`  ${BOLD}The dashboard is already running.${RESET}
   Open the URL shown above to create your admin account.
 
   ${BOLD}Useful commands:${RESET}
   ${CYAN}•${RESET} ${BOLD}./start-services.sh${RESET}  — restart dashboard services
-  ${CYAN}•${RESET} ${BOLD}make scheduler${RESET}       — start automated routines
   ${CYAN}•${RESET} ${BOLD}make help${RESET}            — see all available commands
 `);
+        }
       } else {
         console.log(`  ${BOLD}Next steps:${RESET}
   ${CYAN}1.${RESET} cd ${targetDir}
