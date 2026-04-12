@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Bot, Clock, Zap, Layout, Calendar, CalendarClock,
   Brain, Plug, DollarSign, FolderOpen, Cpu,
   Monitor, Users, ScrollText, LogOut, Menu, X, Shield, BookOpen, Library,
-  ArrowUpCircle, ChevronDown, Webhook, HardDriveDownload,
+  ArrowUpCircle, ChevronDown, Webhook, HardDriveDownload, Settings,
 } from 'lucide-react'
 
 interface VersionInfo {
@@ -70,6 +70,7 @@ const navGroups: NavGroup[] = [
     label: 'System',
     collapsible: true,
     items: [
+      { to: '/settings', label: 'Settings', icon: Settings, resource: 'config' },
       { to: '/systems', label: 'Systems', icon: Monitor, resource: 'systems' },
       { to: '/providers', label: 'Providers', icon: Cpu, resource: 'config' },
       { to: '/integrations', label: 'Integrations', icon: Plug, resource: 'integrations' },

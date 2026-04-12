@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Sidebar from './components/Sidebar'
 import Overview from './pages/Overview'
@@ -25,6 +25,7 @@ import Triggers from './pages/Triggers'
 import Backups from './pages/Backups'
 import Providers from './pages/Providers'
 import Workspace from './pages/Workspace'
+import Settings from './pages/Settings'
 
 function AppContent() {
   const location = useLocation()
@@ -89,7 +90,9 @@ function AppContent() {
           <Route path="/memory" element={<Memory />} />
           <Route path="/mempalace" element={<MemPalace />} />
           <Route path="/systems" element={<Systems />} />
+          {hasPermission('config', 'view') && <Route path="/settings" element={<Settings />} />}
           {hasPermission('config', 'view') && <Route path="/backups" element={<Backups />} />}
+          <Route path="/config" element={<Navigate to="/settings" replace />} />
           <Route path="/providers" element={<Providers />} />
           {hasPermission('users', 'view') && <Route path="/users" element={<Users />} />}
           {hasPermission('audit', 'view') && <Route path="/audit" element={<Audit />} />}

@@ -177,14 +177,10 @@ Full audit trail of all actions: logins, config changes, routine executions, use
 
 Export and restore workspace data (all gitignored user files). Create local backups, download ZIPs, restore with merge or replace mode. Shows S3 configuration status when cloud backup is available. The daily backup routine runs automatically at 21:00.
 
-### Config
+### Settings
 
-![Config](../imgs/doc-config.webp)
+Workspace configuration hub with three tabs:
 
-View and edit workspace configuration:
-- **CLAUDE.md** -- rendered markdown viewer
-- **ROUTINES.md** -- routine documentation
-- **ROADMAP.md** -- project roadmap
-- **.env editor** -- visual key-value editor for environment variables (see [env-editor.md](env-editor.md))
-- **Makefile targets** -- parsed list of all available `make` commands
-- **Commands** -- slash command definitions from `.claude/commands/`
+- **Workspace** -- edit workspace name, owner, company, language, timezone, and dashboard port (`config/workspace.yaml`)
+- **Routines** -- toggle routines on/off, edit schedules inline, view agents and scripts (`config/routines.yaml`). Changes trigger automatic scheduler reload.
+- **Reference** -- read-only views of CLAUDE.md, Makefile targets, and slash commands

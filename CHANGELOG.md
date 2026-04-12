@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.2] - 2026-04-12
+
+### Added
+
+- **Settings page** — new `/settings` page in the dashboard with three tabs: Workspace config (`workspace.yaml`), Routines management (`routines.yaml`), and Reference (CLAUDE.md, Makefile, Commands)
+- **Workspace config UI** — edit workspace name, owner, company, language (20 locales), timezone, and dashboard port
+- **Routines toggle & inline edit** — enable/disable routines with toggle switches, edit schedules inline, grouped by frequency (daily/weekly/monthly)
+- **Settings backend API** — 9 new endpoints for workspace and routine CRUD with audit logging and scheduler reload via sentinel file
+- **API patch method** — `api.patch()` added to frontend API helper
+
+### Changed
+
+- **Config page replaced by Settings** — old `/config` removed, `/config` redirects to `/settings`
+- **Sidebar updated** — "Settings" added as first item in System group
+
+### Removed
+
+- **.env editor** — removed from both frontend and backend (security risk; use terminal for .env changes)
+
 ## [0.17.1] - 2026-04-12
 
 ### Added
