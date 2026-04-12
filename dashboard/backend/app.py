@@ -58,6 +58,17 @@ with app.app_context():
     if "agent_access_json" not in _existing_cols:
         _cur.execute("ALTER TABLE roles ADD COLUMN agent_access_json TEXT DEFAULT '{\"mode\": \"all\"}'")
         _conn.commit()
+
+    # Fix corrupted datetime columns (NULL or non-string values crash SQLAlchemy)
+    for _tbl, _col in [("roles", "created_at"), ("users", "created_at"), ("users", "last_login")]:
+        try:
+            _tbl_cols = {row[1] for row in _cur.execute(f"PRAGMA table_info({_tbl})").fetchall()}
+            if _col in _tbl_cols:
+                _cur.execute(f"UPDATE {_tbl} SET {_col} = datetime('now') WHERE {_col} IS NOT NULL AND typeof({_col}) != 'text'")
+                _cur.execute(f"UPDATE {_tbl} SET {_col} = datetime('now') WHERE {_col} IS NOT NULL AND {_col} != '' AND {_col} NOT LIKE '____-__-__%'")
+        except Exception:
+            pass
+    _conn.commit()
     _conn.close()
     # --- End auto-migrate ---
 
