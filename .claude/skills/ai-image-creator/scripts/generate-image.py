@@ -896,11 +896,16 @@ def process_transparent(input_path: Path, output_path: Path) -> None:
 
 
 def get_costs_path() -> Path:
-    """Get project-level costs file path.
+    """Get workspace-level costs file path.
 
     Returns:
-        Path to .ai-image-creator/costs.json in current working directory.
+        Path to ADWs/logs/ai-image-creator-costs.json in workspace root.
+        Falls back to CWD if workspace root is not found.
     """
+    workspace_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+    logs_dir = workspace_root / "ADWs" / "logs"
+    if logs_dir.is_dir():
+        return logs_dir / "ai-image-creator-costs.json"
     return Path.cwd() / ".ai-image-creator" / "costs.json"
 
 

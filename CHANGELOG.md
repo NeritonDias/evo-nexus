@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1] - 2026-04-12
+
+### Added
+
+- **AI Image Creator cost tracking in dashboard** — new "Geração de Imagens" section in Costs page showing per-image model, provider, tokens, size, and elapsed time with totals
+- **Image costs API endpoint** — `GET /api/routines/image-costs` reads cost entries from `ADWs/logs/ai-image-creator-costs.json`
+
+### Changed
+
+- **AI Image Creator costs path** — cost logs now saved to `ADWs/logs/ai-image-creator-costs.json` (workspace-level) instead of `.ai-image-creator/costs.json` (project-level)
+
 ## [0.18.0] - 2026-04-12
 
 ### Added
