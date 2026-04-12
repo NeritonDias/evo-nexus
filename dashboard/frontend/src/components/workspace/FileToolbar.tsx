@@ -122,7 +122,7 @@ function ToolbarButton({ icon, label, onClick, variant = 'default', disabled = f
       onMouseUp={handleMouseUp}
     >
       {icon}
-      <span>{label}</span>
+      <span className="hidden sm:inline">{label}</span>
     </button>
   )
 }
@@ -166,8 +166,6 @@ export default function FileToolbar({
     <div
       className="flex items-center gap-0.5 px-3 py-2 overflow-x-auto"
       style={{
-        background: 'var(--bg-card)',
-        borderBottom: '1px solid var(--border)',
         minHeight: '44px',
         flexShrink: 0,
       }}

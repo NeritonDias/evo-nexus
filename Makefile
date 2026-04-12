@@ -60,30 +60,10 @@ learn-weekly:       ## 📚 Learning loop weekly report — overdue facts + stat
 #   make run R=community-week
 
 run:                ## ▶️  Run any routine: make run R=<id>  (e.g. make run R=fin-pulse)
-	@$(PYTHON) -c "\
-	import sys; sys.path.insert(0, 'dashboard/backend'); \
-	from routes._helpers import get_routine_scripts; \
-	scripts = get_routine_scripts(); \
-	r = '$(R)'; \
-	s = scripts.get(r) or next((v for k,v in scripts.items() if r.replace('-','_') in v), None); \
-	print(f'Running: {s}') if s else (print(f'Unknown routine: {r}. Available: {\" \".join(sorted(scripts.keys()))}'), exit(1)); \
-	" && $(PYTHON) $(ADW_DIR)/$$($(PYTHON) -c "\
-	import sys; sys.path.insert(0, 'dashboard/backend'); \
-	from routes._helpers import get_routine_scripts; \
-	scripts = get_routine_scripts(); \
-	r = '$(R)'; \
-	s = scripts.get(r) or next((v for k,v in scripts.items() if r.replace('-','_') in v), ''); \
-	print(s); \
-	")
+	@$(PYTHON) -c "import sys; sys.path.insert(0, 'dashboard/backend'); from routes._helpers import get_routine_scripts; scripts = get_routine_scripts(); r = '$(R)'; s = scripts.get(r) or next((v for k,v in scripts.items() if r.replace('-','_') in v), None); print(f'Running: {s}') if s else (print(f'Unknown routine: {r}'), exit(1))" && $(PYTHON) $(ADW_DIR)/$$($(PYTHON) -c "import sys; sys.path.insert(0, 'dashboard/backend'); from routes._helpers import get_routine_scripts; scripts = get_routine_scripts(); r = '$(R)'; s = scripts.get(r) or next((v for k,v in scripts.items() if r.replace('-','_') in v), ''); print(s)")
 
 list-routines:      ## 📋 List all available routines (dynamic from scripts)
-	@$(PYTHON) -c "\
-	import sys; sys.path.insert(0, 'dashboard/backend'); \
-	from routes._helpers import discover_routines; \
-	routines = discover_routines(); \
-	[print(f'  \033[36m{k:20s}\033[0m {v[\"name\"]:30s} @{v[\"agent\"]:<10s} {v[\"script\"]}') for k,v in sorted(routines.items())]; \
-	print(f'\n  {len(routines)} routines available — run with: make run R=<id>'); \
-	"
+	@$(PYTHON) -c "import sys; sys.path.insert(0, 'dashboard/backend'); from routes._helpers import discover_routines; routines = discover_routines(); [print(f'  \033[36m{k:20s}\033[0m {v[\"name\"]:30s} @{v[\"agent\"]:<10s} {v[\"script\"]}') for k,v in sorted(routines.items())]; print(f'\n  {len(routines)} routines available — run with: make run R=<id>')"
 
 # ── Agent Teams (experimental, opt-in) ───
 # Parallel multi-agent versions of consolidation routines.

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.6] - 2026-04-12
+
+### Fixed
+
+- **Share viewer CSS isolation** — shared HTML files now render inside an `<iframe>` with `srcDoc` instead of `dangerouslySetInnerHTML`, preventing Tailwind preflight and global dashboard styles from overriding the shared file's internal CSS (e.g., centered headers appearing left-aligned)
+- **Workspace file manager responsiveness** — FileTree sidebar now collapses into a slide-over drawer on mobile (`<lg` breakpoint) with overlay and toggle button. Toolbar buttons show icons-only on small screens (`<sm`). Selecting a file auto-closes the sidebar on mobile
+- **Makefile `make run` IndentationError** — multiline Python `-c` commands had tab characters from Makefile indentation leaking into the Python source, causing `IndentationError: unexpected indent`. Collapsed to single-line commands
+
 ## [0.18.5] - 2026-04-12
 
 ### Added

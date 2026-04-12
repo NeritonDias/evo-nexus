@@ -94,11 +94,22 @@ export default function ShareView() {
     load()
   }, [token])
 
-  // Full-page HTML rendering
+  // Full-page HTML rendering — use iframe to isolate CSS
   if (state.status === 'html') {
     return (
-      <div style={{ position: 'relative', minHeight: '100vh' }}>
-        <div dangerouslySetInnerHTML={{ __html: state.content }} />
+      <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <iframe
+          srcDoc={state.content}
+          style={{
+            flex: 1,
+            width: '100%',
+            minHeight: 'calc(100vh - 40px)',
+            border: 'none',
+            background: '#0C111D',
+          }}
+          title="Arquivo compartilhado"
+          sandbox="allow-same-origin allow-scripts"
+        />
         <PoweredByFooter />
       </div>
     )

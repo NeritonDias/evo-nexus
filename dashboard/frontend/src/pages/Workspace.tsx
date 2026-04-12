@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { CheckCircle, Copy, Check } from 'lucide-react'
+import { CheckCircle, Copy, Check, PanelLeftOpen } from 'lucide-react'
 import { api } from '../lib/api'
 import FileTree from '../components/workspace/FileTree'
 import FileToolbar, { type EditorMode } from '../components/workspace/FileToolbar'
@@ -587,6 +587,9 @@ export default function Workspace() {
     })
   }, [])
 
+  // Mobile sidebar toggle
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   const [copiedPath, setCopiedPath] = useState(false)
 
   const handleCopyPath = useCallback(() => {
@@ -603,34 +606,73 @@ export default function Workspace() {
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
-      {/* FileTree */}
-      <FileTree
-        selectedPath={selectedPath}
-        onSelect={handleSelect}
-        onNavigate={(path) => handleSelect(path, true)}
-        refreshTrigger={refreshTrigger}
-      />
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* FileTree — desktop: static sidebar, mobile: slide-over */}
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 transition-transform duration-200
+          lg:static lg:translate-x-0 lg:z-auto
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <FileTree
+          selectedPath={selectedPath}
+          onSelect={(path, dir) => {
+            handleSelect(path, dir)
+            setSidebarOpen(false)
+          }}
+          onNavigate={(path) => {
+            handleSelect(path, true)
+            setSidebarOpen(false)
+          }}
+          refreshTrigger={refreshTrigger}
+        />
+      </div>
 
       {/* Main area */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {/* FileToolbar */}
-        <FileToolbar
-          selectedPath={selectedPath}
-          isDir={isDir}
-          mode={mode}
-          isDirty={isDirty}
-          onNewFile={handleNewFile}
-          onNewFolder={handleNewFolder}
-          onUpload={() => setShowUpload(true)}
-          onRefresh={() => setRefreshTrigger(t => t + 1)}
-          onEdit={handleEdit}
-          onSave={() => handleSave()}
-          onCancel={handleCancel}
-          onRename={handleRename}
-          onDelete={handleDelete}
-          onDownload={handleDownload}
-          onShare={handleShare}
-        />
+        {/* FileToolbar with mobile toggle */}
+        <div className="flex items-center flex-shrink-0" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+          {/* Mobile sidebar toggle */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden flex items-center justify-center flex-shrink-0"
+            style={{
+              width: '44px',
+              height: '44px',
+              color: 'var(--text-secondary)',
+              borderRight: '1px solid var(--border)',
+            }}
+          >
+            <PanelLeftOpen size={18} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <FileToolbar
+              selectedPath={selectedPath}
+              isDir={isDir}
+              mode={mode}
+              isDirty={isDirty}
+              onNewFile={handleNewFile}
+              onNewFolder={handleNewFolder}
+              onUpload={() => setShowUpload(true)}
+              onRefresh={() => setRefreshTrigger(t => t + 1)}
+              onEdit={handleEdit}
+              onSave={() => handleSave()}
+              onCancel={handleCancel}
+              onRename={handleRename}
+              onDelete={handleDelete}
+              onDownload={handleDownload}
+              onShare={handleShare}
+            />
+          </div>
+        </div>
 
         {/* File tabs */}
         <FileTabs
