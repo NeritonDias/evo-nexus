@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.2] - 2026-04-12
+
+### Added
+
+- **`make uninstall`** — full cleanup command that stops services, removes nginx config, data, deps, and config files. Requires typing "UNINSTALL" to confirm
+- **`make stop`** — stops all EvoNexus services (dashboard + terminal-server)
+
+### Fixed
+
+- **Setup nginx config not persisting** — now removes both `default` and `default.conf`, uses `systemctl reload` instead of `start`, shows clear error with fix command if `nginx -t` fails
+- **CLI showing wrong instructions for VPS** — `npx @evoapi/evo-nexus` now detects remote mode (nginx config present) and shows `./start-services.sh` instead of `make dashboard-app`. Skips redundant frontend build when setup already built it
+- **CLI redundant `npm run build`** — no longer rebuilds frontend after setup already did, avoiding "port already in use" cascade when services were already running
+
 ## [0.18.1] - 2026-04-12
 
 ### Added

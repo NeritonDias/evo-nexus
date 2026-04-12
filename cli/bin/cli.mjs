@@ -187,28 +187,49 @@ async function main() {
 
   setup.on("close", (code) => {
     if (code === 0) {
-      // Build frontend
-      console.log(`\n  ${DIM}Building dashboard frontend...${RESET}`);
+      // Check if setup ran in remote mode (services already started)
+      let isRemote = false;
       try {
-        run("npm run build --silent", { cwd: frontendDir });
-        console.log(`  ${GREEN}✓${RESET} Dashboard built\n`);
-      } catch {
-        console.log(`  ${YELLOW}!${RESET} Frontend build failed — run manually: cd ${targetDir}/dashboard/frontend && npm run build\n`);
+        isRemote = existsSync("/etc/nginx/sites-enabled/evonexus");
+      } catch {}
+
+      if (!isRemote) {
+        // Local mode: build frontend (setup already built, but ensure latest)
+        console.log(`\n  ${DIM}Building dashboard frontend...${RESET}`);
+        try {
+          run("npm run build --silent", { cwd: frontendDir });
+          console.log(`  ${GREEN}✓${RESET} Dashboard built\n`);
+        } catch {
+          console.log(`  ${YELLOW}!${RESET} Frontend build failed — run manually: cd ${targetDir}/dashboard/frontend && npm run build\n`);
+        }
       }
 
       console.log(`
   ${GREEN}${BOLD}EvoNexus installed successfully!${RESET}
+`);
 
-  ${BOLD}Next steps:${RESET}
+      if (isRemote) {
+        // Remote mode: services already running, don't suggest make dashboard-app
+        console.log(`  ${BOLD}The dashboard is already running.${RESET}
+  Open the URL shown above to create your admin account.
+
+  ${BOLD}Useful commands:${RESET}
+  ${CYAN}•${RESET} ${BOLD}./start-services.sh${RESET}  — restart dashboard services
+  ${CYAN}•${RESET} ${BOLD}make scheduler${RESET}       — start automated routines
+  ${CYAN}•${RESET} ${BOLD}make help${RESET}            — see all available commands
+`);
+      } else {
+        console.log(`  ${BOLD}Next steps:${RESET}
   ${CYAN}1.${RESET} cd ${targetDir}
   ${CYAN}2.${RESET} Edit ${BOLD}.env${RESET} with your API keys
   ${CYAN}3.${RESET} ${BOLD}make dashboard-app${RESET}    — start the dashboard
   ${CYAN}4.${RESET} Open ${BOLD}http://localhost:8080${RESET} and create your admin account
   ${CYAN}5.${RESET} ${BOLD}make help${RESET}             — see all available commands
-
-  ${DIM}Documentation: https://evonexus.evolutionfoundation.com.br/docs${RESET}
-  ${DIM}GitHub: https://github.com/EvolutionAPI/evo-nexus${RESET}
 `);
+      }
+
+      console.log(`  ${DIM}Documentation: https://evonexus.evolutionfoundation.com.br/docs${RESET}`);
+      console.log(`  ${DIM}GitHub: https://github.com/EvolutionAPI/evo-nexus${RESET}\n`);
     } else {
       console.log(`\n  ${RED}Setup failed (exit code ${code}).${RESET}`);
       console.log(`  ${DIM}Try running manually: cd ${targetDir} && make setup${RESET}\n`);
