@@ -371,6 +371,43 @@ export default function Workspace() {
     }
   }, [selectedPath, dirtyTabs, tabModes, tabEditorContents])
 
+  const handleCloseAll = useCallback(() => {
+    setOpenTabs([])
+    setSelectedPath(null)
+    setIsDir(false)
+    setMode('preview')
+    setEditorContent(null)
+    setDirtyTabs(new Set())
+    setTabEditorContents({})
+    setTabModes({})
+  }, [])
+
+  const handleCloseOthers = useCallback((keepPath: string) => {
+    setOpenTabs(prev => prev.filter(t => t.path === keepPath))
+    setSelectedPath(keepPath)
+    setIsDir(false)
+    // Clean up state for closed tabs
+    setDirtyTabs(prev => {
+      const n = new Set<string>()
+      if (prev.has(keepPath)) n.add(keepPath)
+      return n
+    })
+  }, [])
+
+  const handleCloseToLeft = useCallback((path: string) => {
+    setOpenTabs(prev => {
+      const idx = prev.findIndex(t => t.path === path)
+      return idx > 0 ? prev.slice(idx) : prev
+    })
+  }, [])
+
+  const handleCloseToRight = useCallback((path: string) => {
+    setOpenTabs(prev => {
+      const idx = prev.findIndex(t => t.path === path)
+      return idx >= 0 ? prev.slice(0, idx + 1) : prev
+    })
+  }, [])
+
   const handleEdit = useCallback(async () => {
     if (!selectedPath || isDir) return
     try {
@@ -681,6 +718,10 @@ export default function Workspace() {
           dirtyPaths={dirtyTabs}
           onSwitch={handleTabSwitch}
           onClose={handleTabClose}
+          onCloseAll={handleCloseAll}
+          onCloseOthers={handleCloseOthers}
+          onCloseToLeft={handleCloseToLeft}
+          onCloseToRight={handleCloseToRight}
         />
 
         {/* Path title */}

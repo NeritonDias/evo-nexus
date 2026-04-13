@@ -20,8 +20,8 @@ import requests
 logger = logging.getLogger("licensing")
 
 LICENSING_SERVER = "https://license.evolutionfoundation.com.br"
-PRODUCT = "evonexus"
-TIER = "evonexus"
+PRODUCT = "evo-nexus"
+TIER = "evo-nexus"
 TIMEOUT = 10
 
 
@@ -103,7 +103,12 @@ def _post(path: str, payload: dict, api_key: str | None = None) -> dict:
         headers["Authorization"] = f"HMAC {signature}"
 
     resp = requests.post(url, data=body, headers=headers, timeout=TIMEOUT)
-    resp.raise_for_status()
+    if not resp.ok:
+        try:
+            detail = resp.json().get("detail", resp.text[:200])
+        except Exception:
+            detail = resp.text[:200]
+        raise requests.HTTPError(f"{resp.status_code} {resp.reason}: {detail}", response=resp)
     return resp.json()
 
 
@@ -270,7 +275,7 @@ def auto_register_if_needed():
             return
 
         admin = User.query.filter_by(role="admin").first()
-        if not admin:
+        if not admin or not admin.email:
             return
 
         if not instance_id:

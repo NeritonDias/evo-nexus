@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.3] - 2026-04-13
+
+### Added
+
+- **File tab context menu** — right-click on workspace file tabs for: Close, Close others, Close all to the left, Close all to the right, Close all
+- **Scheduler in systemd** — `start-services.sh` and `ExecStop` now manage the scheduler process. Restarts properly kill and relaunch the scheduler so `routines.yaml` changes take effect
+
+### Fixed
+
+- **Licensing product slug** — changed `PRODUCT` and `TIER` from `"evonexus"` to `"evo-nexus"` to match the licensing server's product registry. This was causing 400 `INVALID_TIER` on new installations
+- **Licensing error logging** — `_post()` now logs the server's error body (e.g., `MISSING_FIELD: email is required`) instead of the generic `400 Bad Request`
+- **Setup requires email** — the initial setup endpoint now validates that email is provided (required for license registration)
+- **Auto-register skips missing email** — `auto_register_if_needed()` no longer attempts registration if the admin user has no email
+- **Makefile pkill self-kill** — applied `[p]attern` bracket trick to prevent `pkill -f` from matching its own shell process on Linux/WSL (PR #5 by @gomessguii)
+
 ## [0.20.2] - 2026-04-13
 
 ### Added

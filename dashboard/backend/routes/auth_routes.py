@@ -47,6 +47,8 @@ def setup():
 
     if not username or not password:
         abort(400, description="Username and password are required")
+    if not email:
+        abort(400, description="Email is required for license registration")
     if len(password) < 6:
         abort(400, description="Password must be at least 6 characters")
 
