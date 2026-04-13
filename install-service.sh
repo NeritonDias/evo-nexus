@@ -63,6 +63,34 @@ fi
 chown -R "$SERVICE_USER:$SERVICE_USER" "$SERVICE_DIR"
 chown -R "$SERVICE_USER:$SERVICE_USER" "$SERVICE_HOME"
 
+# ── Step 2b: Regenerate start-services.sh with correct paths ──
+
+LOGS_DIR="$SERVICE_DIR/logs"
+echo -e "  Generating start-services.sh..."
+cat > "$SERVICE_DIR/start-services.sh" << STARTEOF
+#!/bin/bash
+export PATH="/usr/local/bin:/usr/bin:/bin:\$HOME/.local/bin"
+cd $SERVICE_DIR
+
+# Kill existing services
+pkill -f 'terminal-server/bin/server.js' 2>/dev/null
+pkill -f 'dashboard/backend.*app.py' 2>/dev/null
+sleep 1
+
+# Clean stale sessions — old sessions cause agent persona issues
+rm -f \$HOME/.claude-code-web/sessions.json 2>/dev/null
+
+# Start terminal-server (must run FROM the project root for agent discovery)
+nohup node dashboard/terminal-server/bin/server.js > $LOGS_DIR/terminal-server.log 2>&1 &
+
+# Start Flask dashboard
+cd dashboard/backend
+nohup $SERVICE_DIR/.venv/bin/python app.py > $LOGS_DIR/dashboard.log 2>&1 &
+STARTEOF
+chmod 755 "$SERVICE_DIR/start-services.sh"
+chown "$SERVICE_USER:$SERVICE_USER" "$SERVICE_DIR/start-services.sh"
+echo -e "  ${GREEN}✓${RESET} start-services.sh regenerated"
+
 # ── Step 3: Install uv for the user ──
 
 if su - "$SERVICE_USER" -c "command -v uv" &>/dev/null; then
