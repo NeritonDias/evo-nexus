@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.4] - 2026-04-13
+
+### Fixed
+
+- **Chat connection error feedback** — when terminal-server is offline, the chat UI now shows a red error pill instead of sitting silently. HTTP preflight check before WS connect, disabled input while connecting/errored, `cancelled` flag for clean unmount (PR #7 by @gomessguii)
+- **Terminal-server IPv4 bind** — explicit `0.0.0.0` host so WSL2 localhost forwarding reaches the server from Windows browsers (PR #6 by @gomessguii)
+
 ## [0.20.3] - 2026-04-13
 
 ### Added
