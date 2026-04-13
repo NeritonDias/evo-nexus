@@ -100,11 +100,12 @@ interface ImageCostEntry {
   size_bytes: number
   elapsed_seconds: number
   token_usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+  estimated_cost_usd?: number
 }
 
 interface ImageCosts {
   entries: ImageCostEntry[]
-  totals: { count: number; total_tokens: number; total_seconds: number; total_bytes: number }
+  totals: { count: number; total_tokens: number; total_seconds: number; total_bytes: number; total_cost_usd?: number }
 }
 
 function relativeTime(ts: string): string {
@@ -174,6 +175,8 @@ export default function Costs() {
   }
 
   const totalRuns = (data.by_routine || []).reduce((sum, r) => sum + Number(r.runs || 0), 0)
+  const imageTotalCost = imageCosts?.totals?.total_cost_usd || 0
+  const grandTotal = Number(data.total_cost || 0) + imageTotalCost
   const avgCostPerRun = totalRuns > 0 ? data.total_cost / totalRuns : 0
 
   return (
@@ -199,9 +202,9 @@ export default function Costs() {
           icon={Activity}
         />
         <StatCard
-          label="Month Estimate"
-          value={`$${Number(data.month_estimate || data.total_cost || 0).toFixed(2)}`}
-          subtitle="Projected total"
+          label="Total (All)"
+          value={`$${grandTotal.toFixed(2)}`}
+          subtitle={imageTotalCost > 0 ? `Routines + ${imageCosts?.totals?.count || 0} images` : 'Routines total'}
           icon={Zap}
         />
         <StatCard
@@ -324,6 +327,9 @@ export default function Costs() {
               <span>{imageCosts.totals.total_tokens.toLocaleString()} tokens</span>
               <span>{formatBytes(imageCosts.totals.total_bytes)}</span>
               <span>{imageCosts.totals.total_seconds}s total</span>
+              {imageCosts.totals.total_cost_usd !== undefined && (
+                <span className="text-[#00FFA7] font-medium">${imageCosts.totals.total_cost_usd.toFixed(2)}</span>
+              )}
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -336,6 +342,7 @@ export default function Costs() {
                   <th className="text-right p-4 pb-3">Tokens</th>
                   <th className="text-right p-4 pb-3">Size</th>
                   <th className="text-right p-4 pb-3">Time</th>
+                  <th className="text-right p-4 pb-3">Est. Cost</th>
                   <th className="text-right p-4 pb-3">When</th>
                 </tr>
               </thead>
@@ -354,6 +361,9 @@ export default function Costs() {
                     <td className="p-4 text-right text-[#8b949e] tabular-nums text-[13px]">{e.token_usage.total_tokens.toLocaleString()}</td>
                     <td className="p-4 text-right text-[#8b949e] tabular-nums text-[13px]">{formatBytes(e.size_bytes)}</td>
                     <td className="p-4 text-right text-[#667085] tabular-nums text-[13px]">{e.elapsed_seconds.toFixed(1)}s</td>
+                    <td className="p-4 text-right tabular-nums text-[13px] text-[#00FFA7]">
+                      {e.estimated_cost_usd !== undefined ? `$${e.estimated_cost_usd.toFixed(4)}` : '—'}
+                    </td>
                     <td className="p-4 text-right text-[#667085] text-[13px] whitespace-nowrap">{relativeTime(e.timestamp)}</td>
                   </tr>
                 ))}

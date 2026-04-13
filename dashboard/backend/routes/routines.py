@@ -84,9 +84,45 @@ def list_adws():
     return jsonify(scripts)
 
 
+# Pricing per model for image generation (USD)
+# Format: { model_substring: { per_image: float, input_per_1m: float, output_per_1m: float } }
+IMAGE_MODEL_PRICING = {
+    "gemini-3.1-flash-image-preview": {"per_image": 0.039, "input_per_1m": 0.075, "output_per_1m": 0.30},
+    "gemini-2.0-flash": {"per_image": 0.039, "input_per_1m": 0.10, "output_per_1m": 0.40},
+    "flux-2": {"per_image": 0.03, "input_per_1m": 0, "output_per_1m": 0},
+    "flux.2": {"per_image": 0.03, "input_per_1m": 0, "output_per_1m": 0},
+    "gpt-5-image": {"per_image": 0.04, "input_per_1m": 0.005, "output_per_1m": 0.015},
+    "seedream": {"per_image": 0.02, "input_per_1m": 0, "output_per_1m": 0},
+    "riverflow": {"per_image": 0.02, "input_per_1m": 0, "output_per_1m": 0},
+}
+
+
+def _estimate_image_cost(entry: dict) -> float:
+    """Estimate USD cost for a single image generation entry."""
+    model = entry.get("model", "").lower()
+    tokens = entry.get("token_usage", {})
+    total_tokens = tokens.get("total_tokens", 0)
+
+    # Find matching pricing by model substring
+    pricing = None
+    for key, p in IMAGE_MODEL_PRICING.items():
+        if key in model:
+            pricing = p
+            break
+
+    if not pricing:
+        # Fallback: assume $0.03/image for unknown models
+        return 0.03
+
+    cost = pricing["per_image"]
+    if total_tokens > 0 and pricing["input_per_1m"] > 0:
+        cost += (total_tokens / 1_000_000) * pricing["input_per_1m"]
+    return round(cost, 6)
+
+
 @bp.route("/api/routines/image-costs")
 def get_image_costs():
-    """Return AI image generation cost entries."""
+    """Return AI image generation cost entries with estimated costs."""
     costs_path = LOGS_DIR / "ai-image-creator-costs.json"
     content = safe_read(costs_path)
     if not content:
@@ -99,11 +135,15 @@ def get_image_costs():
     total_tokens = 0
     total_seconds = 0.0
     total_bytes = 0
+    total_cost = 0.0
     for e in entries:
         tokens = e.get("token_usage", {})
         total_tokens += tokens.get("total_tokens", 0)
         total_seconds += e.get("elapsed_seconds", 0)
         total_bytes += e.get("size_bytes", 0)
+        est = _estimate_image_cost(e)
+        e["estimated_cost_usd"] = est
+        total_cost += est
 
     return jsonify({
         "entries": entries,
@@ -112,5 +152,6 @@ def get_image_costs():
             "total_tokens": total_tokens,
             "total_seconds": round(total_seconds, 1),
             "total_bytes": total_bytes,
+            "total_cost_usd": round(total_cost, 4),
         },
     })
