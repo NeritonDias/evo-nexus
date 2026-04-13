@@ -732,6 +732,7 @@ Documentation=https://github.com/EvolutionAPI/evo-nexus
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+KillMode=none
 User={service_user}
 Group={service_user}
 WorkingDirectory={install_dir}
