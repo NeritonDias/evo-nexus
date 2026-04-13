@@ -74,7 +74,7 @@ cd $SERVICE_DIR
 
 # Kill existing services (including scheduler)
 pkill -f 'terminal-server/bin/server.js' 2>/dev/null
-pkill -f 'dashboard/backend.*app.py' 2>/dev/null
+pkill -f 'python.*app.py' 2>/dev/null
 pkill -f 'python.*scheduler.py' 2>/dev/null
 sleep 1
 
@@ -138,7 +138,7 @@ WorkingDirectory=$SERVICE_DIR
 Environment=PATH=$SERVICE_HOME/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=HOME=$SERVICE_HOME
 ExecStart=/bin/bash $SERVICE_DIR/start-services.sh
-ExecStop=/bin/bash -c 'pkill -f "terminal-server/bin/server.js" 2>/dev/null; pkill -f "dashboard/backend.*app.py" 2>/dev/null; pkill -f "python.*scheduler.py" 2>/dev/null'
+ExecStop=/bin/bash -c 'pkill -f "terminal-server/bin/server.js" 2>/dev/null; pkill -f "python.*app.py" 2>/dev/null; pkill -f "python.*scheduler.py" 2>/dev/null'
 StandardOutput=append:$SERVICE_DIR/logs/service.log
 StandardError=append:$SERVICE_DIR/logs/service.log
 
