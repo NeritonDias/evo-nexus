@@ -119,6 +119,9 @@ class ChatBridge {
       'NotebookEdit', 'ToolSearch',
     ];
 
+    // Enable subagent progress summaries
+    queryOptions.agentProgressSummaries = true;
+
     // Resume existing conversation if we have an SDK session ID
     if (sdkSessionId) {
       queryOptions.resume = sdkSessionId;
@@ -335,10 +338,44 @@ class ChatBridge {
       }
 
       case 'system': {
+        // Subagent lifecycle events
+        if (msg.subtype === 'task_started') {
+          return {
+            type: 'task_started',
+            taskId: msg.task_id,
+            toolUseId: msg.tool_use_id,
+            description: msg.description,
+            prompt: msg.prompt,
+          };
+        }
+        if (msg.subtype === 'task_progress') {
+          return {
+            type: 'task_progress',
+            taskId: msg.task_id,
+            description: msg.description,
+            summary: msg.summary,
+          };
+        }
+        if (msg.subtype === 'task_notification') {
+          return {
+            type: 'task_complete',
+            taskId: msg.task_id,
+            toolUseId: msg.tool_use_id,
+            status: msg.status,
+          };
+        }
         return {
           type: 'system',
           subtype: msg.subtype,
           sessionId: msg.session_id,
+        };
+      }
+
+      case 'tool_use_summary': {
+        return {
+          type: 'tool_use_summary',
+          summary: msg.summary,
+          toolUseIds: msg.preceding_tool_use_ids,
         };
       }
 

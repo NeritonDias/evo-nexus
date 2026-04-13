@@ -41,7 +41,7 @@ type ChatMessage =
 type AssistantBlock =
   | { type: 'text'; text: string }
   | { type: 'thinking'; text: string }
-  | { type: 'tool_use'; toolName: string; toolId: string; input: string; result?: string; done?: boolean }
+  | { type: 'tool_use'; toolName: string; toolId: string; input: string; result?: string; done?: boolean; subagentType?: string; subagentStatus?: string; subagentSummary?: string }
 
 type Status = 'idle' | 'connecting' | 'running' | 'error'
 
@@ -260,6 +260,64 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7' }:
           break
         }
 
+        case 'task_started': {
+          // Subagent started — find the Agent tool_use block and enrich it
+          const last2 = copy[copy.length - 1]
+          if (last2?.role === 'assistant') {
+            const blocks = [...(last2 as any).blocks]
+            // Find the Agent tool block by toolUseId or last Agent block
+            for (let k = blocks.length - 1; k >= 0; k--) {
+              if (blocks[k].type === 'tool_use' && blocks[k].toolName === 'Agent') {
+                blocks[k] = { ...blocks[k], subagentType: msg.description, subagentStatus: 'running' }
+                break
+              }
+            }
+            copy[copy.length - 1] = { ...last2, blocks } as any
+          }
+          break
+        }
+
+        case 'task_progress': {
+          const last3 = copy[copy.length - 1]
+          if (last3?.role === 'assistant') {
+            const blocks = [...(last3 as any).blocks]
+            for (let k = blocks.length - 1; k >= 0; k--) {
+              if (blocks[k].type === 'tool_use' && blocks[k].toolName === 'Agent' && blocks[k].subagentStatus === 'running') {
+                blocks[k] = { ...blocks[k], subagentSummary: msg.summary || msg.description }
+                break
+              }
+            }
+            copy[copy.length - 1] = { ...last3, blocks } as any
+          }
+          break
+        }
+
+        case 'task_complete': {
+          const last4 = copy[copy.length - 1]
+          if (last4?.role === 'assistant') {
+            const blocks = [...(last4 as any).blocks]
+            for (let k = blocks.length - 1; k >= 0; k--) {
+              if (blocks[k].type === 'tool_use' && blocks[k].toolName === 'Agent') {
+                blocks[k] = { ...blocks[k], subagentStatus: msg.status, done: true }
+                break
+              }
+            }
+            copy[copy.length - 1] = { ...last4, blocks } as any
+          }
+          break
+        }
+
+        case 'tool_use_summary': {
+          // Show summary text after tool completes
+          const last5 = copy[copy.length - 1]
+          if (last5?.role === 'assistant' && msg.summary) {
+            const blocks = [...(last5 as any).blocks]
+            blocks.push({ type: 'text', text: msg.summary })
+            copy[copy.length - 1] = { ...last5, blocks } as any
+          }
+          break
+        }
+
         case 'result': {
           const last = copy[copy.length - 1]
           if (last?.role === 'assistant') {
@@ -391,7 +449,10 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7' }:
     }))
 
     scrollToBottom()
-    inputRef.current?.focus()
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto'
+      inputRef.current.focus()
+    }
   }, [input, attachedFiles, scrollToBottom])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -717,6 +778,63 @@ function ToolCard({ block, accentColor }: { block: Extract<AssistantBlock, { typ
   let parsedInput: any = null
   try { parsedInput = JSON.parse(block.input) } catch {}
 
+  // Detect Agent tool — render special subagent card
+  const isAgentTool = block.toolName === 'Agent'
+  const subagentName = parsedInput?.subagent_type || parsedInput?.name || ''
+  const subagentDesc = parsedInput?.description || block.subagentType || ''
+
+  if (isAgentTool) {
+    const isRunning = block.subagentStatus === 'running'
+    const isDone = block.done || block.subagentStatus === 'completed' || block.subagentStatus === 'failed'
+
+    return (
+      <div className="border border-[#21262d] rounded-lg overflow-hidden">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-2.5 w-full px-3 py-2.5 text-[12px] bg-[#161b22] hover:bg-[#1c2333] transition-colors"
+        >
+          {open ? <ChevronDown size={12} className="text-[#667085]" /> : <ChevronRight size={12} className="text-[#667085]" />}
+
+          {/* Subagent avatar */}
+          {subagentName ? (
+            <AgentAvatar name={subagentName.replace('custom-', '')} size={20} />
+          ) : (
+            <FileCode size={13} style={{ color: accentColor }} />
+          )}
+
+          <span className="font-medium text-[#e6edf3]">
+            {subagentName ? `@${subagentName}` : 'Agent'}
+          </span>
+          {subagentDesc && (
+            <span className="text-[#8b949e] truncate max-w-[300px] text-[11px]">{subagentDesc}</span>
+          )}
+
+          <span className="ml-auto flex-shrink-0 flex items-center gap-2">
+            {/* Progress summary */}
+            {isRunning && block.subagentSummary && (
+              <span className="text-[10px] text-[#667085] truncate max-w-[200px]" style={{ animation: 'chat-pulse 2s ease-in-out infinite' }}>
+                {block.subagentSummary}
+              </span>
+            )}
+            {isDone ? (
+              <CheckCircle2 size={13} className={block.subagentStatus === 'failed' ? 'text-[#ef4444]' : 'text-[#22C55E]'} />
+            ) : (
+              <TypingIndicatorMini accentColor={accentColor} />
+            )}
+          </span>
+        </button>
+        {open && block.input && (
+          <div className="px-3 py-2 border-t border-[#21262d] bg-[#0d1117]">
+            <pre className="text-[11px] text-[#8b949e] font-mono whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+              {parsedInput ? JSON.stringify(parsedInput, null, 2) : block.input}
+            </pre>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Regular tool card
   const displayInfo = parsedInput
     ? (parsedInput.command || parsedInput.file_path || parsedInput.path || parsedInput.pattern || parsedInput.description || '')
     : ''

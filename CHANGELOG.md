@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.1] - 2026-04-13
+
+### Added
+
+- **Subagent cards in chat** — when an agent delegates to another (e.g., Oracle → Sage), the tool card shows the subagent's avatar, name with `@`, description, live progress summary, and completion status
+- **Subagent progress summaries** — enabled `agentProgressSummaries` in the SDK so subagent activity is streamed in real-time
+- **Chat UI screenshot** — added `print-chat.webp` to README, site screenshots carousel, and i18n (en/pt-BR/es)
+
+### Fixed
+
+- **Textarea height reset** — Shift+Enter expanded the input area but it did not shrink back after sending. Now resets to single line on send
+- **Agent SDK dependency** — added `npm install` step to production deploy (the SDK was listed in package.json but not installed on the server)
+
 ## [0.19.0] - 2026-04-13
 
 ### Added
