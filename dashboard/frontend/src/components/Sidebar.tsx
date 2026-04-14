@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import NotificationBell from './NotificationBell'
 import {
   LayoutDashboard, Bot, Clock, Zap, Layout, Calendar, CalendarClock,
   Brain, Plug, DollarSign, FolderOpen, Cpu,
@@ -219,9 +220,12 @@ export default function Sidebar() {
     <>
       <div className="px-5 py-6 flex items-center justify-between">
         <img src="/EVO_NEXUS.png" alt="EvoNexus" className="h-8 w-auto" />
-        <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1 rounded hover:bg-white/10 text-[#667085]">
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1 rounded hover:bg-white/10 text-[#667085]">
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-4">

@@ -259,7 +259,10 @@ export default function ShareView() {
 
 function PoweredByFooter() {
   return (
-    <div
+    <a
+      href="https://evonexus.evolutionfoundation.com.br/"
+      target="_blank"
+      rel="noopener noreferrer"
       style={{
         position: 'fixed',
         bottom: 0,
@@ -274,12 +277,14 @@ function PoweredByFooter() {
         backdropFilter: 'blur(8px)',
         borderTop: '1px solid rgba(52,64,84,0.5)',
         zIndex: 100,
+        textDecoration: 'none',
+        cursor: 'pointer',
       }}
     >
       <img src="/EVO_NEXUS.png" alt="EvoNexus" style={{ height: '16px', width: 'auto', opacity: 0.7 }} />
       <span style={{ fontSize: '11px', color: 'var(--text-muted, #667085)' }}>
         Powered by EvoNexus
       </span>
-    </div>
+    </a>
   )
 }

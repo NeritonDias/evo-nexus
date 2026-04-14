@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Markdown from './Markdown'
 import { AgentAvatar } from './AgentAvatar'
+import { useNotifications } from '../context/NotificationContext'
 import {
   Send, Square, ChevronDown, ChevronRight,
   FileCode, Terminal as TermIcon, CheckCircle2,
@@ -38,16 +39,12 @@ interface AgentChatProps {
   accentColor?: string
   externalLoading?: boolean
   externalError?: string | null
+  onPendingCountChange?: (sessionId: string, count: number) => void
+  onNeedsAttention?: (sessionId: string) => void
 }
 
 // Terminal-server URL
-const isLocal = import.meta.env.DEV || /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)
-const TS_HTTP = isLocal
-  ? `http://${window.location.hostname}:32352`
-  : `${window.location.protocol}//${window.location.host}/terminal`
-const TS_WS = isLocal
-  ? `ws://${window.location.hostname}:32352`
-  : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/terminal`
+import { TS_HTTP, TS_WS } from '../lib/terminal-url'
 
 interface AttachedFile {
   file: File
@@ -75,7 +72,8 @@ type AssistantBlock =
 
 type Status = 'idle' | 'connecting' | 'running' | 'error'
 
-export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', externalLoading = false, externalError = null }: AgentChatProps) {
+export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', externalLoading = false, externalError = null, onPendingCountChange, onNeedsAttention }: AgentChatProps) {
+  const { dismissBySession } = useNotifications()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [status, setStatus] = useState<Status>('idle')
@@ -97,6 +95,20 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const dragCounterRef = useRef(0)
+
+  // Auto-dismiss global notifications when the user opens this session
+  useEffect(() => {
+    if (sessionId) {
+      dismissBySession(sessionId)
+    }
+  }, [sessionId, dismissBySession])
+
+  // Notify parent when pending approvals count changes
+  useEffect(() => {
+    if (sessionId && onPendingCountChange) {
+      onPendingCountChange(sessionId, pendingApprovals.length)
+    }
+  }, [pendingApprovals.length, sessionId, onPendingCountChange])
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -186,6 +198,28 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
                 description: msg.description || null,
                 createdAt: Date.now(),
               }])
+              // Request OS notification permission silently on first request
+              if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                Notification.requestPermission().catch(() => {})
+              }
+              // Fire OS notification when tab is hidden and notifications are enabled
+              if (
+                document.hidden &&
+                typeof Notification !== 'undefined' &&
+                Notification.permission === 'granted' &&
+                localStorage.getItem('evonexus.notifications.enabled') !== 'false'
+              ) {
+                try {
+                  const n = new Notification(`Agent @${agent} is waiting for your approval`, {
+                    body: msg.title || msg.toolName || 'Permission request',
+                    icon: '/favicon.ico',
+                    tag: `approval-${msg.requestId}`,
+                  })
+                  n.onclick = () => { window.focus() }
+                } catch {
+                  // Notification API unavailable (e.g. Firefox private mode) — no-op
+                }
+              }
             }
             break
 
@@ -201,6 +235,10 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
             setStatus('idle')
             setIsThinking(false)
             setPendingApprovals([])
+            // Signal unread response when user is in another tab
+            if (document.hidden && sessionId && onNeedsAttention) {
+              onNeedsAttention(sessionId)
+            }
             setMessages(prev => {
               const copy = [...prev]
               for (let i = copy.length - 1; i >= 0; i--) {

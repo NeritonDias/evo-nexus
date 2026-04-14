@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationContext'
 import Sidebar from './components/Sidebar'
 import Overview from './pages/Overview'
 import Agents from './pages/Agents'
@@ -78,6 +79,7 @@ function AppContent() {
   if (!user) return <Login />
 
   return (
+    <NotificationProvider>
     <div className="flex min-h-screen bg-[#0C111D]">
       <Sidebar />
 
@@ -122,6 +124,7 @@ function AppContent() {
         </Routes>
       </main>
     </div>
+    </NotificationProvider>
   )
 }
 

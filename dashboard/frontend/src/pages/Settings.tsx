@@ -589,14 +589,77 @@ function ReferenceTab() {
   )
 }
 
+// ── Tab: Notifications ──────────────────────────────────────────────────────
+function NotificationsTab() {
+  const STORAGE_KEY = 'evonexus.notifications.enabled'
+  const [enabled, setEnabled] = useState(() => {
+    try { return localStorage.getItem(STORAGE_KEY) !== 'false' } catch { return true }
+  })
+  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() => {
+    if (typeof Notification === 'undefined') return 'unsupported'
+    return Notification.permission
+  })
+
+  const handleToggle = async (value: boolean) => {
+    setEnabled(value)
+    try { localStorage.setItem(STORAGE_KEY, value ? 'true' : 'false') } catch {}
+
+    if (value && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      const result = await Notification.requestPermission()
+      setPermission(result)
+    }
+  }
+
+  return (
+    <div className="max-w-xl space-y-6">
+      <div className="bg-[#161b22] border border-[#21262d] rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#21262d]">
+          <h3 className="text-[13px] font-semibold text-[#e6edf3]">Browser Notifications</h3>
+          <p className="text-[11px] text-[#667085] mt-0.5">
+            Show an OS notification when an agent is waiting for your approval while you're in another tab.
+          </p>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] text-[#e6edf3] font-medium">Enable notifications</p>
+            <p className="text-[11px] text-[#667085] mt-0.5">
+              {permission === 'unsupported'
+                ? 'Browser notifications are not supported in this environment.'
+                : permission === 'denied'
+                ? 'Permission denied — allow notifications in your browser settings first.'
+                : permission === 'granted'
+                ? 'Permission granted.'
+                : 'Permission will be requested when first needed.'}
+            </p>
+          </div>
+          <Toggle
+            on={enabled}
+            onChange={handleToggle}
+            disabled={permission === 'unsupported' || permission === 'denied'}
+          />
+        </div>
+      </div>
+
+      <div className="text-[11px] text-[#3d4f65] space-y-1">
+        <p>What triggers a notification:</p>
+        <ul className="list-disc list-inside space-y-0.5 text-[#4a5568]">
+          <li>Agent requests a tool permission (Write, Bash, etc.) while you are in another tab</li>
+        </ul>
+        <p className="mt-2">Tab title and favicon badge are always active regardless of this setting.</p>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Settings page ──────────────────────────────────────────────────────
 const TABS = [
   { key: 'workspace', label: 'Workspace' },
   { key: 'routines', label: 'Routines' },
+  { key: 'notifications', label: 'Notifications' },
   { key: 'reference', label: 'Reference' },
 ] as const
 
-type TabKey = 'workspace' | 'routines' | 'reference'
+type TabKey = 'workspace' | 'routines' | 'notifications' | 'reference'
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabKey>('workspace')
@@ -635,6 +698,7 @@ export default function Settings() {
       {/* Tab content */}
       {activeTab === 'workspace' && <WorkspaceTab showToast={showToast} />}
       {activeTab === 'routines' && <RoutinesTab showToast={showToast} />}
+      {activeTab === 'notifications' && <NotificationsTab />}
       {activeTab === 'reference' && <ReferenceTab />}
 
       <ToastStack toasts={toasts} />

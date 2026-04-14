@@ -230,19 +230,18 @@ class ChatBridge {
       'NotebookEdit', 'ToolSearch',
     ];
 
-    // Per-tool approval callback — auto-approve read-only tools, ask user for mutating tools.
-    queryOptions.canUseTool = async (toolName, input, sdkOptions) => {
-      if (AUTO_APPROVE.has(toolName)) {
-        return { behavior: 'allow' };
-      }
-      // Use SDK-provided toolUseID as the stable request identifier.
-      const requestId = sdkOptions.toolUseID || `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // Per-tool approval flow — works for main thread AND spawned subagents.
+    //
+    // The SDK provides two hooks: `canUseTool` (main thread only) and the
+    // PreToolUse hook event (fires for both main thread AND subagents, with
+    // `agent_id` set when inside a subagent). We register both so the flow
+    // is uniform regardless of who invoked the tool.
+    const requestApprovalFromUser = (toolName, input, requestId, agentId) => {
       const currentSession = this.sessions.get(sessionId);
       if (!currentSession || !currentSession.active) {
-        return { behavior: 'deny', message: 'Session is no longer active.' };
+        return Promise.resolve({ behavior: 'deny', message: 'Session is no longer active.' });
       }
-      // Wait for user's decision via respondToApproval().
-      const decision = await new Promise((resolve) => {
+      return new Promise((resolve) => {
         if (!currentSession.pendingApprovals) currentSession.pendingApprovals = new Map();
         currentSession.pendingApprovals.set(requestId, resolve);
         if (onMessage) {
@@ -251,12 +250,52 @@ class ChatBridge {
             requestId,
             toolName,
             input,
-            title: sdkOptions.title || null,
-            description: sdkOptions.description || null,
+            agentId: agentId || null,
           });
         }
       });
-      return decision;
+    };
+
+    queryOptions.canUseTool = async (toolName, input, sdkOptions) => {
+      if (AUTO_APPROVE.has(toolName)) {
+        return { behavior: 'allow' };
+      }
+      const requestId = sdkOptions.toolUseID || `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      return requestApprovalFromUser(toolName, input, requestId, null);
+    };
+
+    queryOptions.hooks = {
+      ...(queryOptions.hooks || {}),
+      PreToolUse: [{
+        hooks: [async (hookInput, toolUseID) => {
+          const toolName = hookInput.tool_name;
+          const toolInput = hookInput.tool_input;
+          const agentId = hookInput.agent_id || null;
+          if (AUTO_APPROVE.has(toolName)) {
+            return {
+              hookSpecificOutput: {
+                hookEventName: 'PreToolUse',
+                permissionDecision: 'allow',
+              },
+            };
+          }
+          const requestId = toolUseID || `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          // If main-thread canUseTool already handled this requestId, skip to avoid double-prompt.
+          const currentSession = this.sessions.get(sessionId);
+          if (currentSession?.pendingApprovals?.has(requestId)) {
+            // Another handler already opened the prompt — wait on the same resolver.
+            return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'defer' } };
+          }
+          const decision = await requestApprovalFromUser(toolName, toolInput, requestId, agentId);
+          return {
+            hookSpecificOutput: {
+              hookEventName: 'PreToolUse',
+              permissionDecision: decision.behavior === 'allow' ? 'allow' : 'deny',
+              permissionDecisionReason: decision.message || undefined,
+            },
+          };
+        }],
+      }],
     };
 
     // Enable subagent progress summaries

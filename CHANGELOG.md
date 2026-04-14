@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-04-14
+
+### Added
+
+- **Per-tool approval flow in chat** — Read/Glob/Grep/WebFetch/WebSearch/ToolSearch run silently; Write/Edit/Bash/NotebookEdit/Agent prompt the user via inline Allow/Deny cards. Approval now covers **subagents** too (spawned via the Agent tool) via `PreToolUse` hook, not only the main thread.
+- **Global notification bell (topbar/sidebar)** — live WebSocket channel broadcasts `agent_awaiting` and `agent_finished` events from ANY session. Bell icon shows unread count, dropdown lists pending interactions, clicking navigates to the correct session. Persists to localStorage; auto-dismisses when you visit the origin session. Also updates tab title, favicon red-dot, per-session sidebar pulse, and OS notifications when tab is hidden.
+- **Custom Integrations** — Integrations page now separates "Core" and "Custom" sections. Custom integrations live at `.claude/skills/custom-int-{slug}/SKILL.md` (gitignored). New UI: "+ Add custom integration" modal with fields for display name, slug, category, description, and env keys (name + value password inputs; values are upserted to `.env` atomically, names go to SKILL.md). Edit/delete supported via hover buttons on custom cards.
+- **`create-integration` skill** — guides the creation of a custom integration through interview → `evo.post("/api/integrations/custom", ...)`.
+- **Heartbeat costs in Costs page** — `/api/costs` now includes `by_heartbeat` aggregation and updates total KPIs. New "Per Heartbeat Breakdown" table.
+- **Bling and Asaas** — added as core integrations (previously missing from the hardcoded list).
+- **"Powered by EvoNexus" footer links** to evonexus.evolutionfoundation.com.br in shared-workspace views.
+
+### Changed
+
+- **Backup collection strategy** — `backup.py` `collect_files()` now uses a **dynamic filesystem walk** of `workspace/` and `memory/` instead of relying only on `git ls-files --ignored`. Sub-directories containing their own `.git` (workspace/projects/*) are treated as sub-repos and skipped. Captures files that the UI drops into `workspace/project/` that the git rules didn't list as ignored.
+- **Licensing and WhatsApp** — moved from hardcoded core to custom integrations (they live as `custom-int-licensing` and `custom-int-whatsapp` skills, so they appear in the Custom section automatically).
+- **Notification icons** — replaced emoji with lucide-react icons throughout the notification bell.
+
+### Fixed
+
+- **Heartbeat datetime columns on Python 3.10** — `created_at`/`updated_at`/`started_at`/`ended_at`/`consumed_at` in Heartbeat tables changed from `db.DateTime` to `db.String(30)`. The runner inserts ISO strings with trailing `Z`, which Python 3.10 `fromisoformat()` rejects (fixed in 3.11). Prod was throwing 500 on `/api/heartbeats`. No schema migration needed — SQLite is dynamically typed.
+
 ## [0.21.0] - 2026-04-14
 
 ### Added
