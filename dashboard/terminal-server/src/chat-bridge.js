@@ -249,10 +249,10 @@ class ChatBridge {
       'NotebookEdit', 'ToolSearch',
     ];
 
-    // Read trust mode fresh on each session start so the toggle takes effect immediately.
-    const trustMode = readTrustMode();
-    if (trustMode) {
-      console.log(`[chat-bridge] Trust mode ON — all tools auto-approved for session ${sessionId}`);
+    // trustMode is read fresh on EVERY tool decision below, so toggling it in
+    // the UI takes effect mid-session without needing a restart.
+    if (readTrustMode()) {
+      console.log(`[chat-bridge] Trust mode ON at session start (${sessionId})`);
     }
 
     // Per-tool approval flow — works for main thread AND spawned subagents.
@@ -282,7 +282,7 @@ class ChatBridge {
     };
 
     queryOptions.canUseTool = async (toolName, input, sdkOptions) => {
-      if (trustMode || AUTO_APPROVE.has(toolName)) {
+      if (readTrustMode() || AUTO_APPROVE.has(toolName)) {
         return { behavior: 'allow' };
       }
       const requestId = sdkOptions.toolUseID || `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -296,7 +296,7 @@ class ChatBridge {
           const toolName = hookInput.tool_name;
           const toolInput = hookInput.tool_input;
           const agentId = hookInput.agent_id || null;
-          if (trustMode || AUTO_APPROVE.has(toolName)) {
+          if (readTrustMode() || AUTO_APPROVE.has(toolName)) {
             return {
               hookSpecificOutput: {
                 hookEventName: 'PreToolUse',
