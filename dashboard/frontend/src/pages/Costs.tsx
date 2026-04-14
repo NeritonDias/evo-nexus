@@ -11,6 +11,9 @@ interface CostData {
   week: number
   month_estimate: number
   total_cost: number
+  routines_total_cost: number
+  heartbeats_total_cost: number
+  total_runs: number
   daily: { date: string; cost: number }[]
   by_agent: { agent: string; cost: number }[]
   by_routine: {
@@ -22,10 +25,18 @@ interface CostData {
     avg_cost: number
     agent: string
   }[]
+  by_heartbeat: {
+    name: string
+    agent: string
+    runs: number
+    total_cost: number
+    avg_cost: number
+  }[]
 }
 
 function normalizeCostData(raw: any): CostData {
   const byRoutine = Array.isArray(raw?.by_routine) ? raw.by_routine : []
+  const byHeartbeat = Array.isArray(raw?.by_heartbeat) ? raw.by_heartbeat : []
   const byAgent = Array.isArray(raw?.by_agent) ? raw.by_agent : []
   const totalCost = Number(raw?.total_cost || 0)
   const normalizedByRoutine = byRoutine.map((r: any) => ({
@@ -35,14 +46,26 @@ function normalizeCostData(raw: any): CostData {
     total_cost: Number(r.total_cost || r.cost || 0),
     avg_cost: Number(r.avg_cost || (r.runs ? (Number(r.cost || 0) / Number(r.runs || 1)) : 0)),
   }))
+  const normalizedByHeartbeat = byHeartbeat.map((h: any) => ({
+    ...h,
+    name: h.name || '',
+    agent: h.agent || '',
+    runs: Number(h.runs || 0),
+    total_cost: Number(h.total_cost || 0),
+    avg_cost: Number(h.avg_cost || 0),
+  }))
   return {
     today: Number(raw?.today || 0),
     week: Number(raw?.week || 0),
     month_estimate: Number(raw?.month_estimate || totalCost),
     total_cost: totalCost,
+    routines_total_cost: Number(raw?.routines_total_cost || 0),
+    heartbeats_total_cost: Number(raw?.heartbeats_total_cost || 0),
+    total_runs: Number(raw?.total_runs || 0),
     daily: Array.isArray(raw?.daily) ? raw.daily : [],
     by_agent: byAgent,
     by_routine: normalizedByRoutine,
+    by_heartbeat: normalizedByHeartbeat,
   }
 }
 
@@ -174,10 +197,10 @@ export default function Costs() {
     )
   }
 
-  const totalRuns = (data.by_routine || []).reduce((sum, r) => sum + Number(r.runs || 0), 0)
+  const totalRuns = Number(data.total_runs || 0) || (data.by_routine || []).reduce((sum, r) => sum + Number(r.runs || 0), 0)
   const imageTotalCost = imageCosts?.totals?.total_cost_usd || 0
   const grandTotal = Number(data.total_cost || 0) + imageTotalCost
-  const avgCostPerRun = totalRuns > 0 ? data.total_cost / totalRuns : 0
+  const avgCostPerRun = totalRuns > 0 ? grandTotal / totalRuns : 0
 
   return (
     <div className="max-w-[1400px] mx-auto">
@@ -204,7 +227,7 @@ export default function Costs() {
         <StatCard
           label="Total (All)"
           value={`$${grandTotal.toFixed(2)}`}
-          subtitle={imageTotalCost > 0 ? `Routines + ${imageCosts?.totals?.count || 0} images` : 'Routines total'}
+          subtitle={imageTotalCost > 0 ? `Routines + Heartbeats + ${imageCosts?.totals?.count || 0} images` : 'Routines + Heartbeats'}
           icon={Zap}
         />
         <StatCard
@@ -310,6 +333,51 @@ export default function Costs() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Per Heartbeat Table */}
+      <div className="bg-[#161b22] border border-[#21262d] rounded-2xl overflow-hidden mt-6 transition-all duration-300 hover:shadow-[0_0_32px_rgba(0,255,167,0.04)]">
+        <div className="p-5 border-b border-[#21262d]">
+          <h2 className="text-base font-semibold text-[#e6edf3] flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#00FFA7]/8 border border-[#00FFA7]/15">
+              <Activity size={14} className="text-[#00FFA7]" />
+            </div>
+            Per Heartbeat Breakdown
+          </h2>
+        </div>
+        {(data.by_heartbeat || []).length === 0 ? (
+          <div className="p-8 text-center text-[#667085] text-sm">No heartbeat runs yet</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[#667085] text-[11px] uppercase tracking-wider font-medium">
+                  <th className="text-left p-4 pb-3">Heartbeat</th>
+                  <th className="text-left p-4 pb-3">Agent</th>
+                  <th className="text-right p-4 pb-3">Runs</th>
+                  <th className="text-right p-4 pb-3">Total Cost</th>
+                  <th className="text-right p-4 pb-3">Avg Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.by_heartbeat || []).map((h, i) => (
+                  <tr
+                    key={i}
+                    className="border-t border-[#21262d]/60 hover:bg-white/[0.02] transition-colors group"
+                  >
+                    <td className="p-4 text-[#e6edf3] text-[13px] font-medium group-hover:text-white transition-colors">{h.name}</td>
+                    <td className="p-4 text-[#8b949e] text-[13px]">{h.agent}</td>
+                    <td className="p-4 text-right text-[#8b949e] tabular-nums text-[13px]">{Number(h.runs || 0)}</td>
+                    <td className="p-4 text-right text-[#8b949e] tabular-nums text-[13px]">
+                      <span className="text-[#e6edf3]">${Number(h.total_cost || 0).toFixed(4)}</span>
+                    </td>
+                    <td className="p-4 text-right text-[#667085] tabular-nums text-[13px]">${Number(h.avg_cost || 0).toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Image Generation Costs */}
