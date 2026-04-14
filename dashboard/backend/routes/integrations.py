@@ -279,17 +279,18 @@ def update_custom_integration(slug: str):
     env_keys = data.get("envKeys") if "envKeys" in data else (fm.get("envKeys") or [])
     env_values: dict = data.get("envValues") or {}
 
-    env_block_lines = [f"{k}=" for k in env_keys] if env_keys else ["# Add your env vars here"]
-    env_block = "\n".join(env_block_lines)
+    # Preserve existing body (content after frontmatter) if present
+    existing_body = ""
+    if skill_md.exists():
+        raw = skill_md.read_text(encoding="utf-8")
+        parts = raw.split("---", 2)
+        if len(parts) == 3:
+            existing_body = parts[2].strip()
 
-    skill_content = f"""---
-name: custom-int-{slug}
-displayName: "{display_name}"
-description: "{description}"
-category: "{category}"
-envKeys: {env_keys!r}
----
-# {display_name}
+    if not existing_body:
+        env_block_lines = [f"{k}=" for k in env_keys] if env_keys else ["# Add your env vars here"]
+        env_block = "\n".join(env_block_lines)
+        existing_body = f"""# {display_name}
 
 Custom integration for {display_name}.
 
@@ -304,7 +305,16 @@ Add these to your `.env`:
 ## Usage
 
 Use `from dashboard.backend.sdk_client import evo` for any internal API calls.
-Document the public endpoints, auth method, and example calls here.
+Document the public endpoints, auth method, and example calls here."""
+
+    skill_content = f"""---
+name: custom-int-{slug}
+displayName: "{display_name}"
+description: "{description}"
+category: "{category}"
+envKeys: {env_keys!r}
+---
+{existing_body}
 """
     skill_md.write_text(skill_content, encoding="utf-8")
 
