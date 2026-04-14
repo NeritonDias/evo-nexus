@@ -9,6 +9,8 @@ interface DrawerIntegration {
   name: string
   type: string
   status: 'ok' | 'error' | 'pending'
+  kind?: 'core' | 'custom'
+  envKeys?: string[]
 }
 
 interface IntegrationDrawerProps {
@@ -33,6 +35,18 @@ export default function IntegrationDrawer({
   const isOpen = integration !== null
   const meta = integration ? getIntegrationMeta(integration.name) : undefined
 
+  // For custom integrations, synthesise fields from envKeys when meta is absent
+  const effectiveFields = meta?.fields ?? (
+    integration?.kind === 'custom' && integration.envKeys?.length
+      ? integration.envKeys.map((key) => ({
+          envKey: key,
+          label: key,
+          required: true,
+          hint: undefined as string | undefined,
+        }))
+      : undefined
+  )
+
   const [localValues, setLocalValues] = useState<Record<string, string>>({})
   const [showErrors, setShowErrors] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -43,15 +57,15 @@ export default function IntegrationDrawer({
 
   // Sync env values into local state when drawer opens
   useEffect(() => {
-    if (!isOpen || !meta) return
+    if (!isOpen || !effectiveFields) return
     const initial: Record<string, string> = {}
-    meta.fields.forEach((f) => {
+    effectiveFields.forEach((f) => {
       initial[f.envKey] = envValues[f.envKey] ?? ''
     })
     setLocalValues(initial)
     setShowErrors(false)
     setTestState({ status: 'idle' })
-  }, [isOpen, meta, envValues])
+  }, [isOpen, effectiveFields, envValues])
 
   // ESC key to close
   useEffect(() => {
@@ -99,19 +113,19 @@ export default function IntegrationDrawer({
   }
 
   const hasRequiredErrors = (): boolean => {
-    if (!meta) return false
-    return meta.fields.some((f) => f.required && !localValues[f.envKey]?.trim())
+    if (!effectiveFields) return false
+    return effectiveFields.some((f) => f.required && !localValues[f.envKey]?.trim())
   }
 
   const handleSave = async () => {
-    if (!meta) return
+    if (!effectiveFields) return
     setShowErrors(true)
     if (hasRequiredErrors()) return
 
     setSaving(true)
     try {
       // Build entries array with only the fields from this integration
-      const entries = meta.fields.map((f) => ({
+      const entries = effectiveFields.map((f) => ({
         type: 'var' as const,
         key: f.envKey,
         value: localValues[f.envKey] ?? '',
@@ -249,9 +263,9 @@ export default function IntegrationDrawer({
                     Conectar {integration.name}
                   </a>
                 </div>
-              ) : meta?.fields && meta.fields.length > 0 ? (
-                /* API key integration */
-                meta.fields.map((field) => (
+              ) : effectiveFields && effectiveFields.length > 0 ? (
+                /* API key / custom integration fields */
+                effectiveFields.map((field) => (
                   <IntegrationField
                     key={field.envKey}
                     label={field.label}
@@ -283,7 +297,7 @@ export default function IntegrationDrawer({
             </div>
 
             {/* Footer */}
-            {!meta?.oauthFlow && meta?.fields && meta.fields.length > 0 && (
+            {!meta?.oauthFlow && effectiveFields && effectiveFields.length > 0 && (
               <div className="border-t border-[#21262d] px-5 py-4 space-y-3">
                 {/* Test result */}
                 {testState.status === 'ok' && (

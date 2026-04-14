@@ -523,24 +523,28 @@ function IntegrationCard({ int, onSelect, onEdit, onDelete }: IntegrationCardPro
   const isConnected = int.status === 'ok'
   const intMeta = int.kind === 'core' ? getIntegrationMeta(int.name) : null
   const isOAuth = intMeta?.oauthFlow === true
-  const isConfigurable = !isOAuth && intMeta?.fields && intMeta.fields.length > 0
+  const isConfigurable = !isOAuth && (
+    (intMeta?.fields && intMeta.fields.length > 0) ||
+    (int.kind === 'custom' && (int.envKeys?.length ?? 0) > 0)
+  )
   const isCustom = int.kind === 'custom'
+  const isClickable = !!intMeta || isConfigurable
 
   return (
     <div
-      onClick={() => { if (intMeta) onSelect(int) }}
-      role={intMeta ? 'button' : undefined}
-      tabIndex={intMeta ? 0 : undefined}
+      onClick={() => { if (isClickable) onSelect(int) }}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
       onKeyDown={(e) => {
-        if (intMeta && (e.key === 'Enter' || e.key === ' ')) {
+        if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault()
           onSelect(int)
         }
       }}
-      aria-label={intMeta ? `Configurar ${int.name}` : undefined}
+      aria-label={isClickable ? `Configurar ${int.name}` : undefined}
       className={[
         'group relative rounded-xl border border-[#21262d] bg-[#161b22] p-5 transition-all duration-300 hover:border-transparent',
-        intMeta ? 'cursor-pointer' : '',
+        isClickable ? 'cursor-pointer' : '',
       ].join(' ')}
     >
       {/* Hover glow */}
