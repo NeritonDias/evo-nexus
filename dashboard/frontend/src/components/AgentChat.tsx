@@ -1271,6 +1271,57 @@ function ToolCard({ block, accentColor }: { block: Extract<AssistantBlock, { typ
     )
   }
 
+  // TodoWrite — pretty checklist renderer
+  if (block.toolName === 'TodoWrite' && Array.isArray(parsedInput?.todos)) {
+    const todos: Array<{ content: string; status: string; priority?: string; id?: string }> = parsedInput.todos
+    const completedCount = todos.filter(t => t.status === 'completed').length
+
+    return (
+      <div className="border border-[#21262d] rounded-lg overflow-hidden">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-2 w-full px-3 py-2 text-[12px] bg-[#161b22] hover:bg-[#1c2333] transition-colors"
+        >
+          {open ? <ChevronDown size={12} className="text-[#667085]" /> : <ChevronRight size={12} className="text-[#667085]" />}
+          <CheckCircle2 size={13} style={{ color: accentColor }} />
+          <span className="font-medium text-[#e6edf3]">TodoWrite</span>
+          <span className="text-[#667085] text-[11px]">{completedCount}/{todos.length} done</span>
+          <span className="ml-auto flex-shrink-0">
+            {block.done ? (
+              <CheckCircle2 size={13} className="text-[#22C55E]" />
+            ) : (
+              <TypingIndicatorMini accentColor={accentColor} />
+            )}
+          </span>
+        </button>
+        <div className="px-3 py-2 border-t border-[#21262d] bg-[#0d1117] space-y-1">
+          {todos.map((todo, i) => {
+            const isPending = todo.status === 'pending'
+            const isInProgress = todo.status === 'in_progress'
+            const isCompleted = todo.status === 'completed'
+            const icon = isPending ? '○' : isInProgress ? '◐' : '●'
+            return (
+              <div key={i} className="flex items-start gap-2 text-[12px]">
+                <span
+                  className="flex-shrink-0 mt-0.5 font-mono text-[13px]"
+                  style={{ color: isPending ? '#667085' : '#00FFA7' }}
+                >
+                  {icon}
+                </span>
+                <span
+                  className={isCompleted ? 'line-through opacity-60' : ''}
+                  style={{ color: isPending ? '#8b949e' : isCompleted ? '#8b949e' : '#e6edf3' }}
+                >
+                  {todo.content}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   // Regular tool card
   const displayInfo = parsedInput
     ? (parsedInput.command || parsedInput.file_path || parsedInput.path || parsedInput.pattern || parsedInput.description || '')
