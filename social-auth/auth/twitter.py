@@ -14,6 +14,11 @@ bp = Blueprint("twitter", __name__)
 
 
 def _redirect_uri():
+    from env_manager import read_env
+    env = read_env()
+    ngrok = env.get("NGROK_URL", "")
+    if ngrok:
+        return ngrok.rstrip("/") + "/callback/twitter"
     return request.host_url.rstrip("/") + "/callback/twitter"
 
 
