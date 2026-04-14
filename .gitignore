@@ -72,6 +72,7 @@ CLAUDE.md
 config/workspace.yaml
 config/routines.yaml
 config/triggers.yaml
+config/heartbeats.yaml
 
 # ── Claude Code session data ─────────────
 .claude/projects/
