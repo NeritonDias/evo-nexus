@@ -8,6 +8,25 @@ const path = require('path');
 const os = require('os');
 let sdkModule = null;
 
+// Workspace root is three levels up from this file (dashboard/terminal-server/src/).
+const WORKSPACE_ROOT = path.resolve(__dirname, '..', '..', '..');
+
+/**
+ * Read chat.trustMode from config/workspace.yaml.
+ * Uses a targeted regex — no YAML dep needed.
+ * Returns false if the key is absent or parsing fails.
+ */
+function readTrustMode() {
+  try {
+    const yaml = fs.readFileSync(path.join(WORKSPACE_ROOT, 'config', 'workspace.yaml'), 'utf8');
+    // Match `chat:` section followed by a line containing `trustMode: true`
+    const m = yaml.match(/^chat:\s*\n(?:[ \t]+[^\n]*\n)*?[ \t]+trustMode:\s*(true|false)/m);
+    return m ? m[1] === 'true' : false;
+  } catch {
+    return false;
+  }
+}
+
 // Tools that run silently without user confirmation.
 const AUTO_APPROVE = new Set([
   'Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'ToolSearch',
@@ -230,6 +249,12 @@ class ChatBridge {
       'NotebookEdit', 'ToolSearch',
     ];
 
+    // Read trust mode fresh on each session start so the toggle takes effect immediately.
+    const trustMode = readTrustMode();
+    if (trustMode) {
+      console.log(`[chat-bridge] Trust mode ON — all tools auto-approved for session ${sessionId}`);
+    }
+
     // Per-tool approval flow — works for main thread AND spawned subagents.
     //
     // The SDK provides two hooks: `canUseTool` (main thread only) and the
@@ -257,7 +282,7 @@ class ChatBridge {
     };
 
     queryOptions.canUseTool = async (toolName, input, sdkOptions) => {
-      if (AUTO_APPROVE.has(toolName)) {
+      if (trustMode || AUTO_APPROVE.has(toolName)) {
         return { behavior: 'allow' };
       }
       const requestId = sdkOptions.toolUseID || `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -271,7 +296,7 @@ class ChatBridge {
           const toolName = hookInput.tool_name;
           const toolInput = hookInput.tool_input;
           const agentId = hookInput.agent_id || null;
-          if (AUTO_APPROVE.has(toolName)) {
+          if (trustMode || AUTO_APPROVE.has(toolName)) {
             return {
               hookSpecificOutput: {
                 hookEventName: 'PreToolUse',

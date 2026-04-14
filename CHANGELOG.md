@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.2] - 2026-04-14
+
+### Added
+
+- **Trust mode** — new toggle in `/settings` → Trust. When ON, agents auto-approve all tool calls (Write/Edit/Bash/Agent) without prompting. Persists in `config/workspace.yaml` under `chat.trustMode`. Backend endpoints `GET/PATCH /api/settings/chat`; terminal-server reads the flag at every session start and short-circuits both `canUseTool` and `PreToolUse` hook. OFF by default.
+
+### Fixed
+
+- **Custom integrations configurable via drawer** — custom integrations now open the same configuration drawer as core ones, so their env keys and metadata are editable directly from the dashboard.
+- **Preserve SKILL.md body on custom integration PATCH** — editing a custom integration via PATCH no longer clobbers the hand-written body of its SKILL.md. Only the frontmatter metadata is rewritten.
+
 ## [0.22.1] - 2026-04-14
 
 ### Added
