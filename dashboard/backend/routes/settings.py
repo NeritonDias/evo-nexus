@@ -253,6 +253,47 @@ def delete_routine(frequency: str, slug: str):
     return jsonify({"status": "deleted"})
 
 
+# ── Chat settings endpoints ──────────────────────────────────────────────────
+
+@bp.route("/api/settings/chat")
+@login_required
+def get_chat_settings():
+    """Return chat section of workspace.yaml as JSON."""
+    config_path = WORKSPACE / "config" / "workspace.yaml"
+    data = _load_yaml(config_path)
+    chat = data.get("chat") or {}
+    return jsonify({"trustMode": bool(chat.get("trustMode", False))})
+
+
+@bp.route("/api/settings/chat", methods=["PATCH"])
+@login_required
+def update_chat_settings():
+    """Update chat.trustMode in workspace.yaml atomically."""
+    from models import audit
+    _require_manage()
+
+    body = request.get_json(force=True) or {}
+    if "trustMode" not in body or not isinstance(body["trustMode"], bool):
+        abort(400, "Body must contain trustMode (bool)")
+
+    config_path = WORKSPACE / "config" / "workspace.yaml"
+    tmp_path = config_path.with_suffix(".yaml.tmp")
+
+    import yaml
+
+    data = _load_yaml(config_path)
+    data.setdefault("chat", {})["trustMode"] = body["trustMode"]
+
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True)
+    import os as _os
+    _os.replace(tmp_path, config_path)
+
+    audit(current_user, "chat_settings_updated", "config",
+          f"trustMode set to {body['trustMode']}")
+    return jsonify({"trustMode": body["trustMode"]})
+
+
 # ── Scheduler reload ──────────────────────────────────────────────────────────
 
 @bp.route("/api/settings/scheduler/reload", methods=["POST"])

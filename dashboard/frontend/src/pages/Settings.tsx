@@ -651,15 +651,78 @@ function NotificationsTab() {
   )
 }
 
+// ── Tab: Trust ──────────────────────────────────────────────────────────────
+function TrustTab({ showToast }: { showToast: (msg: string, type?: ToastType) => void }) {
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api.get('/settings/chat')
+      .then((d: { trustMode: boolean }) => setEnabled(d.trustMode))
+      .catch(() => {
+        setEnabled(false)
+        showToast('Failed to load trust mode setting', 'error')
+      })
+  }, [])
+
+  const handleToggle = async (value: boolean) => {
+    setSaving(true)
+    const prev = enabled
+    setEnabled(value)
+    try {
+      await api.patch('/settings/chat', { trustMode: value })
+    } catch {
+      setEnabled(prev)
+      showToast('Failed to save. Try again.', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const isLoading = enabled === null
+
+  return (
+    <div className="max-w-xl space-y-6">
+      <div className="bg-[#161b22] border border-[#21262d] rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#21262d]">
+          <h3 className="text-[13px] font-semibold text-[#e6edf3]">Trust mode</h3>
+          <p className="text-[11px] text-[#667085] mt-0.5">
+            When ON, agents run Write / Edit / Bash / NotebookEdit / Agent without asking for approval. OFF keeps the per-tool Allow/Deny prompt.
+          </p>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] text-[#e6edf3] font-medium">Auto-approve all tools in chat</p>
+            <p className="text-[11px] text-[#667085] mt-0.5">
+              {isLoading
+                ? 'Loading…'
+                : enabled
+                  ? 'ON — agents execute mutating tools without asking.'
+                  : 'OFF — every mutating tool call requires your explicit approval.'}
+            </p>
+          </div>
+          <Toggle on={!!enabled} onChange={handleToggle} disabled={isLoading || saving} />
+        </div>
+      </div>
+
+      <div className="text-[11px] text-[#3d4f65] space-y-1">
+        <p className="text-amber-400/80">⚠ Trust mode disables the main safety guardrail. Only enable if you know what the agents you use will do.</p>
+        <p className="mt-2">Applies to new chat turns — ongoing turns finish under the policy they started with.</p>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Settings page ──────────────────────────────────────────────────────
 const TABS = [
   { key: 'workspace', label: 'Workspace' },
   { key: 'routines', label: 'Routines' },
   { key: 'notifications', label: 'Notifications' },
+  { key: 'trust', label: 'Trust' },
   { key: 'reference', label: 'Reference' },
 ] as const
 
-type TabKey = 'workspace' | 'routines' | 'notifications' | 'reference'
+type TabKey = 'workspace' | 'routines' | 'notifications' | 'trust' | 'reference'
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabKey>('workspace')
@@ -699,6 +762,7 @@ export default function Settings() {
       {activeTab === 'workspace' && <WorkspaceTab showToast={showToast} />}
       {activeTab === 'routines' && <RoutinesTab showToast={showToast} />}
       {activeTab === 'notifications' && <NotificationsTab />}
+      {activeTab === 'trust' && <TrustTab showToast={showToast} />}
       {activeTab === 'reference' && <ReferenceTab />}
 
       <ToastStack toasts={toasts} />
