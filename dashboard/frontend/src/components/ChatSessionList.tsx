@@ -15,6 +15,7 @@ interface ChatSessionListProps {
   onSelectSession: (id: string) => void
   onNewSession: () => void
   accentColor: string
+  approvalCounts?: Map<string, number>
 }
 
 function formatRelativeTime(ts: number): string {
@@ -34,6 +35,7 @@ export default function ChatSessionList({
   onSelectSession,
   onNewSession,
   accentColor,
+  approvalCounts,
 }: ChatSessionListProps) {
   return (
     <div className="flex flex-col h-full">
@@ -123,6 +125,13 @@ export default function ChatSessionList({
                         >
                           {session.name}
                         </p>
+                        {(approvalCounts?.get(session.id) ?? 0) > 0 && (
+                          <span
+                            className="flex-shrink-0 inline-block w-2 h-2 rounded-full animate-pulse"
+                            style={{ backgroundColor: accentColor, boxShadow: `0 0 5px ${accentColor}99` }}
+                            title="Waiting for approval"
+                          />
+                        )}
                         {session.ticketId && (
                           <span
                             className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono leading-none"

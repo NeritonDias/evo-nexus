@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Plus,
   Trash2,
@@ -25,6 +25,11 @@ import {
   GitBranch,
   BookOpen,
   Image,
+  Pencil,
+  X,
+  Loader2,
+  Eye,
+  EyeOff,
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -35,6 +40,12 @@ interface Integration {
   name: string
   type: string
   status: 'ok' | 'error' | 'pending'
+  kind: 'core' | 'custom'
+  // custom-only fields
+  slug?: string
+  description?: string
+  envKeys?: string[]
+  category?: string
 }
 
 interface SocialAccount {
@@ -151,12 +162,512 @@ function SkeletonStat() {
   return <div className="skeleton h-24 rounded-2xl" />
 }
 
+// ─── Custom Integration Modal ─────────────────────────────────────────────────
+
+const CATEGORY_OPTIONS = [
+  { value: 'messaging', label: 'Messaging' },
+  { value: 'payments', label: 'Payments' },
+  { value: 'crm', label: 'CRM' },
+  { value: 'social', label: 'Social' },
+  { value: 'productivity', label: 'Productivity' },
+  { value: 'other', label: 'Other' },
+]
+
+interface CustomIntegrationForm {
+  displayName: string
+  slug: string
+  description: string
+  category: string
+  envKeys: { name: string; value: string }[]
+}
+
+const EMPTY_FORM: CustomIntegrationForm = {
+  displayName: '',
+  slug: '',
+  description: '',
+  category: 'other',
+  envKeys: [],
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+interface CustomModalProps {
+  open: boolean
+  initial?: CustomIntegrationForm & { slug: string }
+  isEdit: boolean
+  onClose: () => void
+  onSaved: (envWritten?: boolean) => void
+}
+
+function CustomModal({ open, initial, isEdit, onClose, onSaved }: CustomModalProps) {
+  const [form, setForm] = useState<CustomIntegrationForm>(EMPTY_FORM)
+  const [slugManual, setSlugManual] = useState(false)
+  const [errors, setErrors] = useState<Partial<Record<keyof CustomIntegrationForm, string>>>({})
+  const [saving, setSaving] = useState(false)
+  const [visibleRows, setVisibleRows] = useState<Set<number>>(new Set())
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (open) {
+      // Pre-fill name only; value intentionally blank (security)
+      const baseForm = initial
+        ? {
+            ...initial,
+            envKeys: (initial.envKeys as unknown as (string | { name: string; value: string })[]).map(k =>
+              typeof k === 'string' ? { name: k, value: '' } : k
+            ),
+          }
+        : EMPTY_FORM
+      setForm(baseForm)
+      setSlugManual(isEdit)
+      setErrors({})
+      setVisibleRows(new Set())
+      setSaving(false)
+    }
+  }, [open, initial, isEdit])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open, onClose])
+
+  const setField = <K extends keyof CustomIntegrationForm>(key: K, value: CustomIntegrationForm[K]) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: value }
+      if (key === 'displayName' && !slugManual) {
+        next.slug = slugify(value as string)
+      }
+      return next
+    })
+    setErrors(prev => ({ ...prev, [key]: undefined }))
+  }
+
+  const validate = (): boolean => {
+    const errs: Partial<Record<keyof CustomIntegrationForm, string>> = {}
+    if (!form.displayName.trim()) errs.displayName = 'Required'
+    if (!form.slug.trim()) {
+      errs.slug = 'Required'
+    } else if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(form.slug)) {
+      errs.slug = 'Lowercase letters, digits and hyphens only'
+    }
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  const handleSave = async () => {
+    if (!validate()) return
+    setSaving(true)
+    try {
+      const envKeyNames = form.envKeys.map(r => r.name).filter(n => n.trim())
+      const envValues: Record<string, string> = {}
+      for (const row of form.envKeys) {
+        if (row.name.trim() && row.value.trim()) {
+          envValues[row.name.trim()] = row.value.trim()
+        }
+      }
+      const hasEnvValues = Object.keys(envValues).length > 0
+
+      if (isEdit && initial?.slug) {
+        await api.patch(`/integrations/custom/${initial.slug}`, {
+          displayName: form.displayName,
+          description: form.description,
+          category: form.category,
+          envKeys: envKeyNames,
+          ...(hasEnvValues ? { envValues } : {}),
+        })
+      } else {
+        await api.post('/integrations/custom', {
+          slug: form.slug,
+          displayName: form.displayName,
+          description: form.description,
+          category: form.category,
+          envKeys: envKeyNames,
+          ...(hasEnvValues ? { envValues } : {}),
+        })
+      }
+      onSaved(hasEnvValues)
+      onClose()
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error saving'
+      setErrors({ displayName: msg })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const addEnvRow = () => {
+    setField('envKeys', [...form.envKeys, { name: '', value: '' }])
+  }
+
+  const removeEnvRow = (idx: number) => {
+    setField('envKeys', form.envKeys.filter((_, i) => i !== idx))
+    setVisibleRows(prev => {
+      const next = new Set(prev)
+      next.delete(idx)
+      return next
+    })
+  }
+
+  const updateEnvRow = (idx: number, field: 'name' | 'value', val: string) => {
+    const next = form.envKeys.map((r, i) =>
+      i === idx ? { ...r, [field]: field === 'name' ? val.toUpperCase() : val } : r
+    )
+    setField('envKeys', next)
+  }
+
+  const toggleRowVisibility = (idx: number) => {
+    setVisibleRows(prev => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+  }
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        ref={overlayRef}
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div className="relative w-full max-w-lg bg-[#0C111D] border border-[#21262d] rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#21262d]">
+          <h2 className="text-base font-semibold text-[#e6edf3]">
+            {isEdit ? 'Edit Custom Integration' : 'New Custom Integration'}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-[#667085] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+          {/* Display Name */}
+          <div>
+            <label className="block text-xs font-medium text-[#8b949e] mb-1">
+              Display Name <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={form.displayName}
+              onChange={e => setField('displayName', e.target.value)}
+              placeholder="My Custom API"
+              className="w-full rounded-lg border border-[#21262d] bg-[#161b22] px-3 py-2 text-sm text-[#e6edf3] placeholder-[#3F3F46] focus:outline-none focus:border-[#00FFA7]/50 transition-colors"
+            />
+            {errors.displayName && <p className="text-xs text-red-400 mt-1">{errors.displayName}</p>}
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label className="block text-xs font-medium text-[#8b949e] mb-1">
+              Slug <span className="text-red-400">*</span>
+            </label>
+            <div className="flex items-center rounded-lg border border-[#21262d] bg-[#161b22] focus-within:border-[#00FFA7]/50 transition-colors">
+              <span className="pl-3 text-xs text-[#3F3F46] shrink-0">custom-int-</span>
+              <input
+                type="text"
+                value={form.slug}
+                onChange={e => {
+                  setSlugManual(true)
+                  setField('slug', e.target.value)
+                }}
+                disabled={isEdit}
+                placeholder="my-api"
+                className="flex-1 bg-transparent px-1 py-2 text-sm text-[#e6edf3] placeholder-[#3F3F46] focus:outline-none disabled:opacity-50"
+              />
+            </div>
+            {errors.slug && <p className="text-xs text-red-400 mt-1">{errors.slug}</p>}
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-medium text-[#8b949e] mb-1">Description</label>
+            <textarea
+              value={form.description}
+              onChange={e => setField('description', e.target.value)}
+              rows={2}
+              placeholder="What this integration does..."
+              className="w-full rounded-lg border border-[#21262d] bg-[#161b22] px-3 py-2 text-sm text-[#e6edf3] placeholder-[#3F3F46] focus:outline-none focus:border-[#00FFA7]/50 transition-colors resize-none"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-xs font-medium text-[#8b949e] mb-1">Category</label>
+            <select
+              value={form.category}
+              onChange={e => setField('category', e.target.value)}
+              className="w-full rounded-lg border border-[#21262d] bg-[#161b22] px-3 py-2 text-sm text-[#e6edf3] focus:outline-none focus:border-[#00FFA7]/50 transition-colors"
+            >
+              {CATEGORY_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Env Keys */}
+          <div>
+            <label className="block text-xs font-medium text-[#8b949e] mb-1">Env Keys</label>
+            <div className="space-y-1.5 mb-2">
+              {form.envKeys.map((row, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  {/* Name input */}
+                  <input
+                    type="text"
+                    value={row.name}
+                    onChange={e => updateEnvRow(idx, 'name', e.target.value)}
+                    placeholder="MY_API_KEY"
+                    className="w-44 shrink-0 rounded-lg border border-[#21262d] bg-[#161b22] px-3 py-1.5 text-xs text-[#00FFA7] placeholder-[#3F3F46] focus:outline-none focus:border-[#00FFA7]/50 transition-colors font-mono"
+                  />
+                  {/* Value input */}
+                  <div className="relative flex-1">
+                    <input
+                      type={visibleRows.has(idx) ? 'text' : 'password'}
+                      value={row.value}
+                      onChange={e => updateEnvRow(idx, 'value', e.target.value)}
+                      placeholder={isEdit ? 'leave empty to keep current' : 'secret value (optional)'}
+                      className="w-full rounded-lg border border-[#21262d] bg-[#161b22] px-3 py-1.5 pr-8 text-xs text-[#e6edf3] placeholder-[#3F3F46] focus:outline-none focus:border-[#00FFA7]/50 transition-colors"
+                    />
+                    {row.value.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => toggleRowVisibility(idx)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[#667085] hover:text-[#e6edf3] transition-colors"
+                        tabIndex={-1}
+                      >
+                        {visibleRows.has(idx) ? <EyeOff size={12} /> : <Eye size={12} />}
+                      </button>
+                    )}
+                  </div>
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    onClick={() => removeEnvRow(idx)}
+                    className="p-1 rounded text-[#667085] hover:text-red-400 transition-colors shrink-0"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addEnvRow}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-[#21262d] text-xs text-[#667085] hover:text-[#e6edf3] hover:border-[#344054] transition-colors"
+            >
+              <Plus size={12} />
+              Add env key
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-[#21262d]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-sm text-[#667085] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#00FFA7] text-[#0C111D] text-sm font-semibold hover:bg-[#00e699] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {saving && <Loader2 size={14} className="animate-spin" />}
+            {isEdit ? 'Save Changes' : 'Create'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Integration Card ─────────────────────────────────────────────────────────
+
+interface IntegrationCardProps {
+  int: Integration
+  onSelect: (int: Integration) => void
+  onEdit?: (int: Integration) => void
+  onDelete?: (int: Integration) => void
+}
+
+function IntegrationCard({ int, onSelect, onEdit, onDelete }: IntegrationCardProps) {
+  const typeMeta = getTypeMeta(int.type)
+  const intIcon = getIntegrationIcon(int.name)
+  const Icon = intIcon?.icon ?? typeMeta.icon
+  const iconColor = intIcon?.color ?? typeMeta.color
+  const iconBg = intIcon?.colorMuted ?? typeMeta.colorMuted
+  const isConnected = int.status === 'ok'
+  const intMeta = int.kind === 'core' ? getIntegrationMeta(int.name) : null
+  const isOAuth = intMeta?.oauthFlow === true
+  const isConfigurable = !isOAuth && intMeta?.fields && intMeta.fields.length > 0
+  const isCustom = int.kind === 'custom'
+
+  return (
+    <div
+      onClick={() => { if (intMeta) onSelect(int) }}
+      role={intMeta ? 'button' : undefined}
+      tabIndex={intMeta ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (intMeta && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onSelect(int)
+        }
+      }}
+      aria-label={intMeta ? `Configurar ${int.name}` : undefined}
+      className={[
+        'group relative rounded-xl border border-[#21262d] bg-[#161b22] p-5 transition-all duration-300 hover:border-transparent',
+        intMeta ? 'cursor-pointer' : '',
+      ].join(' ')}
+    >
+      {/* Hover glow */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{
+          boxShadow: isConnected
+            ? `inset 0 0 0 1px rgba(0,255,167,0.27), 0 0 20px rgba(0,255,167,0.10)`
+            : `inset 0 0 0 1px ${typeMeta.color}44, 0 0 20px ${typeMeta.glowColor}`,
+          borderRadius: 'inherit',
+        }}
+      />
+
+      {/* Top row: icon + status dot + custom actions */}
+      <div className="relative flex items-start justify-between mb-3">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
+          style={{ backgroundColor: iconBg }}
+        >
+          <Icon size={20} style={{ color: iconColor }} />
+        </div>
+        <div className="flex items-center gap-1.5">
+          {isCustom && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEdit?.(int) }}
+                className="p-1 rounded text-[#667085] hover:text-[#00FFA7] transition-colors opacity-0 group-hover:opacity-100"
+                title="Edit"
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onDelete?.(int) }}
+                className="p-1 rounded text-[#667085] hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                title="Delete"
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full mt-1"
+            style={{
+              backgroundColor: isConnected ? '#00FFA7' : '#3F3F46',
+              boxShadow: isConnected ? '0 0 8px rgba(0,255,167,0.5)' : 'none',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Name + custom badge */}
+      <div className="relative flex items-center gap-2 mb-2">
+        <h3 className="text-[15px] font-semibold text-[#e6edf3] transition-colors duration-200 group-hover:text-white">
+          {int.name}
+        </h3>
+        {isCustom && (
+          <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#00FFA7]/10 text-[#00FFA7] border border-[#00FFA7]/20">
+            Custom
+          </span>
+        )}
+      </div>
+
+      {/* Description for custom integrations */}
+      {isCustom && int.description && (
+        <p className="relative text-xs text-[#667085] mb-2 line-clamp-2">{int.description}</p>
+      )}
+
+      {/* Bottom badges + configure affordance */}
+      <div className="relative flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full border"
+            style={{
+              backgroundColor: typeMeta.colorMuted,
+              color: typeMeta.color,
+              borderColor: `${typeMeta.color}33`,
+            }}
+          >
+            {int.type}
+          </span>
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+            isConnected
+              ? 'bg-[#00FFA7]/10 text-[#00FFA7] border-[#00FFA7]/25'
+              : 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/25'
+          }`}>
+            {isConnected ? 'Connected' : 'Not configured'}
+          </span>
+        </div>
+
+        {/* Hover affordance */}
+        {isOAuth ? (
+          <span className="flex items-center gap-1 text-[11px] text-[#667085] group-hover:text-[#00FFA7] opacity-0 group-hover:opacity-100 transition-all duration-200">
+            Conectar
+          </span>
+        ) : isConfigurable ? (
+          <span className="flex items-center gap-1 text-[11px] text-[#667085] group-hover:text-[#00FFA7] opacity-0 group-hover:opacity-100 transition-all duration-200">
+            <Settings size={11} />
+            Configurar
+          </span>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function Integrations() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [platforms, setPlatforms] = useState<SocialPlatform[]>([])
   const [loading, setLoading] = useState(true)
   const [envValues, setEnvValues] = useState<Record<string, string>>({})
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null)
+
+  // custom modal state
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalIsEdit, setModalIsEdit] = useState(false)
+  const [modalInitial, setModalInitial] = useState<(CustomIntegrationForm & { slug: string }) | undefined>(undefined)
+
+  // delete confirm
+  const [deleteTarget, setDeleteTarget] = useState<Integration | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  // env written toast
+  const [envToast, setEnvToast] = useState(false)
 
   const loadData = useCallback(() => {
     Promise.all([
@@ -168,11 +679,15 @@ export default function Integrations() {
         name: i.name || '',
         type: i.type || i.category || '',
         status: (i.status === 'ok' || i.configured) ? 'ok' as const : 'pending' as const,
+        kind: i.kind || 'core',
+        slug: i.slug,
+        description: i.description,
+        envKeys: i.envKeys,
+        category: i.category,
       }))
       setIntegrations(ints)
       setPlatforms(socialData?.platforms || [])
 
-      // Build env lookup map
       const envMap: Record<string, string> = {}
       for (const entry of (envData?.entries ?? [])) {
         if (entry.type === 'var' && entry.key) {
@@ -196,6 +711,41 @@ export default function Integrations() {
     }
   }
 
+  const openCreateModal = () => {
+    setModalInitial(undefined)
+    setModalIsEdit(false)
+    setModalOpen(true)
+  }
+
+  const openEditModal = (int: Integration) => {
+    const rawKeys: string[] = int.envKeys || []
+    setModalInitial({
+      slug: int.slug || '',
+      displayName: int.name,
+      description: int.description || '',
+      category: int.category || 'other',
+      envKeys: rawKeys.map(k => ({ name: k, value: '' })),
+    })
+    setModalIsEdit(true)
+    setModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget?.slug) return
+    setDeleting(true)
+    try {
+      await api.delete(`/integrations/custom/${deleteTarget.slug}`)
+      setDeleteTarget(null)
+      loadData()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const coreIntegrations = integrations.filter(i => i.kind === 'core')
+  const customIntegrations = integrations.filter(i => i.kind === 'custom')
   const connectedCount = integrations.filter((i) => i.status === 'ok').length
   const totalSocialAccounts = platforms.reduce((sum, p) => sum + p.accounts.length, 0)
 
@@ -210,6 +760,63 @@ export default function Integrations() {
           loadData()
         }}
       />
+
+      <CustomModal
+        open={modalOpen}
+        initial={modalInitial}
+        isEdit={modalIsEdit}
+        onClose={() => setModalOpen(false)}
+        onSaved={(envWritten) => {
+          loadData()
+          if (envWritten) {
+            setEnvToast(true)
+            setTimeout(() => setEnvToast(false), 6000)
+          }
+        }}
+      />
+
+      {/* Env written toast */}
+      {envToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-[#161b22] border border-[#00FFA7]/30 shadow-2xl text-sm text-[#e6edf3]">
+          <CheckCircle2 size={16} className="text-[#00FFA7] shrink-0" />
+          <span>Saved — env values written to <code className="text-[#00FFA7] font-mono text-xs">.env</code>. Restart services to pick up the new values.</span>
+          <button type="button" onClick={() => setEnvToast(false)} className="ml-2 text-[#667085] hover:text-[#e6edf3]">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Delete confirm dialog */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={() => setDeleteTarget(null)} />
+          <div className="relative w-full max-w-sm bg-[#0C111D] border border-[#21262d] rounded-2xl shadow-2xl p-6">
+            <h3 className="text-base font-semibold text-[#e6edf3] mb-2">Delete Custom Integration</h3>
+            <p className="text-sm text-[#667085] mb-5">
+              Delete <span className="text-[#e6edf3] font-medium">{deleteTarget.name}</span>? This removes the SKILL.md file permanently.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 rounded-lg text-sm text-[#667085] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500/80 text-white text-sm font-semibold hover:bg-red-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {deleting && <Loader2 size={14} className="animate-spin" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#e6edf3] tracking-tight">Integrations</h1>
@@ -239,120 +846,89 @@ export default function Integrations() {
         </div>
       ) : (
         <>
-          {/* API Integrations */}
+          {/* Core Integrations */}
           <div className="mb-10">
             <div className="flex items-center gap-2.5 mb-4">
               <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#00FFA7]/8 border border-[#00FFA7]/15">
                 <Plug size={14} className="text-[#00FFA7]" />
               </div>
-              <h2 className="text-base font-semibold text-[#e6edf3]">APIs & Services</h2>
+              <h2 className="text-base font-semibold text-[#e6edf3]">Core Integrations</h2>
               <span className="text-xs px-2 py-0.5 rounded-full bg-[#00FFA7]/10 text-[#00FFA7] border border-[#00FFA7]/20">
-                {integrations.length}
+                {coreIntegrations.length}
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {integrations.map((int, i) => {
-                const typeMeta = getTypeMeta(int.type)
-                const intIcon = getIntegrationIcon(int.name)
-                const Icon = intIcon?.icon ?? typeMeta.icon
-                const iconColor = intIcon?.color ?? typeMeta.color
-                const iconBg = intIcon?.colorMuted ?? typeMeta.colorMuted
-                const isConnected = int.status === 'ok'
-                const intMeta = getIntegrationMeta(int.name)
-                const isOAuth = intMeta?.oauthFlow === true
-                const isConfigurable = !isOAuth && intMeta?.fields && intMeta.fields.length > 0
-
-                return (
-                  <div
-                    key={i}
-                    onClick={() => {
-                      if (intMeta) setSelectedIntegration(int)
-                    }}
-                    role={intMeta ? 'button' : undefined}
-                    tabIndex={intMeta ? 0 : undefined}
-                    onKeyDown={(e) => {
-                      if (intMeta && (e.key === 'Enter' || e.key === ' ')) {
-                        e.preventDefault()
-                        setSelectedIntegration(int)
-                      }
-                    }}
-                    aria-label={intMeta ? `Configurar ${int.name}` : undefined}
-                    className={[
-                      'group relative rounded-xl border border-[#21262d] bg-[#161b22] p-5 transition-all duration-300 hover:border-transparent',
-                      intMeta ? 'cursor-pointer' : '',
-                    ].join(' ')}
-                  >
-                    {/* Hover glow */}
-                    <div
-                      className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                      style={{
-                        boxShadow: isConnected
-                          ? `inset 0 0 0 1px rgba(0,255,167,0.27), 0 0 20px rgba(0,255,167,0.10)`
-                          : `inset 0 0 0 1px ${typeMeta.color}44, 0 0 20px ${typeMeta.glowColor}`,
-                        borderRadius: 'inherit',
-                      }}
-                    />
-
-                    {/* Top row: icon + status dot */}
-                    <div className="relative flex items-start justify-between mb-3">
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
-                        style={{ backgroundColor: iconBg }}
-                      >
-                        <Icon size={20} style={{ color: iconColor }} />
-                      </div>
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full mt-1"
-                        style={{
-                          backgroundColor: isConnected ? '#00FFA7' : '#3F3F46',
-                          boxShadow: isConnected ? '0 0 8px rgba(0,255,167,0.5)' : 'none',
-                        }}
-                      />
-                    </div>
-
-                    {/* Name */}
-                    <h3 className="relative text-[15px] font-semibold text-[#e6edf3] transition-colors duration-200 group-hover:text-white mb-2">
-                      {int.name}
-                    </h3>
-
-                    {/* Bottom badges + configure affordance */}
-                    <div className="relative flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full border"
-                          style={{
-                            backgroundColor: typeMeta.colorMuted,
-                            color: typeMeta.color,
-                            borderColor: `${typeMeta.color}33`,
-                          }}
-                        >
-                          {int.type}
-                        </span>
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                          isConnected
-                            ? 'bg-[#00FFA7]/10 text-[#00FFA7] border-[#00FFA7]/25'
-                            : 'bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/25'
-                        }`}>
-                          {isConnected ? 'Connected' : 'Not configured'}
-                        </span>
-                      </div>
-
-                      {/* Hover affordance */}
-                      {isOAuth ? (
-                        <span className="flex items-center gap-1 text-[11px] text-[#667085] group-hover:text-[#00FFA7] opacity-0 group-hover:opacity-100 transition-all duration-200">
-                          Conectar
-                        </span>
-                      ) : isConfigurable ? (
-                        <span className="flex items-center gap-1 text-[11px] text-[#667085] group-hover:text-[#00FFA7] opacity-0 group-hover:opacity-100 transition-all duration-200">
-                          <Settings size={11} />
-                          Configurar
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                )
-              })}
+              {coreIntegrations.map((int, i) => (
+                <IntegrationCard
+                  key={i}
+                  int={int}
+                  onSelect={setSelectedIntegration}
+                />
+              ))}
             </div>
+          </div>
+
+          {/* Custom Integrations */}
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#00FFA7]/8 border border-[#00FFA7]/15">
+                  <Settings size={14} className="text-[#00FFA7]" />
+                </div>
+                <h2 className="text-base font-semibold text-[#e6edf3]">Custom Integrations</h2>
+                {customIntegrations.length > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#00FFA7]/10 text-[#00FFA7] border border-[#00FFA7]/20">
+                    {customIntegrations.length}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-[#00FFA7]/10 text-[#00FFA7] border border-[#00FFA7]/20 hover:bg-[#00FFA7]/20 transition-all"
+              >
+                <Plus size={13} /> Add Custom
+              </button>
+            </div>
+
+            {customIntegrations.length === 0 ? (
+              <div
+                onClick={openCreateModal}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCreateModal() } }}
+                className="cursor-pointer rounded-xl border border-dashed border-[#21262d] hover:border-[#00FFA7]/30 bg-[#161b22]/50 p-8 flex flex-col items-center justify-center gap-2 transition-colors group"
+              >
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#00FFA7]/8 border border-[#00FFA7]/15 group-hover:bg-[#00FFA7]/15 transition-colors">
+                  <Plus size={20} className="text-[#00FFA7]" />
+                </div>
+                <p className="text-sm font-medium text-[#667085] group-hover:text-[#e6edf3] transition-colors">Add custom integration</p>
+                <p className="text-xs text-[#3F3F46]">Creates a SKILL.md template in .claude/skills/</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {customIntegrations.map((int, i) => (
+                  <IntegrationCard
+                    key={i}
+                    int={int}
+                    onSelect={() => {}}
+                    onEdit={openEditModal}
+                    onDelete={setDeleteTarget}
+                  />
+                ))}
+                {/* Add more card */}
+                <div
+                  onClick={openCreateModal}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCreateModal() } }}
+                  className="cursor-pointer rounded-xl border border-dashed border-[#21262d] hover:border-[#00FFA7]/30 bg-[#161b22]/50 p-5 flex flex-col items-center justify-center gap-2 transition-colors group min-h-[120px]"
+                >
+                  <Plus size={18} className="text-[#3F3F46] group-hover:text-[#00FFA7] transition-colors" />
+                  <p className="text-xs text-[#3F3F46] group-hover:text-[#667085] transition-colors">Add custom integration</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Social Accounts */}

@@ -18,6 +18,7 @@ class TerminalServer {
     this.app = express();
     this.claudeSessions = new Map();
     this.webSocketConnections = new Map();
+    this.globalSubscribers = new Set(); // wsIds subscribed to global notifications
     this.claudeBridge = new ClaudeBridge();
     this.chatBridge = new ChatBridge();
     this.sessionStore = new SessionStore();
@@ -304,6 +305,26 @@ class TerminalServer {
       res.json({ success: true, message: 'Session deleted' });
     });
 
+    // Return all unresolved permission requests across all active sessions
+    this.app.get('/api/notifications/pending', (req, res) => {
+      const notifications = [];
+      for (const [sessionId, session] of this.claudeSessions.entries()) {
+        const bridgeSession = this.chatBridge.sessions.get(sessionId);
+        if (!bridgeSession?.pendingApprovals) continue;
+        for (const [requestId] of bridgeSession.pendingApprovals.entries()) {
+          notifications.push({
+            id: `agent_awaiting-${sessionId}-${requestId}`,
+            event: 'agent_awaiting',
+            sessionId,
+            agentName: session.agentName || '',
+            toolName: undefined,
+            createdAt: Date.now(),
+          });
+        }
+      }
+      res.json({ notifications });
+    });
+
     // Chat mode is handled via WebSocket (chat_send / chat_stop messages)
   }
 
@@ -372,6 +393,14 @@ class TerminalServer {
     if (!wsInfo) return;
 
     switch (data.type) {
+      case 'subscribe_global':
+        this.globalSubscribers.add(wsId);
+        break;
+
+      case 'unsubscribe_global':
+        this.globalSubscribers.delete(wsId);
+        break;
+
       case 'join_session':
         await this.joinClaudeSession(wsId, data.sessionId);
         break;
@@ -441,7 +470,7 @@ class TerminalServer {
 
                   // Forward permission requests to the WebSocket client.
                   if (msg.type === 'permission_request') {
-                    this.broadcastToSession(wsInfo.claudeSessionId, {
+                    const permPayload = {
                       type: 'permission_request',
                       sessionId: wsInfo.claudeSessionId,
                       requestId: msg.requestId,
@@ -449,7 +478,23 @@ class TerminalServer {
                       input: msg.input,
                       title: msg.title || null,
                       description: msg.description || null,
-                    });
+                    };
+                    this.broadcastToSession(wsInfo.claudeSessionId, permPayload);
+                    // Global notification
+                    const createdAt = Date.now();
+                    const inputPreview = msg.input
+                      ? (typeof msg.input === 'string' ? msg.input : JSON.stringify(msg.input)).slice(0, 80)
+                      : undefined;
+                    this.broadcastToGlobalSubscribers({
+                      type: 'notification',
+                      id: `agent_awaiting-${wsInfo.claudeSessionId}-${msg.requestId}`,
+                      event: 'agent_awaiting',
+                      sessionId: wsInfo.claudeSessionId,
+                      agentName: chatSession.agentName || '',
+                      toolName: msg.toolName,
+                      inputPreview,
+                      createdAt,
+                    }, wsInfo.claudeSessionId);
                     return;
                   }
 
@@ -531,6 +576,18 @@ class TerminalServer {
                   }
                   this.saveSessionsToDisk();
                   this.broadcastToSession(wsInfo.claudeSessionId, { type: 'chat_complete' });
+                  // Global notification — skip if a client is already watching this session
+                  const hasWatcher = chatSession.connections && chatSession.connections.size > 0;
+                  if (!hasWatcher) {
+                    this.broadcastToGlobalSubscribers({
+                      type: 'notification',
+                      id: `agent_finished-${wsInfo.claudeSessionId}-${Date.now()}`,
+                      event: 'agent_finished',
+                      sessionId: wsInfo.claudeSessionId,
+                      agentName: chatSession.agentName || '',
+                      createdAt: Date.now(),
+                    }, wsInfo.claudeSessionId);
+                  }
                 },
               });
             } catch (err) {
@@ -731,6 +788,24 @@ class TerminalServer {
     });
   }
 
+  /**
+   * Broadcast a notification to all global subscribers.
+   * Skips subscribers that are already watching the originating session
+   * (they see events inline and don't need a global notification).
+   *
+   * @param {object} data - Notification payload
+   * @param {string} [originSessionId] - Session that generated the event (used for suppression)
+   */
+  broadcastToGlobalSubscribers(data, originSessionId) {
+    for (const wsId of this.globalSubscribers) {
+      const wsInfo = this.webSocketConnections.get(wsId);
+      if (!wsInfo || wsInfo.ws.readyState !== WebSocket.OPEN) continue;
+      // Suppress if this subscriber is already watching the origin session
+      if (originSessionId && wsInfo.claudeSessionId === originSessionId) continue;
+      this.sendToWebSocket(wsInfo.ws, data);
+    }
+  }
+
   cleanupWebSocketConnection(wsId) {
     const wsInfo = this.webSocketConnections.get(wsId);
     if (!wsInfo) return;
@@ -746,6 +821,7 @@ class TerminalServer {
       }
     }
 
+    this.globalSubscribers.delete(wsId);
     this.webSocketConnections.delete(wsId);
   }
 

@@ -131,8 +131,56 @@ def _should_exclude(rel_path: str) -> bool:
     return False
 
 
+def _walk_dynamic(root_rel: str) -> list[str]:
+    """Walk a directory from the filesystem, skipping:
+    - EXCLUDE_DIRS anywhere in the path (node_modules, .venv, __pycache__, ...)
+    - EXCLUDE_FILES / EXCLUDE_EXTENSIONS
+    - any sub-directory that contains a `.git` entry (treated as a sub-repo,
+      which has its own backup via upstream remotes). The root itself is
+      exempt from this check (WORKSPACE has .git of its own).
+    """
+    root_abs = WORKSPACE / root_rel
+    if not root_abs.is_dir():
+        return []
+    out: list[str] = []
+    for current, dirs, filenames in os.walk(root_abs):
+        current_path = Path(current)
+        # Prune excluded dirs in-place so os.walk doesn't descend.
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+        # If this dir is a git sub-repo (has .git) AND it's not the workspace root, skip it.
+        if current_path != WORKSPACE and ".git" in os.listdir(current):
+            dirs[:] = []
+            continue
+        for fname in filenames:
+            if fname in EXCLUDE_FILES:
+                continue
+            if Path(fname).suffix in EXCLUDE_EXTENSIONS:
+                continue
+            rel = str((current_path / fname).relative_to(WORKSPACE))
+            out.append(rel)
+    return out
+
+
 def collect_files() -> list[str]:
-    """Collect all gitignored files that exist on disk, minus exclusions."""
+    """Collect files to back up using two complementary strategies:
+
+    1. Dynamic filesystem walk of `workspace/` and `memory/` — captures
+       anything the user has created (including files that git doesn't
+       explicitly list as ignored, e.g. uploads dropped via the dashboard).
+       Skips sub-directories that contain their own `.git` (those have
+       upstream remotes and backing up blobs duplicates state).
+    2. `git ls-files --others --ignored` for the rest of the repo —
+       captures .env, config/*.yaml, .claude/agent-memory, etc.
+    """
+    files: set[str] = set()
+
+    # Strategy 1 — dynamic walk of user-data roots.
+    for root in ("workspace", "memory"):
+        for rel in _walk_dynamic(root):
+            if not _should_exclude(rel):
+                files.add(rel)
+
+    # Strategy 2 — git-reported ignored files (covers everything else).
     try:
         result = subprocess.run(
             ["git", "ls-files", "--others", "--ignored", "--exclude-standard"],
@@ -148,16 +196,27 @@ def collect_files() -> list[str]:
         print(f"{RED}git ls-files timed out. Repo may have too many ignored files.{RESET}")
         sys.exit(1)
 
-    files = []
     for line in result.stdout.strip().splitlines():
         line = line.strip()
         if not line:
             continue
         if _should_exclude(line):
             continue
+        # Skip files inside sub-repos (workspace/projects/<repo>/...).
+        # We detect by walking parents looking for .git.
+        if line.startswith("workspace/"):
+            parts = Path(line).parts
+            inside_subrepo = False
+            for depth in range(2, len(parts)):
+                candidate = WORKSPACE.joinpath(*parts[:depth]) / ".git"
+                if candidate.exists():
+                    inside_subrepo = True
+                    break
+            if inside_subrepo:
+                continue
         full_path = WORKSPACE / line
         if full_path.is_file():
-            files.append(line)
+            files.add(line)
 
     return sorted(files)
 

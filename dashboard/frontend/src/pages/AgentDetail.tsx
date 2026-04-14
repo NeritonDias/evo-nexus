@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, ChevronRight, PanelLeft, X, Lock, Plus, Terminal as TerminalIcon, MessageSquare } from 'lucide-react'
 import { api } from '../lib/api'
@@ -10,6 +10,7 @@ import { getAgentMeta } from '../lib/agent-meta'
 import { trackAgentVisit } from './Agents'
 import { AgentAvatar } from '../components/AgentAvatar'
 import { useAuth } from '../context/AuthContext'
+import { useNotificationBadge } from '../hooks/useNotificationBadge'
 
 interface MemoryFile {
   name: string
@@ -71,6 +72,32 @@ export default function AgentDetail() {
   const [activeChatSessionId, setActiveChatSessionId] = useState<string | null>(null)
   const [chatConnectError, setChatConnectError] = useState<string | null>(null)
   const [chatConnecting, setChatConnecting] = useState(false)
+
+  // Notification badge state — pending approvals per session
+  const approvalCountsRef = useRef<Map<string, number>>(new Map())
+  const [totalPending, setTotalPending] = useState(0)
+  const [needsAttention, setNeedsAttention] = useState(false)
+
+  // Clear "needs attention" when user comes back to the tab
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden) setNeedsAttention(false)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
+  useNotificationBadge(totalPending, needsAttention)
+
+  const handlePendingCountChange = useCallback((sessionId: string, count: number) => {
+    approvalCountsRef.current.set(sessionId, count)
+    const total = Array.from(approvalCountsRef.current.values()).reduce((a, b) => a + b, 0)
+    setTotalPending(total)
+  }, [])
+
+  const handleNeedsAttention = useCallback((_sessionId: string) => {
+    setNeedsAttention(true)
+  }, [])
 
   // Track agent visit for "Recent" section
   useEffect(() => {
@@ -392,6 +419,7 @@ export default function AgentDetail() {
             activeChatSessionId={activeChatSessionId}
             onSelectChatSession={selectChatSession}
             onNewChatSession={createNewChatSession}
+            approvalCounts={approvalCountsRef.current}
           />
         </aside>
 
@@ -432,6 +460,7 @@ export default function AgentDetail() {
                 activeChatSessionId={activeChatSessionId}
                 onSelectChatSession={selectChatSession}
                 onNewChatSession={createNewChatSession}
+                approvalCounts={approvalCountsRef.current}
               />
             </aside>
           </div>
@@ -526,6 +555,8 @@ export default function AgentDetail() {
                 accentColor={agentColor}
                 externalLoading={chatConnecting}
                 externalError={chatConnectError}
+                onPendingCountChange={handlePendingCountChange}
+                onNeedsAttention={handleNeedsAttention}
               />
             ) : (
               termTabs.length === 0 || activeTermTab === null ? (
@@ -558,6 +589,7 @@ interface InfoRailProps {
   activeChatSessionId: string | null
   onSelectChatSession: (id: string) => void
   onNewChatSession: () => void
+  approvalCounts: Map<string, number>
 }
 
 function InfoRail({
@@ -575,6 +607,7 @@ function InfoRail({
   activeChatSessionId,
   onSelectChatSession,
   onNewChatSession,
+  approvalCounts,
 }: InfoRailProps) {
   return (
     <>
@@ -606,6 +639,7 @@ function InfoRail({
             onSelectSession={onSelectChatSession}
             onNewSession={onNewChatSession}
             accentColor={agentColor}
+            approvalCounts={approvalCounts}
           />
         )}
 
