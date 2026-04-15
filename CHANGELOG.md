@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.4] - 2026-04-15
+
+### Added
+
+- **Subagent tool list inside Agent card** — when an agent spawns a subagent (via the `Agent` tool), the chat card now shows a `N tools` badge in the header and, when expanded, lists every tool the subagent ran (icon + name + 60-char input preview, `max-h-80` with auto-scroll). Original JSON input moved behind a "View input" toggle. Uses the SDK's `parent_tool_use_id` to associate child tool calls with the parent Agent block.
+
 ## [0.22.3] - 2026-04-14
 
 ### Added
