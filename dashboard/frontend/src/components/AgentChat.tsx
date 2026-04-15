@@ -7,6 +7,7 @@ import {
   FileCode, Terminal as TermIcon, CheckCircle2,
   Paperclip, X, File as FileIcon, ImageIcon, Upload,
   Ticket as TicketIcon, Plus, ShieldAlert, Check, Ban,
+  Pencil,
 } from 'lucide-react'
 
 interface SkillItem {
@@ -61,9 +62,9 @@ interface FileRef {
 }
 
 type ChatMessage =
-  | { role: 'user'; text: string; files?: FileRef[]; ts: number }
-  | { role: 'assistant'; blocks: AssistantBlock[]; ts: number; streaming?: boolean }
-  | { role: 'system'; text: string; ts: number }
+  | { role: 'user'; text: string; files?: FileRef[]; ts: number; uuid?: string }
+  | { role: 'assistant'; blocks: AssistantBlock[]; ts: number; streaming?: boolean; uuid?: string }
+  | { role: 'system'; text: string; ts: number; uuid?: string }
 
 type AssistantBlock =
   | { type: 'text'; text: string }
@@ -89,6 +90,7 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
     open: false, query: '', items: [], selectedIndex: 0, anchorStart: -1,
   })
   const [pendingApprovals, setPendingApprovals] = useState<PermissionRequest[]>([])
+  const [rewindRequest, setRewindRequest] = useState<{ fromUuid: string } | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -158,10 +160,11 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
 
         switch (msg.type) {
           case 'session_joined':
-            // Restore chat history from server
+            // Restore chat history from server — preserve uuid from each message
             if (msg.chatHistory && msg.chatHistory.length > 0) {
               setMessages(msg.chatHistory.map((m: any) => ({
                 ...m,
+                uuid: m.uuid,
                 streaming: false,
               })))
               scrollToBottom()
@@ -600,6 +603,25 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
     }
   }, [processFiles])
 
+  // Pencil button: stage a rewind for the given user message
+  const stageRewind = useCallback((msg: ChatMessage) => {
+    if (msg.role !== 'user') return
+    setRewindRequest({ fromUuid: msg.uuid! })
+    setInput(msg.text)
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.focus()
+        inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    })
+  }, [])
+
+  // Cancel a staged rewind
+  const cancelRewind = useCallback(() => {
+    setRewindRequest(null)
+    setInput('')
+  }, [])
+
   // Send message
   const sendMessage = useCallback(async () => {
     const text = input.trim()
@@ -623,29 +645,53 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
       })
     }
 
-    setMessages(prev => [...prev, {
-      role: 'user',
-      text,
-      files: fileMeta.length > 0 ? fileMeta : undefined,
-      ts: Date.now(),
-    }])
+    // Capture rewindRequest before clearing state
+    const pendingRewind = rewindRequest
+
+    if (pendingRewind) {
+      // Optimistic truncation: drop messages from rewindFromUuid onward
+      setMessages(prev => {
+        const cutIdx = prev.findIndex(m => m.uuid === pendingRewind.fromUuid)
+        const base = cutIdx !== -1 ? prev.slice(0, cutIdx) : prev
+        return [...base, {
+          role: 'user' as const,
+          text,
+          files: fileMeta.length > 0 ? fileMeta : undefined,
+          ts: Date.now(),
+        }]
+      })
+    } else {
+      setMessages(prev => [...prev, {
+        role: 'user' as const,
+        text,
+        files: fileMeta.length > 0 ? fileMeta : undefined,
+        ts: Date.now(),
+      }])
+    }
+
     setInput('')
     setAttachedFiles([])
+    setRewindRequest(null)
     setStatus('running')
     setErrorMsg(null)
 
-    wsRef.current.send(JSON.stringify({
+    const payload: Record<string, unknown> = {
       type: 'chat_send',
       prompt: text,
       files: filesForServer.length > 0 ? filesForServer : undefined,
-    }))
+    }
+    if (pendingRewind) {
+      payload.rewindFromUuid = pendingRewind.fromUuid
+    }
+
+    wsRef.current.send(JSON.stringify(payload))
 
     scrollToBottom()
     if (inputRef.current) {
       inputRef.current.style.height = 'auto'
       inputRef.current.focus()
     }
-  }, [input, attachedFiles, scrollToBottom])
+  }, [input, attachedFiles, scrollToBottom, rewindRequest])
 
   // Detect slash-command region from caret position
   const detectSlash = useCallback((text: string, caret: number) => {
@@ -909,7 +955,17 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
         {messages.map((msg, i) => (
           <div key={i}>
             {msg.role === 'user' && (
-              <div className="flex justify-end">
+              <div className="flex justify-end group/usermsg items-end gap-2">
+                {/* Hover-revealed pencil button — only when uuid is present and not running */}
+                {msg.uuid && status !== 'running' && (
+                  <button
+                    onClick={() => stageRewind(msg)}
+                    className="opacity-0 group-hover/usermsg:opacity-100 transition-opacity flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md text-[#667085] hover:text-[#e6edf3] hover:bg-[#21262d]"
+                    title="Edit message"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                )}
                 <div className="max-w-[70%] space-y-2">
                   {/* File attachments in bubble */}
                   {(msg as any).files && (msg as any).files.length > 0 && (
@@ -1009,6 +1065,20 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
       {/* Input area */}
       <div className="flex-shrink-0 border-t border-[#21262d] bg-[#0d1117] px-4 py-3">
         <div className="max-w-3xl mx-auto space-y-2">
+          {/* Editing-message pill */}
+          {rewindRequest && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#21262d] bg-[#161b22] text-[11px] text-[#e6edf3]">
+              <Pencil size={11} className="text-[#667085] flex-shrink-0" />
+              <span className="flex-1">Editing message — previous responses will be removed</span>
+              <button
+                onClick={cancelRewind}
+                className="flex-shrink-0 text-[#667085] hover:text-[#e6edf3] transition-colors"
+                title="Cancel edit"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
           {/* File previews */}
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 px-1">
