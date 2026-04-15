@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-04-15
+
+### Added
+
+- **Chat message rewind + inline edit** — hover over a previous user message and click the pencil to turn it into an inline textarea (Esc cancels, Cmd/Ctrl+Enter commits). Committing truncates the conversation at that point and starts a fresh Agent SDK session, so the model genuinely forgets the rewound turns. JSONL persistence stays append-only: rewinds are recorded as `{type:"rewind", at:<uuid>}` markers applied at read time. Legacy messages without uuids get synthesized deterministic ids on load — zero disk migration (PR #10 by @gomessguii).
+- **Copy button on chat messages** — hover-revealed icon on user and assistant messages copies the text to clipboard with a brief check-icon confirmation. Assistant copy concatenates text blocks and skips tool_use cards (PR #10 by @gomessguii).
+- **Message uuids across the stack** — stable ids now flow through frontend, in-memory session cache, and persistent JSONL logs. Required for rewind; unlocks future features (reactions, per-message pins, etc.).
+
 ## [0.22.5] - 2026-04-15
 
 ### Added
