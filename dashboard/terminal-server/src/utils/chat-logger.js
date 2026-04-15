@@ -108,10 +108,10 @@ class ChatLogger {
       const messages = [];
       for (const entry of rawLines) {
         if (entry.type === 'rewind') {
-          // Drop everything strictly after the message with entry.at uuid
+          // Drop the message with entry.at uuid AND everything after it
           const cutIdx = messages.findIndex(m => m.uuid === entry.at);
           if (cutIdx !== -1) {
-            messages.splice(cutIdx + 1);
+            messages.splice(cutIdx);
           }
           // If uuid not found (e.g. marker for already-rewound content), no-op
         } else {
