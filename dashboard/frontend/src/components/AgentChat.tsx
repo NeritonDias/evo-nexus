@@ -7,7 +7,7 @@ import {
   FileCode, Terminal as TermIcon, CheckCircle2,
   Paperclip, X, File as FileIcon, ImageIcon, Upload,
   Ticket as TicketIcon, Plus, ShieldAlert, Check, Ban,
-  Pencil,
+  Pencil, Copy,
 } from 'lucide-react'
 
 interface SkillItem {
@@ -90,7 +90,9 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
     open: false, query: '', items: [], selectedIndex: 0, anchorStart: -1,
   })
   const [pendingApprovals, setPendingApprovals] = useState<PermissionRequest[]>([])
-  const [rewindRequest, setRewindRequest] = useState<{ fromUuid: string } | null>(null)
+  const [editingUuid, setEditingUuid] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState('')
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -603,24 +605,67 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
     }
   }, [processFiles])
 
-  // Pencil button: stage a rewind for the given user message
-  const stageRewind = useCallback((msg: ChatMessage) => {
-    if (msg.role !== 'user') return
-    setRewindRequest({ fromUuid: msg.uuid! })
-    setInput(msg.text)
-    requestAnimationFrame(() => {
-      if (inputRef.current) {
-        inputRef.current.focus()
-        inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      }
-    })
+  // Extract plain text from a message for copying
+  const getMessageText = (msg: ChatMessage): string => {
+    if (msg.role === 'user' || msg.role === 'system') return msg.text
+    return msg.blocks
+      .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+      .map(b => b.text)
+      .join('\n\n')
+  }
+
+  // Copy a message to clipboard with brief visual feedback
+  const copyMessage = useCallback((msg: ChatMessage, idx: number) => {
+    const text = getMessageText(msg)
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIndex(idx)
+      setTimeout(() => setCopiedIndex(prev => prev === idx ? null : prev), 1500)
+    }).catch(() => {})
   }, [])
 
-  // Cancel a staged rewind
-  const cancelRewind = useCallback(() => {
-    setRewindRequest(null)
-    setInput('')
+  // Pencil button: enter inline edit mode for the given user message
+  const startEdit = useCallback((msg: ChatMessage) => {
+    if (msg.role !== 'user' || !msg.uuid) return
+    setEditingUuid(msg.uuid)
+    setEditingText(msg.text)
   }, [])
+
+  // Cancel inline edit
+  const cancelEdit = useCallback(() => {
+    setEditingUuid(null)
+    setEditingText('')
+  }, [])
+
+  // Commit inline edit — truncates messages from edit point and sends rewind
+  const commitEdit = useCallback(() => {
+    const text = editingText.trim()
+    const uuid = editingUuid
+    if (!text || !uuid || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+
+    setMessages(prev => {
+      const cutIdx = prev.findIndex(m => m.uuid === uuid)
+      const base = cutIdx !== -1 ? prev.slice(0, cutIdx) : prev
+      return [...base, {
+        role: 'user' as const,
+        text,
+        ts: Date.now(),
+      }]
+    })
+
+    setEditingUuid(null)
+    setEditingText('')
+    setStatus('running')
+    setErrorMsg(null)
+
+    wsRef.current.send(JSON.stringify({
+      type: 'chat_send',
+      prompt: text,
+      rewindFromUuid: uuid,
+    }))
+
+    scrollToBottom()
+  }, [editingText, editingUuid, scrollToBottom])
 
   // Send message
   const sendMessage = useCallback(async () => {
@@ -645,53 +690,30 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
       })
     }
 
-    // Capture rewindRequest before clearing state
-    const pendingRewind = rewindRequest
-
-    if (pendingRewind) {
-      // Optimistic truncation: drop messages from rewindFromUuid onward
-      setMessages(prev => {
-        const cutIdx = prev.findIndex(m => m.uuid === pendingRewind.fromUuid)
-        const base = cutIdx !== -1 ? prev.slice(0, cutIdx) : prev
-        return [...base, {
-          role: 'user' as const,
-          text,
-          files: fileMeta.length > 0 ? fileMeta : undefined,
-          ts: Date.now(),
-        }]
-      })
-    } else {
-      setMessages(prev => [...prev, {
-        role: 'user' as const,
-        text,
-        files: fileMeta.length > 0 ? fileMeta : undefined,
-        ts: Date.now(),
-      }])
-    }
+    setMessages(prev => [...prev, {
+      role: 'user' as const,
+      text,
+      files: fileMeta.length > 0 ? fileMeta : undefined,
+      ts: Date.now(),
+    }])
 
     setInput('')
     setAttachedFiles([])
-    setRewindRequest(null)
     setStatus('running')
     setErrorMsg(null)
 
-    const payload: Record<string, unknown> = {
+    wsRef.current.send(JSON.stringify({
       type: 'chat_send',
       prompt: text,
       files: filesForServer.length > 0 ? filesForServer : undefined,
-    }
-    if (pendingRewind) {
-      payload.rewindFromUuid = pendingRewind.fromUuid
-    }
-
-    wsRef.current.send(JSON.stringify(payload))
+    }))
 
     scrollToBottom()
     if (inputRef.current) {
       inputRef.current.style.height = 'auto'
       inputRef.current.focus()
     }
-  }, [input, attachedFiles, scrollToBottom, rewindRequest])
+  }, [input, attachedFiles, scrollToBottom])
 
   // Detect slash-command region from caret position
   const detectSlash = useCallback((text: string, caret: number) => {
@@ -954,18 +976,70 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
 
         {messages.map((msg, i) => (
           <div key={i}>
-            {msg.role === 'user' && (
-              <div className="flex justify-end group/usermsg items-end gap-2">
-                {/* Hover-revealed pencil button — only when uuid is present and not running */}
-                {msg.uuid && status !== 'running' && (
+            {msg.role === 'user' && editingUuid && msg.uuid === editingUuid && (
+              <div className="flex justify-end">
+                <div className="w-full max-w-[85%] rounded-2xl border bg-[#1a2744] px-3 py-2" style={{ borderColor: accentColor + '60' }}>
+                  <textarea
+                    value={editingText}
+                    onChange={(e) => setEditingText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        e.preventDefault()
+                        cancelEdit()
+                      } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault()
+                        commitEdit()
+                      }
+                    }}
+                    autoFocus
+                    rows={Math.min(10, Math.max(2, editingText.split('\n').length))}
+                    className="w-full bg-transparent text-sm text-[#e6edf3] placeholder:text-[#667085] focus:outline-none resize-none"
+                  />
+                  <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-[#21262d]">
+                    <button
+                      onClick={cancelEdit}
+                      className="px-3 py-1 rounded-md text-xs text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#21262d] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={commitEdit}
+                      disabled={!editingText.trim()}
+                      className="px-3 py-1 rounded-md text-xs border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        borderColor: `${accentColor}40`,
+                        background: `${accentColor}15`,
+                        color: accentColor,
+                      }}
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {msg.role === 'user' && !(editingUuid && msg.uuid === editingUuid) && (
+              <div className="flex justify-end group/usermsg items-end gap-1">
+                {/* Hover-revealed action buttons */}
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/usermsg:opacity-100 transition-opacity mr-1">
                   <button
-                    onClick={() => stageRewind(msg)}
-                    className="opacity-0 group-hover/usermsg:opacity-100 transition-opacity flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md text-[#667085] hover:text-[#e6edf3] hover:bg-[#21262d]"
-                    title="Edit message"
+                    onClick={() => copyMessage(msg, i)}
+                    className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md text-[#667085] hover:text-[#e6edf3] hover:bg-[#21262d]"
+                    title={copiedIndex === i ? 'Copied' : 'Copy message'}
                   >
-                    <Pencil size={12} />
+                    {copiedIndex === i ? <Check size={12} className="text-[#00FFA7]" /> : <Copy size={12} />}
                   </button>
-                )}
+                  {msg.uuid && status !== 'running' && !editingUuid && (
+                    <button
+                      onClick={() => startEdit(msg)}
+                      className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md text-[#667085] hover:text-[#e6edf3] hover:bg-[#21262d]"
+                      title="Edit message"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  )}
+                </div>
                 <div className="max-w-[70%] space-y-2">
                   {/* File attachments in bubble */}
                   {(msg as any).files && (msg as any).files.length > 0 && (
@@ -1001,7 +1075,7 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
             )}
 
             {msg.role === 'assistant' && (
-              <div className="flex gap-3">
+              <div className="flex gap-3 group/asstmsg">
                 <div className="flex-shrink-0 mt-0.5">
                   <AgentAvatar name={agent} size={28} />
                 </div>
@@ -1025,6 +1099,18 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
                     return !hasVisibleContent
                   })() && (
                     <TypingIndicator accentColor={accentColor} isThinking={isThinking} />
+                  )}
+                  {/* Copy button — shown on hover when not streaming and there's text to copy */}
+                  {!(msg as any).streaming && getMessageText(msg) && (
+                    <div className="opacity-0 group-hover/asstmsg:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => copyMessage(msg, i)}
+                        className="flex items-center justify-center w-6 h-6 rounded-md text-[#667085] hover:text-[#e6edf3] hover:bg-[#21262d]"
+                        title={copiedIndex === i ? 'Copied' : 'Copy message'}
+                      >
+                        {copiedIndex === i ? <Check size={12} className="text-[#00FFA7]" /> : <Copy size={12} />}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1065,20 +1151,6 @@ export default function AgentChat({ agent, sessionId, accentColor = '#00FFA7', e
       {/* Input area */}
       <div className="flex-shrink-0 border-t border-[#21262d] bg-[#0d1117] px-4 py-3">
         <div className="max-w-3xl mx-auto space-y-2">
-          {/* Editing-message pill */}
-          {rewindRequest && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#21262d] bg-[#161b22] text-[11px] text-[#e6edf3]">
-              <Pencil size={11} className="text-[#667085] flex-shrink-0" />
-              <span className="flex-1">Editing message — previous responses will be removed</span>
-              <button
-                onClick={cancelRewind}
-                className="flex-shrink-0 text-[#667085] hover:text-[#e6edf3] transition-colors"
-                title="Cancel edit"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          )}
           {/* File previews */}
           {attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 px-1">
