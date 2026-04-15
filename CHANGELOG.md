@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.5] - 2026-04-15
+
+### Added
+
+- **Paste screenshots from clipboard into chat** — Cmd/Ctrl+V on the chat textarea now captures images from the clipboard and routes them through the existing file-attachment pipeline. Pasted images get a `pasted-{ts}.{ext}` filename. Plain-text pastes keep the default browser behavior unchanged (PR #9 by @gomessguii).
+
 ## [0.22.4] - 2026-04-15
 
 ### Added
