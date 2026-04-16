@@ -381,8 +381,13 @@ def cmd_pipeline_items(args):
     if args.stage_id:
         params["stage_id"] = args.stage_id
     resp = api_request("GET", f"pipelines/{args.pipeline_id}/pipeline_items", params=params)
-    payload = resp.get("data", {}).get("payload", resp.get("data", resp))
-    meta = resp.get("data", {}).get("meta", resp.get("meta"))
+    data = resp.get("data", resp)
+    if isinstance(data, list):
+        payload = data
+        meta = resp.get("meta")
+    else:
+        payload = data.get("payload", data)
+        meta = data.get("meta", resp.get("meta"))
     output(payload, meta)
 
 

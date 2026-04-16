@@ -63,6 +63,7 @@ const INTEGRATION_META: IntegrationMeta[] = [
     docsUrl: 'https://core.telegram.org/bots/api',
     fields: [
       { envKey: 'TELEGRAM_BOT_TOKEN', label: 'Bot Token', hint: 'Token do bot Telegram via BotFather', required: true },
+      { envKey: 'TELEGRAM_CHAT_ID', label: 'Chat ID', hint: 'ID do chat/grupo destino (opcional, usado como default)', required: false },
     ],
   },
   {
