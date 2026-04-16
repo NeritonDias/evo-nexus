@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.2] - 2026-04-16
+
+### Fixed
+
+- **`int-evo-crm` pipeline_items crashed on list responses** — `evo_crm_client.py`'s `cmd_pipeline_items` assumed `data` was always a dict with a `payload` key, but the API returns `{"data": [...items...]}` (a list) when `--stage_id` is passed. Calling `.get()` on the list raised `AttributeError: 'list' object has no attribute 'get'` and broke any agent that filtered by stage. Now handles both shapes.
+
+### Added
+
+- **`TELEGRAM_CHAT_ID` field in the Telegram integration card** — dashboard Integrations page now exposes `TELEGRAM_CHAT_ID` as an optional field alongside `TELEGRAM_BOT_TOKEN`, matching `.env.example`. Used as the default chat/group destination for notifications.
+
+### Changed
+
+- **`dev-skillify` repurposed to scaffold custom skills** — previously a retrospective "conversation → skill" capture tool (role now covered by `dev-learner`). The skill now follows the same interactive pattern as `create-agent` / `create-routine`: interview → generate `.claude/skills/custom-{slug}/SKILL.md` with frontmatter, workflow, anti-patterns and verification. Same filename, new purpose.
+
 ## [0.23.1] - 2026-04-16
 
 ### Fixed
