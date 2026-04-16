@@ -20,20 +20,36 @@ PID_FILE = WORKSPACE / "ADWs" / "logs" / "scheduler.pid"
 
 
 def acquire_lock() -> bool:
-    """Ensure only one scheduler instance runs. Returns False if another is alive."""
-    if PID_FILE.exists():
+    """Ensure only one scheduler instance runs. Returns False if another is alive.
+
+    Uses O_CREAT|O_EXCL for atomic creation, then validates the PID inside.
+    Avoids the TOCTOU race where two processes both see a stale PID file and
+    both proceed to start.
+    """
+    import fcntl
+    try:
+        fd = os.open(str(PID_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        # File exists — check if the owner is still alive
         try:
             existing_pid = int(PID_FILE.read_text().strip())
-            # Check if that process is still alive
             os.kill(existing_pid, 0)
             print(f"  Scheduler already running (PID {existing_pid}). Exiting.")
             return False
         except (ProcessLookupError, ValueError):
-            # Stale PID file — previous instance is dead
+            # Stale lock — remove and retry once
             PID_FILE.unlink(missing_ok=True)
-
-    PID_FILE.write_text(str(os.getpid()))
-    return True
+            try:
+                fd = os.open(str(PID_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+                os.write(fd, str(os.getpid()).encode())
+                os.close(fd)
+                return True
+            except FileExistsError:
+                print("  Scheduler lock contention — another instance just started. Exiting.")
+                return False
 
 
 def release_lock():
