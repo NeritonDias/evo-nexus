@@ -1,0 +1,104 @@
+# ============================================================================
+# docker-compose.dev.yml — local development / pre-Swarm smoke test
+#
+# Builds the images locally (same Dockerfile / Dockerfile.dashboard used in
+# production) and runs them with the same volume layout as the Swarm stack,
+# but with port 8080 published directly (no Traefik) and secrets pulled
+# from a plain .env file. Good for:
+#
+#   * Verifying your changes build cleanly before pushing to Docker Hub.
+#   * Running the Setup wizard locally and inspecting /workspace/config.
+#   * Debugging the embedded terminal-server without TLS in the way.
+#
+# Usage:
+#   cp .env.example .env
+#   # edit .env, add at minimum ANTHROPIC_API_KEY and EVONEXUS_SECRET_KEY
+#   docker compose -f docker-compose.dev.yml up --build
+#
+# Open http://localhost:8080 — first visit runs the Setup wizard.
+# ============================================================================
+services:
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    image: evo-nexus-dashboard:dev
+    ports:
+      - "${EVONEXUS_PORT:-8080}:8080"
+    env_file: .env
+    environment:
+      - TZ=America/Sao_Paulo
+      - EVONEXUS_PORT=8080
+    volumes:
+      - evo-config:/workspace/config
+      - evo-workspace:/workspace/workspace
+      - evo-dashboard-data:/workspace/dashboard/data
+      - evo-memory:/workspace/memory
+      - evo-adw-logs:/workspace/ADWs/logs
+      - evo-agent-memory:/workspace/.claude/agent-memory
+      - evo-codex-auth:/root/.codex
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  telegram:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: evo-nexus-runtime:dev
+    command:
+      - "claude"
+      - "--channels"
+      - "plugin:telegram@claude-plugins-official"
+      - "--dangerously-skip-permissions"
+    env_file: .env
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - evo-config:/workspace/config
+      - evo-workspace:/workspace/workspace
+      - evo-memory:/workspace/memory
+      - evo-adw-logs:/workspace/ADWs/logs
+      - evo-agent-memory:/workspace/.claude/agent-memory
+      - evo-codex-auth:/root/.codex
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    # Telegram will crash-loop until TELEGRAM_BOT_TOKEN is set in .env.
+    # That's fine: the dashboard works regardless. Configure via the
+    # Integrations page, then `docker compose restart telegram`.
+    profiles:
+      - telegram
+
+  scheduler:
+    image: evo-nexus-runtime:dev
+    command: ["uv", "run", "python", "scheduler.py"]
+    env_file: .env
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - evo-config:/workspace/config
+      - evo-workspace:/workspace/workspace
+      - evo-memory:/workspace/memory
+      - evo-adw-logs:/workspace/ADWs/logs
+      - evo-agent-memory:/workspace/.claude/agent-memory
+      - evo-codex-auth:/root/.codex
+    restart: unless-stopped
+    depends_on:
+      - telegram
+    profiles:
+      - scheduler
+
+volumes:
+  evo-config:
+  evo-workspace:
+  evo-dashboard-data:
+  evo-memory:
+  evo-adw-logs:
+  evo-agent-memory:
+  evo-codex-auth:

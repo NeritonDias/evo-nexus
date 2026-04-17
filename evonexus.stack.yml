@@ -1,0 +1,176 @@
+version: "3.7"
+services:
+
+## --------------------------- ORION --------------------------- ##
+
+  evonexus_dashboard:
+    image: ghcr.io/neritondias/evo-nexus-dashboard:latest ## publicada pelo GitHub Actions
+
+    volumes:
+      - evonexus_config:/workspace/config
+      - evonexus_workspace:/workspace/workspace
+      - evonexus_dashboard_data:/workspace/dashboard/data
+      - evonexus_memory:/workspace/memory
+      - evonexus_adw_logs:/workspace/ADWs/logs
+      - evonexus_agent_memory:/workspace/.claude/agent-memory
+      - evonexus_codex_auth:/root/.codex
+
+    networks:
+      - gmnet ## Nome da rede interna
+
+    environment:
+    ## ⚙️ Configurações Gerais
+      - TZ=America/Sao_Paulo
+      - EVONEXUS_PORT=8080
+      - FORWARDED_ALLOW_IPS=*
+
+    ## 🔐 Segredos obrigatórios — SUBSTITUIR antes de deployar
+      - ANTHROPIC_API_KEY=sk-ant-SUBSTITUIR
+      - EVONEXUS_SECRET_KEY=SUBSTITUIR_COM_openssl_rand_hex_32
+
+    ## 🔑 Opcionais — também podem ser preenchidos via UI de Integrations
+      #- TELEGRAM_BOT_TOKEN=
+      #- DISCORD_BOT_TOKEN=
+      #- STRIPE_SECRET_KEY=
+      #- OMIE_APP_KEY=
+      #- OMIE_APP_SECRET=
+      #- BLING_CLIENT_ID=
+      #- BLING_CLIENT_SECRET=
+      #- ASAAS_API_KEY=
+      #- GITHUB_TOKEN=
+      #- LINEAR_API_KEY=
+      #- TODOIST_API_TOKEN=
+      #- FATHOM_API_KEY=
+      #- EVOLUTION_API_KEY=
+      #- EVOLUTION_GO_KEY=
+      #- EVO_CRM_TOKEN=
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=1
+        - traefik.docker.network=gmnet ## Nome da rede interna
+        - traefik.http.routers.evonexus_dashboard.rule=Host(`evonexus.example.com`) ## Domínio EvoNexus
+        - traefik.http.routers.evonexus_dashboard.entrypoints=websecure
+        - traefik.http.routers.evonexus_dashboard.priority=1
+        - traefik.http.routers.evonexus_dashboard.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.evonexus_dashboard.service=evonexus_dashboard
+        - traefik.http.services.evonexus_dashboard.loadbalancer.server.port=8080
+        - traefik.http.services.evonexus_dashboard.loadbalancer.passHostHeader=true
+
+## --------------------------- ORION --------------------------- ##
+
+  evonexus_telegram:
+    image: ghcr.io/neritondias/evo-nexus-runtime:latest
+    command:
+      - "claude"
+      - "--channels"
+      - "plugin:telegram@claude-plugins-official"
+      - "--dangerously-skip-permissions"
+
+    volumes:
+      - evonexus_config:/workspace/config
+      - evonexus_workspace:/workspace/workspace
+      - evonexus_memory:/workspace/memory
+      - evonexus_adw_logs:/workspace/ADWs/logs
+      - evonexus_agent_memory:/workspace/.claude/agent-memory
+      - evonexus_codex_auth:/root/.codex
+
+    networks:
+      - gmnet ## Nome da rede interna
+
+    environment:
+    ## ⚙️ Configurações Gerais
+      - TZ=America/Sao_Paulo
+
+    ## 🔐 Claude precisa da API key pra autenticar
+      - ANTHROPIC_API_KEY=sk-ant-SUBSTITUIR
+
+    ## 📱 Token do Telegram — pode ser setado aqui OU via UI de Integrations
+      #- TELEGRAM_BOT_TOKEN=
+
+    stdin_open: true
+    tty: true
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 0
+
+## --------------------------- ORION --------------------------- ##
+
+  evonexus_scheduler:
+    image: ghcr.io/neritondias/evo-nexus-runtime:latest
+    command: ["uv", "run", "python", "scheduler.py"]
+
+    volumes:
+      - evonexus_config:/workspace/config
+      - evonexus_workspace:/workspace/workspace
+      - evonexus_memory:/workspace/memory
+      - evonexus_adw_logs:/workspace/ADWs/logs
+      - evonexus_agent_memory:/workspace/.claude/agent-memory
+      - evonexus_codex_auth:/root/.codex
+
+    networks:
+      - gmnet ## Nome da rede interna
+
+    environment:
+      - TZ=America/Sao_Paulo
+      - ANTHROPIC_API_KEY=sk-ant-SUBSTITUIR
+
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 0
+
+## --------------------------- ORION --------------------------- ##
+
+volumes:
+  evonexus_config:
+    external: true
+    name: evonexus_config
+  evonexus_workspace:
+    external: true
+    name: evonexus_workspace
+  evonexus_dashboard_data:
+    external: true
+    name: evonexus_dashboard_data
+  evonexus_memory:
+    external: true
+    name: evonexus_memory
+  evonexus_adw_logs:
+    external: true
+    name: evonexus_adw_logs
+  evonexus_agent_memory:
+    external: true
+    name: evonexus_agent_memory
+  evonexus_codex_auth:
+    external: true
+    name: evonexus_codex_auth
+
+networks:
+  gmnet: ## Nome da rede interna
+    external: true
+    name: gmnet ## Nome da rede interna
