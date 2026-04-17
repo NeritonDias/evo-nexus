@@ -4,7 +4,7 @@ services:
 ## --------------------------- ORION --------------------------- ##
 
   evonexus_dashboard:
-    image: ghcr.io/neritondias/evo-nexus-dashboard:latest ## publicada pelo GitHub Actions
+    image: ghcr.io/neritondias/evo-nexus-dashboard:v0.24.0-swarm.4 ## publicada pelo GitHub Actions
 
     volumes:
       - evonexus_config:/workspace/config
@@ -63,7 +63,7 @@ services:
 ## --------------------------- ORION --------------------------- ##
 
   evonexus_telegram:
-    image: ghcr.io/neritondias/evo-nexus-runtime:latest
+    image: ghcr.io/neritondias/evo-nexus-runtime:v0.24.0-swarm.4
     command:
       - "claude"
       - "--channels"
@@ -102,7 +102,7 @@ services:
 ## --------------------------- ORION --------------------------- ##
 
   evonexus_scheduler:
-    image: ghcr.io/neritondias/evo-nexus-runtime:latest
+    image: ghcr.io/neritondias/evo-nexus-runtime:v0.24.0-swarm.4
     command: ["uv", "run", "python", "scheduler.py"]
 
     volumes:
