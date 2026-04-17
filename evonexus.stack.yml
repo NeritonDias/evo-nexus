@@ -38,6 +38,8 @@ services:
       labels:
         - traefik.enable=1
         - traefik.docker.network=gmnet ## Nome da rede interna
+
+        ## --- Router principal (Flask/SPA na porta 8080) ---
         - traefik.http.routers.evonexus_dashboard.rule=Host(`evonexus.example.com`) ## Domínio EvoNexus
         - traefik.http.routers.evonexus_dashboard.entrypoints=websecure
         - traefik.http.routers.evonexus_dashboard.priority=1
@@ -45,6 +47,18 @@ services:
         - traefik.http.routers.evonexus_dashboard.service=evonexus_dashboard
         - traefik.http.services.evonexus_dashboard.loadbalancer.server.port=8080
         - traefik.http.services.evonexus_dashboard.loadbalancer.passHostHeader=true
+
+        ## --- Router do terminal-server (Node PTY WS/HTTP na porta 32352) ---
+        ## Prioridade maior (10) pra ganhar do router principal quando o path
+        ## começa com /terminal. WebSocket funciona porque o Traefik detecta
+        ## Upgrade header automaticamente no router comum.
+        - traefik.http.routers.evonexus_terminal.rule=Host(`evonexus.example.com`) && PathPrefix(`/terminal`) ## mesmo domínio, path prefix
+        - traefik.http.routers.evonexus_terminal.entrypoints=websecure
+        - traefik.http.routers.evonexus_terminal.priority=10
+        - traefik.http.routers.evonexus_terminal.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.evonexus_terminal.service=evonexus_terminal
+        - traefik.http.services.evonexus_terminal.loadbalancer.server.port=32352
+        - traefik.http.services.evonexus_terminal.loadbalancer.passHostHeader=true
 
 ## --------------------------- ORION --------------------------- ##
 
