@@ -1,0 +1,218 @@
+# ============================================================================
+# stack.yml — EvoNexus on Docker Swarm (multi-node, pinned to one node)
+#
+# PREREQUISITES (see README-DEPLOY.md for the full checklist):
+#   1. A node labeled evo-nexus=true:
+#        docker node update --label-add evo-nexus=true <node-name>
+#   2. External Traefik network:
+#        docker network ls | grep traefik_public
+#   3. Secrets created externally (example for ANTHROPIC_API_KEY):
+#        printf "sk-ant-..." | docker secret create anthropic_api_key -
+#   4. Configs created from the files produced by `make setup` locally:
+#        docker config create evo_workspace_yaml ./config/workspace.yaml
+#        docker config create evo_routines_yaml  ./config/routines.yaml
+#        docker config create evo_claude_md      ./CLAUDE.md
+#
+# DEPLOY:
+#   docker stack deploy -c stack.yml evonexus
+#   (or paste this file in Portainer → Stacks → Add Stack)
+#
+# UPDATE AN IMAGE:
+#   docker service update --image your_user/evo-nexus-dashboard:v0.2.0 \
+#       evonexus_dashboard
+# ============================================================================
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Anchors — shared bits reused across services to keep the file DRY.
+# ---------------------------------------------------------------------------
+x-common-env: &common-env
+  TZ: America/Sao_Paulo
+
+x-placement: &placement
+  constraints:
+    - node.labels.evo-nexus == true
+
+x-restart: &restart
+  restart_policy:
+    condition: any
+    delay: 10s
+    max_attempts: 0
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
+services:
+
+  # -------------------------------------------------------------------------
+  # Dashboard — the only HTTP-facing service. Traefik labels route the
+  # public domain here. WebSocket (xterm.js terminal) works out of the box
+  # because Traefik auto-detects the Upgrade header on the same router.
+  # -------------------------------------------------------------------------
+  dashboard:
+    image: ${DOCKERHUB_USERNAME}/evo-nexus-dashboard:${EVO_NEXUS_TAG:-latest}
+    environment:
+      <<: *common-env
+      EVONEXUS_PORT: "8080"
+      # Optional: tell Flask which host to trust (behind Traefik)
+      FORWARDED_ALLOW_IPS: "*"
+    secrets:
+      - anthropic_api_key
+      - evonexus_secret_key
+    configs:
+      - source: evo_workspace_yaml
+        target: /workspace/config/workspace.yaml
+      - source: evo_routines_yaml
+        target: /workspace/config/routines.yaml
+      - source: evo_claude_md
+        target: /workspace/CLAUDE.md
+    volumes:
+      - evo-workspace:/workspace/workspace
+      - evo-dashboard-data:/workspace/dashboard/data
+      - evo-memory:/workspace/memory
+      - evo-adw-logs:/workspace/ADWs/logs
+      - evo-agent-memory:/workspace/.claude/agent-memory
+    networks:
+      - traefik_public
+      - evo-internal
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement: *placement
+      <<: *restart
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: rollback
+      labels:
+        # --- Traefik v2/v3 routing ---------------------------------------
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_public"
+        - "traefik.http.routers.evonexus.rule=Host(`${EVO_NEXUS_HOST}`)"
+        - "traefik.http.routers.evonexus.entrypoints=websecure"
+        - "traefik.http.routers.evonexus.tls=true"
+        - "traefik.http.routers.evonexus.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
+        - "traefik.http.services.evonexus.loadbalancer.server.port=8080"
+        # HTTP -> HTTPS redirect (optional, remove if Traefik does it globally)
+        - "traefik.http.routers.evonexus-http.rule=Host(`${EVO_NEXUS_HOST}`)"
+        - "traefik.http.routers.evonexus-http.entrypoints=web"
+        - "traefik.http.routers.evonexus-http.middlewares=evonexus-redirect"
+        - "traefik.http.middlewares.evonexus-redirect.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.evonexus-redirect.redirectscheme.permanent=true"
+
+  # -------------------------------------------------------------------------
+  # Telegram — Claude Code running the Telegram channel plugin.
+  # Uses `command:` (not `entrypoint:`) so the secrets-to-env wrapper runs.
+  # -------------------------------------------------------------------------
+  telegram:
+    image: ${DOCKERHUB_USERNAME}/evo-nexus-runtime:${EVO_NEXUS_TAG:-latest}
+    command:
+      - "claude"
+      - "--channels"
+      - "plugin:telegram@claude-plugins-official"
+      - "--dangerously-skip-permissions"
+    environment:
+      <<: *common-env
+    secrets:
+      - anthropic_api_key
+      - telegram_bot_token
+    configs:
+      - source: evo_workspace_yaml
+        target: /workspace/config/workspace.yaml
+      - source: evo_claude_md
+        target: /workspace/CLAUDE.md
+    volumes:
+      - evo-workspace:/workspace/workspace
+      - evo-memory:/workspace/memory
+      - evo-adw-logs:/workspace/ADWs/logs
+      - evo-agent-memory:/workspace/.claude/agent-memory
+    networks:
+      - evo-internal
+    stdin_open: true
+    tty: true
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement: *placement
+      <<: *restart
+
+  # -------------------------------------------------------------------------
+  # Scheduler — runs the cron-like routine dispatcher (was `make scheduler`
+  # on the host in the original compose; now a proper long-running service).
+  # -------------------------------------------------------------------------
+  scheduler:
+    image: ${DOCKERHUB_USERNAME}/evo-nexus-runtime:${EVO_NEXUS_TAG:-latest}
+    command: ["uv", "run", "python", "scheduler.py"]
+    environment:
+      <<: *common-env
+    secrets:
+      - anthropic_api_key
+    configs:
+      - source: evo_workspace_yaml
+        target: /workspace/config/workspace.yaml
+      - source: evo_routines_yaml
+        target: /workspace/config/routines.yaml
+      - source: evo_claude_md
+        target: /workspace/CLAUDE.md
+    volumes:
+      - evo-workspace:/workspace/workspace
+      - evo-memory:/workspace/memory
+      - evo-adw-logs:/workspace/ADWs/logs
+      - evo-agent-memory:/workspace/.claude/agent-memory
+    networks:
+      - evo-internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement: *placement
+      <<: *restart
+
+# ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
+networks:
+  traefik_public:
+    external: true
+  evo-internal:
+    driver: overlay
+    attachable: true
+
+# ---------------------------------------------------------------------------
+# Volumes — local driver on the pinned node. Data lives on one host, which
+# is exactly what we want for this workload (SQLite + workspace files).
+# ---------------------------------------------------------------------------
+volumes:
+  evo-workspace:
+  evo-dashboard-data:
+  evo-memory:
+  evo-adw-logs:
+  evo-agent-memory:
+
+# ---------------------------------------------------------------------------
+# Secrets — must be created externally before the first deploy.
+# See README-DEPLOY.md for the commands. Add/remove as your .env requires.
+# ---------------------------------------------------------------------------
+secrets:
+  anthropic_api_key:
+    external: true
+  telegram_bot_token:
+    external: true
+  evonexus_secret_key:
+    external: true
+
+# ---------------------------------------------------------------------------
+# Configs — generated locally by `make setup`, then registered in the Swarm.
+# ---------------------------------------------------------------------------
+configs:
+  evo_workspace_yaml:
+    external: true
+  evo_routines_yaml:
+    external: true
+  evo_claude_md:
+    external: true
