@@ -1,190 +1,135 @@
 # EvoNexus on Docker Swarm — Deployment Guide
 
-This guide takes you from a bare Swarm cluster (with Traefik already running)
-to a fully working EvoNexus installation in ~20 minutes. It assumes the
-adjusted `Dockerfile`, `Dockerfile.dashboard`, `entrypoint.sh`, and
-`.github/workflows/docker-publish.yml` from this bundle have been committed
-to your fork of `EvolutionAPI/evo-nexus`.
+This guide takes a bare Swarm cluster (with Traefik already running) to a
+fully working EvoNexus installation. It assumes you've built and published
+the images via the included GitHub Actions workflow.
+
+> **Why this exists** — EvoNexus ships a rich UI that already edits `.env`,
+> `providers.json`, `workspace.yaml`, and `routines.yaml` in place. This
+> deployment preserves that flow: instead of shipping those files as Docker
+> Configs (immutable), it puts them on a shared writable volume so every
+> change made in the dashboard's Providers / Integrations / Settings pages
+> persists across container restarts.
 
 ---
 
 ## 1. What you'll set up
 
-| Service      | Image                                   | Public? | Volume(s)                                                 |
-|--------------|-----------------------------------------|---------|-----------------------------------------------------------|
-| `dashboard`  | `USER/evo-nexus-dashboard:TAG`          | Yes (via Traefik) | workspace, dashboard-data, memory, adw-logs, agent-memory |
-| `telegram`   | `USER/evo-nexus-runtime:TAG`            | No      | workspace, memory, adw-logs, agent-memory                 |
-| `scheduler`  | `USER/evo-nexus-runtime:TAG`            | No      | workspace, memory, adw-logs, agent-memory                 |
+| Service      | Image                                     | Public?            |
+|--------------|-------------------------------------------|--------------------|
+| `dashboard`  | `USER/evo-nexus-dashboard:TAG`            | Yes (via Traefik)  |
+| `telegram`   | `USER/evo-nexus-runtime:TAG`              | No                 |
+| `scheduler`  | `USER/evo-nexus-runtime:TAG`              | No                 |
 
-All three services are pinned to the node labeled `evo-nexus=true` via a
-placement constraint, which keeps all data on a single host — simple and
-correct for this workload (SQLite + filesystem-heavy writes).
+All three pin to the node labeled `evo-nexus=true` and share the same
+`evo-config`, `evo-workspace`, `evo-memory`, `evo-adw-logs`,
+`evo-agent-memory`, and `evo-codex-auth` volumes.
 
 ---
 
 ## 2. One-time setup
 
-### 2.1. Fork, apply the Swarm bundle, publish images
+### 2.1. Fork and publish the images
 
-1. Fork `EvolutionAPI/evo-nexus` into your GitHub account.
-2. Copy the files from this bundle into the root of your fork, replacing the
-   originals where they exist:
-   ```
-   Dockerfile
-   Dockerfile.dashboard
-   entrypoint.sh
-   .github/workflows/docker-publish.yml
-   stack.yml
-   .env.deploy.example
-   README-DEPLOY.md
-   ```
-3. In GitHub → Settings → Secrets → Actions, add:
-   - `DOCKERHUB_USERNAME` — your Docker Hub username
-   - `DOCKERHUB_TOKEN`    — a Docker Hub access token (not your password;
-     create at Docker Hub → Account Settings → Security → New Access Token,
-     scope "Read, Write, Delete")
-4. Commit + push:
-   ```bash
-   git add .
-   git commit -m "chore: Swarm-ready Dockerfiles + CI/CD"
-   git push origin main
-   ```
-5. Tag a release to trigger the first publish:
+1. In your fork, add these GitHub Actions secrets (Settings → Secrets → Actions):
+   - `DOCKERHUB_USERNAME` — your Docker Hub username.
+   - `DOCKERHUB_TOKEN`    — a Docker Hub access token (scope: Read, Write, Delete).
+2. Tag a release to trigger the first build:
    ```bash
    git tag v0.1.0
    git push origin v0.1.0
    ```
-6. Watch GitHub Actions. When it finishes, Docker Hub has:
+3. Wait for the workflow — Docker Hub will have:
    - `USER/evo-nexus-dashboard:v0.1.0` + `:latest`
    - `USER/evo-nexus-runtime:v0.1.0`   + `:latest`
 
-### 2.2. Generate config files locally
+### 2.2. Label the target node
 
-The wizard (`make setup`) is interactive and generates the files EvoNexus
-reads at runtime. Run it **once on your dev machine**, then ship the outputs
-to the Swarm as Docker configs.
-
-```bash
-git clone https://github.com/YOUR_USER/evo-nexus.git
-cd evo-nexus
-make setup            # answer the prompts — name, company, TZ, agents…
-```
-
-After the wizard finishes you'll have:
-
-| File                     | What it is                                    |
-|--------------------------|-----------------------------------------------|
-| `config/workspace.yaml`  | Agents + integrations enabled, workspace ID   |
-| `config/routines.yaml`   | Cron schedules for every routine              |
-| `CLAUDE.md`              | Top-level Claude Code context (generated from `CLAUDE.template.md`) |
-
-Also edit the local `.env` now so you know which secrets you'll need in
-the Swarm — but **don't** ship `.env` to the server. Swarm secrets replace
-that file.
-
-### 2.3. Label the target node
-
-Pick the node that will host EvoNexus and label it. From any manager:
-
+From any Swarm manager:
 ```bash
 docker node ls
 docker node update --label-add evo-nexus=true <NODE_NAME>
-# verify
 docker node inspect <NODE_NAME> --format '{{ .Spec.Labels }}'
 ```
 
-### 2.4. Create Swarm secrets
+### 2.3. Create the minimum Swarm secrets
 
-Run on a manager node. Repeat for every secret your workspace uses. The
-minimum trio for the default stack is below; add more as your `.env` grows.
+Only two are mandatory to boot. The rest (Telegram, Discord, Stripe, Omie,
+etc.) can be entered later through the dashboard's Integrations page.
 
 ```bash
-# Anthropic (REQUIRED)
+# Anthropic key — needed for Claude Code to work at all
 printf "sk-ant-XXXXXXXXXXXXXXXXX" | docker secret create anthropic_api_key -
 
-# Telegram bot (required if the telegram service is enabled)
-printf "1234567890:AA..." | docker secret create telegram_bot_token -
-
-# Flask session secret (use any strong random value)
+# Flask session secret — any strong random string
 openssl rand -hex 32 | docker secret create evonexus_secret_key -
 ```
 
-Add any others your deployment needs — `discord_bot_token`,
-`stripe_secret_key`, `omie_app_key`, `bling_client_secret`, etc. The
-`entrypoint.sh` wrapper will auto-expose them as uppercase env vars at
-container start.
-
-> **Reminder**: to expose a new secret to a service, you also have to add
-> it to the `secrets:` list of that service in `stack.yml`.
-
-### 2.5. Upload configs to the Swarm
-
-From the folder where you ran `make setup`:
-
+Optional extras (add them to the corresponding service's `secrets:` list in
+`stack.yml` if you create them):
 ```bash
-docker config create evo_workspace_yaml config/workspace.yaml
-docker config create evo_routines_yaml  config/routines.yaml
-docker config create evo_claude_md      CLAUDE.md
+printf "1234567890:AA..." | docker secret create telegram_bot_token -
+printf "..."                | docker secret create discord_bot_token -
+printf "sk_live_..."        | docker secret create stripe_secret_key -
 ```
 
-Verify:
-```bash
-docker config ls
-```
-
-### 2.6. Confirm the Traefik network exists
+### 2.4. Confirm the Traefik network exists
 
 ```bash
 docker network ls | grep traefik_public
 ```
-
-If the name differs on your setup, edit `stack.yml` and `.env.deploy` to
-match.
+If named differently on your cluster, edit `stack.yml` (two places: under
+`networks:` in `dashboard` and at the bottom under `networks:`) and the
+`traefik.docker.network` label.
 
 ---
 
 ## 3. Deploy
 
-### Option A — Portainer UI (recommended)
+### Portainer UI (recommended)
 
-1. Portainer → Stacks → Add stack → name it `evonexus`.
-2. Web editor: paste the contents of `stack.yml`.
-3. Environment variables section: paste the KEY=VALUE pairs from
-   `.env.deploy` (don't use the `--env-file` upload, it trims quotes).
-4. Deploy the stack.
-5. Watch the "Services" page — three services should reach `1/1` replicas
-   within ~60 seconds. First pull may take longer.
+1. Stacks → Add stack → name `evonexus`.
+2. Paste `stack.yml` into the web editor.
+3. In "Environment variables" add:
+   ```
+   DOCKERHUB_USERNAME=your-user
+   EVO_NEXUS_TAG=v0.1.0
+   EVO_NEXUS_HOST=evonexus.your-domain.com.br
+   TRAEFIK_CERTRESOLVER=letsencrypt
+   ```
+4. Deploy the stack. First pull takes a couple of minutes.
 
-### Option B — CLI
+### CLI
 
 ```bash
-# From a machine with docker context pointed at a manager:
-cp .env.deploy.example .env.deploy
-# fill in DOCKERHUB_USERNAME, EVO_NEXUS_TAG, EVO_NEXUS_HOST, TRAEFIK_CERTRESOLVER
-
+cp .env.deploy.example .env.deploy   # then fill in the four variables
 set -a; . ./.env.deploy; set +a
 docker stack deploy -c stack.yml evonexus
 ```
 
-### 3.1. Verify
+### Verify
 
 ```bash
-# Services running?
 docker service ls | grep evonexus
-
-# Any container in a crash loop?
 docker service ps evonexus_dashboard --no-trunc
-docker service ps evonexus_telegram  --no-trunc
-docker service ps evonexus_scheduler --no-trunc
-
-# Logs
 docker service logs -f evonexus_dashboard
-docker service logs -f evonexus_telegram
-docker service logs -f evonexus_scheduler
 ```
 
-Open `https://${EVO_NEXUS_HOST}` — you should hit the dashboard setup wizard
-on first boot (admin account creation). After that, the full UI.
+Open `https://${EVO_NEXUS_HOST}` — on the first visit, the **Setup wizard**
+runs inside the dashboard and walks you through:
+
+- Workspace name, company, owner, language, timezone.
+- AI provider selection (Anthropic by default; pick OpenRouter / OpenAI /
+  Gemini / **Codex Auth** / Bedrock / Vertex if you want OpenClaude).
+- Admin account creation.
+- Which integrations to enable and their tokens (Telegram, Discord,
+  Evolution API, Stripe, Omie, Bling, Asaas, YouTube/Instagram/LinkedIn
+  via OAuth, etc.).
+
+Everything you enter lands in the `evo-config` volume and is read by
+`telegram` and `scheduler` automatically on their next restart (use
+`docker service update --force evonexus_telegram` to pick up new
+Telegram credentials immediately, for example).
 
 ---
 
@@ -192,22 +137,17 @@ on first boot (admin account creation). After that, the full UI.
 
 ### 4.1. Deploy a new version
 
-Tag and push in your fork:
-```bash
-git tag v0.2.0 && git push origin v0.2.0
-```
-When the workflow finishes, update the running services:
+Tag, let CI build, then update:
 ```bash
 docker service update --image USER/evo-nexus-dashboard:v0.2.0 evonexus_dashboard
 docker service update --image USER/evo-nexus-runtime:v0.2.0   evonexus_telegram
 docker service update --image USER/evo-nexus-runtime:v0.2.0   evonexus_scheduler
 ```
-Or bump `EVO_NEXUS_TAG` in `.env.deploy` and redeploy the stack — both work.
+Or bump `EVO_NEXUS_TAG` in `.env.deploy` and redeploy the stack.
 
 ### 4.2. Rotate a secret
 
-Swarm secrets are immutable. To rotate, create a new one with a versioned
-name, point the service at it, then remove the old:
+Docker secrets are immutable — rotate by creating a versioned name:
 
 ```bash
 printf "sk-ant-NEW..." | docker secret create anthropic_api_key_v2 -
@@ -215,126 +155,137 @@ docker service update \
   --secret-rm anthropic_api_key \
   --secret-add source=anthropic_api_key_v2,target=anthropic_api_key \
   evonexus_dashboard
-# repeat for telegram + scheduler
-docker secret rm anthropic_api_key   # only after all services are healthy
+# repeat for telegram + scheduler, then:
+docker secret rm anthropic_api_key
 ```
 
-### 4.3. Update a config (workspace.yaml, routines.yaml, CLAUDE.md)
+### 4.3. Switch AI provider (Anthropic ↔ OpenClaude)
 
-Same dance — configs are also immutable:
+No downtime, no restart — just use the dashboard:
+
+1. Open the sidebar → **System → Providers**.
+2. Pick the provider (OpenRouter, OpenAI, Codex Auth, Gemini, Bedrock, Vertex).
+3. Enter keys (or go through OAuth for Codex).
+4. **Save & Activate**.
+
+The `providers.json` file in the `evo-config` volume is updated. The
+terminal-server and `ADWs/runner.py` re-read it on every session spawn, so
+new sessions use the new binary/env immediately.
+
+### 4.4. Edit tokens for an integration
+
+Dashboard → **Integrations** → pick the card → drawer opens with the env
+vars it reads. Edit, Save. The `.env` file in the `evo-config` volume is
+updated. For services that cache env at startup (e.g. the telegram bot),
+force a restart:
 ```bash
-# Edit your local config/routines.yaml, then:
-docker config create evo_routines_yaml_v2 config/routines.yaml
-
-docker service update \
-  --config-rm evo_routines_yaml \
-  --config-add source=evo_routines_yaml_v2,target=/workspace/config/routines.yaml \
-  evonexus_scheduler
+docker service update --force evonexus_telegram
 ```
 
-### 4.4. Run a routine manually (replaces `make morning` / `make triage`)
+### 4.5. Run a routine manually
 
-The `runner` service from the original compose was removed because Swarm
-doesn't do on-demand containers. Use a one-shot via `docker run` on the
-pinned node instead:
+The old `runner` profile from docker-compose doesn't exist in Swarm. For
+ad-hoc runs, use a one-shot container on the pinned node:
 
 ```bash
 docker run --rm \
   --network evonexus_evo-internal \
+  -v evonexus_evo-config:/workspace/config \
   -v evonexus_evo-workspace:/workspace/workspace \
   -v evonexus_evo-memory:/workspace/memory \
   -v evonexus_evo-adw-logs:/workspace/ADWs/logs \
   -v evonexus_evo-agent-memory:/workspace/.claude/agent-memory \
+  -v evonexus_evo-codex-auth:/root/.codex \
   -e ANTHROPIC_API_KEY="$(docker secret inspect --format '{{.Spec.Data}}' anthropic_api_key | base64 -d)" \
   USER/evo-nexus-runtime:latest \
   uv run python ADWs/routines/good_morning.py
 ```
 
-For frequent ad-hoc runs, save that as `./scripts/run-routine.sh`.
+Save it as `./scripts/run-routine.sh` for repeated use.
 
-### 4.5. Backup
+### 4.6. Backup
 
-Because everything lives in named volumes on one node, you can back up
-straight from the host:
+Everything that matters lives in named volumes on one node:
 
 ```bash
-# on the pinned node
 sudo tar czf evonexus-backup-$(date +%F).tar.gz \
+  /var/lib/docker/volumes/evonexus_evo-config \
   /var/lib/docker/volumes/evonexus_evo-workspace \
   /var/lib/docker/volumes/evonexus_evo-dashboard-data \
   /var/lib/docker/volumes/evonexus_evo-memory \
   /var/lib/docker/volumes/evonexus_evo-adw-logs \
-  /var/lib/docker/volumes/evonexus_evo-agent-memory
+  /var/lib/docker/volumes/evonexus_evo-agent-memory \
+  /var/lib/docker/volumes/evonexus_evo-codex-auth
 ```
-
-Or use the built-in `make backup` / `make backup-s3` by running the runtime
-image as a one-shot (same recipe as 4.4).
 
 ---
 
 ## 5. Troubleshooting
 
-**`no such image: USER/evo-nexus-...`** — the node is pulling from Docker
-Hub but the image is private. Either make the repo public or add
-`DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` as credentials on the node via
-`docker login` and add `with-registry-auth` to the update:
+**Image not found** — if you made the Docker Hub repo private, the Swarm
+nodes need to login:
 ```bash
-docker service update --with-registry-auth --image USER/... evonexus_dashboard
+docker login
+docker service update --with-registry-auth --image USER/evo-nexus-dashboard:latest evonexus_dashboard
 ```
 
-**Dashboard container restarts with "secret file not found"** — you forgot
-to create a secret listed in `stack.yml`, or the service isn't granted
-access to it. Check with:
+**Container restarting with "missing ANTHROPIC_API_KEY"** — the secret
+isn't mounted on that service. Check:
 ```bash
 docker service inspect evonexus_dashboard --format '{{json .Spec.TaskTemplate.ContainerSpec.Secrets}}'
 ```
 
-**Traefik returns 404** — check `traefik.docker.network` matches your real
-network name, the domain in `EVO_NEXUS_HOST` resolves to the Traefik node,
-and the `websecure` entrypoint is defined in Traefik's static config.
-
-**Claude Code fails with "not authenticated"** — the wrapper didn't load
-`ANTHROPIC_API_KEY`. Verify:
+**Dashboard loads but `/providers` shows "openclaude not in PATH"** — you
+deployed an older image that didn't bundle OpenClaude. Pull `latest` or
+re-tag:
 ```bash
-docker exec $(docker ps -q -f name=evonexus_telegram) env | grep ANTHROPIC
-```
-If empty, the secret isn't mounted. If present but auth still fails, the
-key itself is invalid or expired.
-
-**Telegram bot doesn't answer** — tty/stdin are set correctly but the bot
-needs an outbound connection to Telegram's API. From a manager:
-```bash
-docker service logs --tail 100 evonexus_telegram
+docker service update --image USER/evo-nexus-dashboard:latest --force evonexus_dashboard
 ```
 
-**xterm.js / WebSocket disconnects** — Traefik usually handles WS on the
-same router automatically; if your Traefik is old (<2.0) or has custom
-middlewares, make sure no middleware strips the `Upgrade` header.
+**Traefik returns 404** — confirm `traefik.docker.network=traefik_public`
+matches your network name and that the host in `EVO_NEXUS_HOST` resolves
+to the Traefik node.
+
+**Tokens edited in the UI don't take effect** — some bots read env only at
+startup. Force-restart the affected service:
+```bash
+docker service update --force evonexus_telegram
+```
+
+**Codex OAuth never completes** — check that `/root/.codex` is mounted (it
+should be via `evo-codex-auth`). Without that volume, the auth.json is
+written inside the container and lost on restart.
 
 ---
 
 ## 6. What's intentionally different from the original compose
 
-| Original                            | In Swarm                                  | Why                        |
-|-------------------------------------|-------------------------------------------|----------------------------|
-| `build:` local                      | `image:` from Docker Hub                  | Swarm doesn't build        |
-| `container_name:`                   | omitted                                   | Not supported in Swarm     |
-| `profiles: [manual]` runner         | one-shot via `docker run` (see 4.4)       | Swarm has no on-demand     |
-| bind mounts (`./config`, `./.env`)  | Docker configs + secrets                  | Paths don't exist cluster-wide |
-| `ports: 8080:8080`                  | Traefik labels, no published port         | Traefik is the front door  |
-| `make scheduler` on host            | `scheduler` service                       | Now managed by Swarm       |
-| `entrypoint: ["claude"]` override   | `command: ["claude", …]`                  | Preserves secrets wrapper  |
+| Original                            | In Swarm                                    | Why                          |
+|-------------------------------------|---------------------------------------------|------------------------------|
+| `build:` local                      | `image:` from Docker Hub                    | Swarm doesn't build          |
+| `container_name:`                   | omitted                                     | Not supported in Swarm       |
+| `profiles: [manual]` runner         | one-shot via `docker run` (see 4.5)         | Swarm has no on-demand       |
+| Bind mounts `./config`, `./.env`    | Single writable volume `evo-config`         | UI writes to it from every pod |
+| `ports: 8080:8080`                  | Traefik labels, no published port           | Traefik is the front door    |
+| `make scheduler` on host            | `scheduler` service                         | Now managed by Swarm         |
+| Only `claude` CLI installed         | `claude` + `openclaude` installed           | Enables /providers multi-backend |
+| `entrypoint: ["claude"]` override   | `command: ["claude", …]`                    | Preserves secrets wrapper    |
 
 ---
 
 ## 7. Security notes
 
 - The `--dangerously-skip-permissions` flag on the Telegram service mirrors
-  the original compose. It lets Claude Code execute tools without per-call
-  approval. Acceptable inside a trusted container on your own server; do not
-  expose this container to untrusted chat users without further sandboxing.
-- Docker secrets are mounted `tmpfs` and never hit disk on the worker node.
-  They do land in the Raft log on managers (encrypted at rest if you
-  enabled autolock — `docker swarm init --autolock`).
-- The dashboard cookie session uses `EVONEXUS_SECRET_KEY`. Rotate it if
-  compromised (see 4.2).
+  the original compose. Claude Code executes tools without per-call
+  approval. Fine inside a trusted container on your own server; **do not**
+  expose that container's CLI to untrusted chat users.
+- Docker secrets are mounted on tmpfs and never written to disk on the
+  worker. They do land in the Raft log on managers (encrypted at rest if
+  you enabled autolock: `docker swarm init --autolock`).
+- `providers.json` is gitignored (it contains API keys). It lives in the
+  `evo-config` volume only.
+- The dashboard masks secrets in every API response (`first6****last4`).
+  The frontend uses `****` as a "no change" sentinel on save.
+- The backend enforces an allowlist of binaries (`claude`, `openclaude`)
+  and env vars for subprocess spawning — shell metacharacters in
+  `providers.json` values are rejected as a defense-in-depth measure.

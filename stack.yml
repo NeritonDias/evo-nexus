@@ -1,30 +1,31 @@
 # ============================================================================
-# stack.yml — EvoNexus on Docker Swarm (multi-node, pinned to one node)
+# stack.yml — EvoNexus on Docker Swarm (multi-node, pinned to one labeled node)
 #
-# PREREQUISITES (see README-DEPLOY.md for the full checklist):
+# Designed for the UI-first configuration model the upstream already ships:
+# the Providers page, Integrations page, Settings page, and env editor all
+# write to files under /workspace/config/. Those files live on the
+# evo-config named volume, so every change you make in the dashboard
+# survives a redeploy without round-tripping through Docker Configs.
+#
+# PREREQUISITES:
 #   1. A node labeled evo-nexus=true:
 #        docker node update --label-add evo-nexus=true <node-name>
-#   2. External Traefik network:
+#   2. External Traefik network (rename here if yours is different):
 #        docker network ls | grep traefik_public
-#   3. Secrets created externally (example for ANTHROPIC_API_KEY):
-#        printf "sk-ant-..." | docker secret create anthropic_api_key -
-#   4. Configs created from the files produced by `make setup` locally:
-#        docker config create evo_workspace_yaml ./config/workspace.yaml
-#        docker config create evo_routines_yaml  ./config/routines.yaml
-#        docker config create evo_claude_md      ./CLAUDE.md
+#   3. Secrets created externally (minimum: anthropic_api_key,
+#      evonexus_secret_key). See README-DEPLOY.md.
 #
 # DEPLOY:
 #   docker stack deploy -c stack.yml evonexus
-#   (or paste this file in Portainer → Stacks → Add Stack)
 #
 # UPDATE AN IMAGE:
-#   docker service update --image your_user/evo-nexus-dashboard:v0.2.0 \
+#   docker service update --image USER/evo-nexus-dashboard:v0.2.0 \
 #       evonexus_dashboard
 # ============================================================================
 version: "3.9"
 
 # ---------------------------------------------------------------------------
-# Anchors — shared bits reused across services to keep the file DRY.
+# Anchors — shared bits reused across services.
 # ---------------------------------------------------------------------------
 x-common-env: &common-env
   TZ: America/Sao_Paulo
@@ -40,38 +41,46 @@ x-restart: &restart
     max_attempts: 0
 
 # ---------------------------------------------------------------------------
+# Volumes shared between dashboard / telegram / scheduler. All of them are
+# local to the pinned node, so every container sees the same live files.
+# Kept as a YAML anchor because all three services need the same set.
+# ---------------------------------------------------------------------------
+x-shared-volumes: &shared-volumes
+  - evo-config:/workspace/config
+  - evo-workspace:/workspace/workspace
+  - evo-memory:/workspace/memory
+  - evo-adw-logs:/workspace/ADWs/logs
+  - evo-agent-memory:/workspace/.claude/agent-memory
+  - evo-codex-auth:/root/.codex
+
+# ---------------------------------------------------------------------------
 # Services
 # ---------------------------------------------------------------------------
 services:
 
   # -------------------------------------------------------------------------
-  # Dashboard — the only HTTP-facing service. Traefik labels route the
-  # public domain here. WebSocket (xterm.js terminal) works out of the box
-  # because Traefik auto-detects the Upgrade header on the same router.
+  # Dashboard — the only HTTP-facing service. Writes .env, providers.json,
+  # workspace.yaml, routines.yaml through the UI; all of those land in the
+  # evo-config volume and are picked up by telegram + scheduler instantly
+  # (they see the same volume).
   # -------------------------------------------------------------------------
   dashboard:
     image: ${DOCKERHUB_USERNAME}/evo-nexus-dashboard:${EVO_NEXUS_TAG:-latest}
     environment:
       <<: *common-env
       EVONEXUS_PORT: "8080"
-      # Optional: tell Flask which host to trust (behind Traefik)
       FORWARDED_ALLOW_IPS: "*"
     secrets:
       - anthropic_api_key
       - evonexus_secret_key
-    configs:
-      - source: evo_workspace_yaml
-        target: /workspace/config/workspace.yaml
-      - source: evo_routines_yaml
-        target: /workspace/config/routines.yaml
-      - source: evo_claude_md
-        target: /workspace/CLAUDE.md
     volumes:
+      - evo-config:/workspace/config
       - evo-workspace:/workspace/workspace
       - evo-dashboard-data:/workspace/dashboard/data
       - evo-memory:/workspace/memory
       - evo-adw-logs:/workspace/ADWs/logs
       - evo-agent-memory:/workspace/.claude/agent-memory
+      - evo-codex-auth:/root/.codex
     networks:
       - traefik_public
       - evo-internal
@@ -80,7 +89,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 30s
     deploy:
       mode: replicated
       replicas: 1
@@ -91,7 +100,6 @@ services:
         order: stop-first
         failure_action: rollback
       labels:
-        # --- Traefik v2/v3 routing ---------------------------------------
         - "traefik.enable=true"
         - "traefik.docker.network=traefik_public"
         - "traefik.http.routers.evonexus.rule=Host(`${EVO_NEXUS_HOST}`)"
@@ -99,7 +107,6 @@ services:
         - "traefik.http.routers.evonexus.tls=true"
         - "traefik.http.routers.evonexus.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
         - "traefik.http.services.evonexus.loadbalancer.server.port=8080"
-        # HTTP -> HTTPS redirect (optional, remove if Traefik does it globally)
         - "traefik.http.routers.evonexus-http.rule=Host(`${EVO_NEXUS_HOST}`)"
         - "traefik.http.routers.evonexus-http.entrypoints=web"
         - "traefik.http.routers.evonexus-http.middlewares=evonexus-redirect"
@@ -107,8 +114,10 @@ services:
         - "traefik.http.middlewares.evonexus-redirect.redirectscheme.permanent=true"
 
   # -------------------------------------------------------------------------
-  # Telegram — Claude Code running the Telegram channel plugin.
-  # Uses `command:` (not `entrypoint:`) so the secrets-to-env wrapper runs.
+  # Telegram — Claude Code running the Telegram channel plugin. Reads .env
+  # from the shared evo-config volume, so tokens set via the dashboard's
+  # Integrations page take effect on the next container restart.
+  # (Use `docker service update --force evonexus_telegram` to restart.)
   # -------------------------------------------------------------------------
   telegram:
     image: ${DOCKERHUB_USERNAME}/evo-nexus-runtime:${EVO_NEXUS_TAG:-latest}
@@ -121,17 +130,7 @@ services:
       <<: *common-env
     secrets:
       - anthropic_api_key
-      - telegram_bot_token
-    configs:
-      - source: evo_workspace_yaml
-        target: /workspace/config/workspace.yaml
-      - source: evo_claude_md
-        target: /workspace/CLAUDE.md
-    volumes:
-      - evo-workspace:/workspace/workspace
-      - evo-memory:/workspace/memory
-      - evo-adw-logs:/workspace/ADWs/logs
-      - evo-agent-memory:/workspace/.claude/agent-memory
+    volumes: *shared-volumes
     networks:
       - evo-internal
     stdin_open: true
@@ -143,8 +142,10 @@ services:
       <<: *restart
 
   # -------------------------------------------------------------------------
-  # Scheduler — runs the cron-like routine dispatcher (was `make scheduler`
-  # on the host in the original compose; now a proper long-running service).
+  # Scheduler — runs routines on cron-like schedules defined in
+  # config/routines.yaml (editable via /settings page in the dashboard).
+  # The settings page writes a sentinel file that this service watches to
+  # reload without restart.
   # -------------------------------------------------------------------------
   scheduler:
     image: ${DOCKERHUB_USERNAME}/evo-nexus-runtime:${EVO_NEXUS_TAG:-latest}
@@ -153,18 +154,7 @@ services:
       <<: *common-env
     secrets:
       - anthropic_api_key
-    configs:
-      - source: evo_workspace_yaml
-        target: /workspace/config/workspace.yaml
-      - source: evo_routines_yaml
-        target: /workspace/config/routines.yaml
-      - source: evo_claude_md
-        target: /workspace/CLAUDE.md
-    volumes:
-      - evo-workspace:/workspace/workspace
-      - evo-memory:/workspace/memory
-      - evo-adw-logs:/workspace/ADWs/logs
-      - evo-agent-memory:/workspace/.claude/agent-memory
+    volumes: *shared-volumes
     networks:
       - evo-internal
     deploy:
@@ -184,35 +174,34 @@ networks:
     attachable: true
 
 # ---------------------------------------------------------------------------
-# Volumes — local driver on the pinned node. Data lives on one host, which
-# is exactly what we want for this workload (SQLite + workspace files).
+# Volumes — all local-driver on the pinned node. Data lives on one host,
+# which is exactly what this workload needs (SQLite + filesystem writes).
 # ---------------------------------------------------------------------------
 volumes:
+  # /workspace/config — .env, providers.json, workspace.yaml, routines.yaml,
+  # heartbeats.yaml. Written by the dashboard UI, read by every service.
+  evo-config:
+  # /workspace/workspace — generated artifacts (daily logs, reports, etc.)
   evo-workspace:
+  # /workspace/dashboard/data — SQLite database (users, roles, audit log).
   evo-dashboard-data:
+  # /workspace/memory — long-term memory store.
   evo-memory:
+  # /workspace/ADWs/logs — routine execution logs + cost metrics.
   evo-adw-logs:
+  # /workspace/.claude/agent-memory — per-agent persistent memory files.
   evo-agent-memory:
+  # /root/.codex — auth.json from Codex OAuth (providers.py device flow).
+  evo-codex-auth:
 
 # ---------------------------------------------------------------------------
-# Secrets — must be created externally before the first deploy.
-# See README-DEPLOY.md for the commands. Add/remove as your .env requires.
+# Secrets — create externally before first deploy. See README-DEPLOY.md.
+# ANY secret you add must also be listed in the services that should see it.
+# Additional common ones: telegram_bot_token (if the telegram service needs
+# it before the user edits .env via UI), discord_bot_token, stripe_secret_key.
 # ---------------------------------------------------------------------------
 secrets:
   anthropic_api_key:
     external: true
-  telegram_bot_token:
-    external: true
   evonexus_secret_key:
-    external: true
-
-# ---------------------------------------------------------------------------
-# Configs — generated locally by `make setup`, then registered in the Swarm.
-# ---------------------------------------------------------------------------
-configs:
-  evo_workspace_yaml:
-    external: true
-  evo_routines_yaml:
-    external: true
-  evo_claude_md:
     external: true

@@ -4,11 +4,15 @@
 # Used by any service that needs the Claude Code CLI + Python deps:
 #   - telegram    (claude --channels plugin:telegram@...)
 #   - scheduler   (uv run python scheduler.py)
-#   - runner      (uv run python ADWs/routines/<name>.py, ad-hoc)
+#   - runner      (uv run python ADWs/routines/<n>.py, ad-hoc)
 #
-# Swarm-ready: ships with /usr/local/bin/entrypoint.sh that converts Docker
-# Secrets (mounted at /run/secrets/*) into environment variables expected by
-# Claude Code and the Python layer.
+# Swarm-ready:
+#   * Ships both `claude` (Anthropic) and `openclaude` (multi-provider,
+#     OpenRouter/OpenAI/Gemini/Codex/Bedrock/Vertex) so the dashboard's
+#     /providers page can switch between them at runtime.
+#   * /usr/local/bin/entrypoint.sh converts Docker Secrets (mounted at
+#     /run/secrets/*) into environment variables, and bootstraps writable
+#     config from /workspace/_defaults on first boot.
 # ============================================================================
 FROM node:22-slim AS base
 
@@ -22,8 +26,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 
-# ---- Claude Code CLI ------------------------------------------------------
-RUN npm install -g @anthropic-ai/claude-code
+# ---- CLI layer: Claude Code + OpenClaude + Todoist ------------------------
+# OpenClaude enables the multi-provider feature exposed by the dashboard's
+# /providers page (OpenRouter, OpenAI, Gemini, Codex, Bedrock, Vertex).
+RUN npm install -g \
+        @anthropic-ai/claude-code \
+        @gitlawb/openclaude \
+        todoist-ts-cli
 
 # ---- GitHub CLI -----------------------------------------------------------
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
@@ -33,34 +42,35 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get update && apt-get install -y --no-install-recommends gh \
     && rm -rf /var/lib/apt/lists/*
 
-# ---- Todoist CLI ----------------------------------------------------------
-RUN npm install -g todoist-ts-cli
-
 # ---- Timezone -------------------------------------------------------------
 ENV TZ=America/Sao_Paulo
 RUN ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo "${TZ}" > /etc/timezone
 
-# ---- Working directory ----------------------------------------------------
 WORKDIR /workspace
 
 # ---- Python deps (cached layer) -------------------------------------------
 COPY pyproject.toml uv.lock ./
 RUN uv venv .venv && uv sync
 
-# ---- Application code (baked in) ------------------------------------------
-# Everything under .claude/ (agents, skills, commands, templates) ships with
-# the image. Mutable bits (.claude/agent-memory, memory/, workspace/) are
-# mounted as named volumes at deploy time.
+# ---- Application code -----------------------------------------------------
 COPY . .
 
-# ---- Secrets-to-env wrapper -----------------------------------------------
+# ---- Stash defaults so volumes can bootstrap on first boot ----------------
+# The writable volume at /workspace/config is populated from _defaults/
+# by entrypoint.sh if empty. This preserves the "edit everything via UI"
+# flow on clean deploys.
+RUN mkdir -p /workspace/_defaults/config \
+    && cp -a /workspace/config/. /workspace/_defaults/config/ 2>/dev/null || true \
+    && cp /workspace/.env.example /workspace/_defaults/.env.example 2>/dev/null || true
+
+# ---- Secrets-to-env + bootstrap wrapper -----------------------------------
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # ---- OCI image metadata ---------------------------------------------------
 LABEL org.opencontainers.image.title="evo-nexus-runtime" \
-      org.opencontainers.image.description="EvoNexus runtime (Claude Code CLI + ADWs)" \
-      org.opencontainers.image.source="https://github.com/EvolutionAPI/evo-nexus" \
+      org.opencontainers.image.description="EvoNexus runtime (Claude Code + OpenClaude + ADWs)" \
+      org.opencontainers.image.source="https://github.com/NeritonDias/evo-nexus" \
       org.opencontainers.image.licenses="MIT"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

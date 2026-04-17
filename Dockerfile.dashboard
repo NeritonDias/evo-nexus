@@ -2,14 +2,14 @@
 # Dockerfile.dashboard — EvoNexus Dashboard image (Flask + React)
 #
 # Two-stage build:
-#   Stage 1 (frontend-build): compiles the React UI with Vite/whatever is
-#           configured in dashboard/frontend.
-#   Stage 2 (runtime):        Python 3.12-slim + uv + baked-in Flask app
-#           serving the built SPA on EVONEXUS_PORT (default 8080).
+#   Stage 1 (frontend-build): compiles the React UI.
+#   Stage 2 (runtime):        Python 3.12-slim + uv + Flask app serving the
+#           built SPA on EVONEXUS_PORT (default 8080).
 #
-# Swarm-ready: uses the same /usr/local/bin/entrypoint.sh wrapper so Docker
-# Secrets automatically surface as env vars (ANTHROPIC_API_KEY, Flask secret
-# key, etc.).
+# Swarm-ready: same /usr/local/bin/entrypoint.sh used by the runtime image —
+# converts Docker Secrets to env vars, bootstraps /workspace/config from
+# bundled defaults on first boot, and symlinks .env/CLAUDE.md so the
+# dashboard's UI editors can write in place.
 # ============================================================================
 
 # ---- Stage 1: Frontend build ---------------------------------------------
@@ -23,14 +23,22 @@ RUN npm run build
 # ---- Stage 2: Python runtime ---------------------------------------------
 FROM python:3.12-slim AS runtime
 
-# System deps (curl for healthcheck + uv installer + base utils)
+# System deps (curl for healthcheck + uv installer + Node for terminal-server)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl ca-certificates \
+        curl ca-certificates gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
+
+# CLI layer — dashboard's embedded terminal and providers/test endpoints
+# need both binaries available in $PATH.
+RUN npm install -g \
+        @anthropic-ai/claude-code \
+        @gitlawb/openclaude
 
 # Timezone
 ENV TZ=America/Sao_Paulo
@@ -42,41 +50,42 @@ WORKDIR /workspace
 COPY pyproject.toml uv.lock ./
 RUN uv venv .venv && uv sync --no-dev
 
-# Backend code + supporting files
-COPY dashboard/backend/ dashboard/backend/
-COPY social-auth/       social-auth/
-COPY scheduler.py       ./
-COPY pyproject.toml     ./
+# Application code
+COPY dashboard/       dashboard/
+COPY social-auth/     social-auth/
+COPY scheduler.py     ./
+COPY .claude/         .claude/
+COPY memory/          memory/
+COPY ADWs/            ADWs/
+COPY config/          config/
+COPY Makefile         ./
+COPY .env.example     ./
 
-# Baked-in .claude/ content (agents, skills, commands, templates) so the
-# dashboard can read them without bind mounts in Swarm. Only the writable
-# agent-memory dir is mounted as a volume at deploy time.
-COPY .claude/           .claude/
-COPY memory/            memory/
-COPY ADWs/              ADWs/
-COPY CLAUDE.template.md ./
+# Terminal-server deps (Node.js layer for the xterm bridge)
+RUN cd dashboard/terminal-server && npm install --omit=dev
 
 # Built frontend from stage 1
 COPY --from=frontend-build /frontend/dist dashboard/frontend/dist
 
-# Writable data dir for SQLite
-RUN mkdir -p dashboard/data
+# Stash defaults for first-boot bootstrap (entrypoint.sh copies from here)
+RUN mkdir -p /workspace/_defaults/config \
+    && cp -a /workspace/config/. /workspace/_defaults/config/ 2>/dev/null || true \
+    && cp /workspace/.env.example /workspace/_defaults/.env.example 2>/dev/null || true
 
-# Secrets-to-env wrapper
+# Secrets-to-env + bootstrap wrapper
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # OCI metadata
 LABEL org.opencontainers.image.title="evo-nexus-dashboard" \
-      org.opencontainers.image.description="EvoNexus Dashboard (Flask + React)" \
-      org.opencontainers.image.source="https://github.com/EvolutionAPI/evo-nexus" \
+      org.opencontainers.image.description="EvoNexus Dashboard (Flask + React + embedded CLI terminal)" \
+      org.opencontainers.image.source="https://github.com/NeritonDias/evo-nexus" \
       org.opencontainers.image.licenses="MIT"
 
 ENV EVONEXUS_PORT=8080
 EXPOSE 8080
 
-# Healthcheck (same as the original compose)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -fsS "http://localhost:${EVONEXUS_PORT}/api/version" || exit 1
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
