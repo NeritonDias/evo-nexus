@@ -19,31 +19,13 @@ services:
       - gmnet ## Nome da rede interna
 
     environment:
-    ## ⚙️ Configurações Gerais
+    ## ⚙️ Só infra. Todo resto (Anthropic, OpenAI/Codex, Telegram, WhatsApp,
+    ## Stripe, Omie, Bling, Asaas etc.) é configurado pela UI no primeiro
+    ## boot → /providers e /integrations. O entrypoint gera o
+    ## EVONEXUS_SECRET_KEY automaticamente se faltar.
       - TZ=America/Sao_Paulo
       - EVONEXUS_PORT=8080
       - FORWARDED_ALLOW_IPS=*
-
-    ## 🔐 Segredos obrigatórios — SUBSTITUIR antes de deployar
-      - ANTHROPIC_API_KEY=sk-ant-SUBSTITUIR
-      - EVONEXUS_SECRET_KEY=SUBSTITUIR_COM_openssl_rand_hex_32
-
-    ## 🔑 Opcionais — também podem ser preenchidos via UI de Integrations
-      #- TELEGRAM_BOT_TOKEN=
-      #- DISCORD_BOT_TOKEN=
-      #- STRIPE_SECRET_KEY=
-      #- OMIE_APP_KEY=
-      #- OMIE_APP_SECRET=
-      #- BLING_CLIENT_ID=
-      #- BLING_CLIENT_SECRET=
-      #- ASAAS_API_KEY=
-      #- GITHUB_TOKEN=
-      #- LINEAR_API_KEY=
-      #- TODOIST_API_TOKEN=
-      #- FATHOM_API_KEY=
-      #- EVOLUTION_API_KEY=
-      #- EVOLUTION_GO_KEY=
-      #- EVO_CRM_TOKEN=
 
     deploy:
       placement:
@@ -86,14 +68,10 @@ services:
       - gmnet ## Nome da rede interna
 
     environment:
-    ## ⚙️ Configurações Gerais
+    ## O entrypoint espera em loop até a ANTHROPIC_API_KEY aparecer no .env
+    ## (ou seja, até você configurar em /providers). Nada de crash-loop.
       - TZ=America/Sao_Paulo
-
-    ## 🔐 Claude precisa da API key pra autenticar
-      - ANTHROPIC_API_KEY=sk-ant-SUBSTITUIR
-
-    ## 📱 Token do Telegram — pode ser setado aqui OU via UI de Integrations
-      #- TELEGRAM_BOT_TOKEN=
+      - REQUIRE_ANTHROPIC_KEY=1
 
     stdin_open: true
     tty: true
@@ -106,10 +84,6 @@ services:
         limits:
           cpus: "1"
           memory: 1024M
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 0
 
 ## --------------------------- ORION --------------------------- ##
 
@@ -130,7 +104,7 @@ services:
 
     environment:
       - TZ=America/Sao_Paulo
-      - ANTHROPIC_API_KEY=sk-ant-SUBSTITUIR
+      - REQUIRE_ANTHROPIC_KEY=1
 
     deploy:
       placement:
@@ -140,35 +114,17 @@ services:
         limits:
           cpus: "1"
           memory: 1024M
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 0
 
 ## --------------------------- ORION --------------------------- ##
 
 volumes:
   evonexus_config:
-    external: true
-    name: evonexus_config
   evonexus_workspace:
-    external: true
-    name: evonexus_workspace
   evonexus_dashboard_data:
-    external: true
-    name: evonexus_dashboard_data
   evonexus_memory:
-    external: true
-    name: evonexus_memory
   evonexus_adw_logs:
-    external: true
-    name: evonexus_adw_logs
   evonexus_agent_memory:
-    external: true
-    name: evonexus_agent_memory
   evonexus_codex_auth:
-    external: true
-    name: evonexus_codex_auth
 
 networks:
   gmnet: ## Nome da rede interna

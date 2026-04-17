@@ -1,25 +1,72 @@
 #!/usr/bin/env bash
 # ============================================================================
-# entrypoint.sh — Bootstrap + secrets-to-env wrapper for Docker Swarm.
+# entrypoint.sh — Bootstrap + source .env + wait-for-config wrapper
 #
-# Responsibilities (in order):
-#   1. Convert Docker Secrets (mounted at /run/secrets/*) and *_FILE env vars
-#      into plain environment variables so Claude Code CLI, OpenClaude, and
-#      the Python layer see them natively.
-#   2. On first boot, populate writable volumes from the image's default
-#      templates:
-#        /workspace/config/.env              <- .env.example
-#        /workspace/config/providers.json    <- providers.example.json
-#      Other files (workspace.yaml, routines.yaml, CLAUDE.md) are created by
-#      the dashboard Setup wizard or by `make setup`.
-#   3. Symlink /workspace/.env and /workspace/CLAUDE.md into the writable
-#      config volume so the dashboard's env-editor, providers UI, and
-#      settings UI can update them in place.
-#   4. Exec the actual command.
+# Respects the UI-first config model EvoNexus ships upstream:
+#   * /workspace/config is a writable volume. The dashboard's Providers,
+#     Integrations, Settings and env-editor pages write there.
+#   * This entrypoint sources /workspace/config/.env on startup so the
+#     Claude CLI, Python code, and every library see the UI-configured
+#     values as regular environment variables.
+#   * Services that need ANTHROPIC_API_KEY (telegram, scheduler) wait in a
+#     30s-poll loop until the user sets it via the dashboard, instead of
+#     crash-looping and spamming the Swarm with restart attempts.
+#
+# The Docker Secrets / _FILE machinery is still honored for anyone who
+# wants it, but it is now optional. The default stack file ships zero
+# secrets — every credential is configured through the dashboard after
+# the first deploy.
 # ============================================================================
 set -euo pipefail
 
-# --- 1. Secrets to env ------------------------------------------------------
+CONFIG_DIR=/workspace/config
+DEFAULTS_DIR=/workspace/_defaults
+
+# --- 1. Ensure writable dirs exist (volumes may mount empty) ---------------
+mkdir -p "$CONFIG_DIR" \
+         /workspace/workspace \
+         /workspace/memory \
+         /workspace/ADWs/logs \
+         /workspace/.claude/agent-memory \
+         /workspace/dashboard/data
+
+# --- 2. Bootstrap /workspace/config from image defaults (first boot only) --
+if [ -d "$DEFAULTS_DIR" ]; then
+    if [ ! -f "$CONFIG_DIR/.env" ]; then
+        if [ -f "$DEFAULTS_DIR/.env.example" ]; then
+            cp "$DEFAULTS_DIR/.env.example" "$CONFIG_DIR/.env"
+        else
+            touch "$CONFIG_DIR/.env"
+        fi
+    fi
+    for f in providers.example.json heartbeats.example.yaml; do
+        if [ -f "$DEFAULTS_DIR/config/$f" ] && [ ! -f "$CONFIG_DIR/$f" ]; then
+            cp "$DEFAULTS_DIR/config/$f" "$CONFIG_DIR/$f"
+        fi
+    done
+fi
+
+# --- 3. Ensure EVONEXUS_SECRET_KEY exists (Flask session signing) ----------
+# Without this, Flask invalidates every session on restart. We generate it
+# once on first boot and persist it in the same .env the UI edits.
+if ! grep -q '^EVONEXUS_SECRET_KEY=' "$CONFIG_DIR/.env" 2>/dev/null; then
+    echo "EVONEXUS_SECRET_KEY=$(openssl rand -hex 32)" >> "$CONFIG_DIR/.env"
+fi
+
+# --- 4. Symlinks so the app finds files at the paths it expects ------------
+ln -sfn "$CONFIG_DIR/.env" /workspace/.env
+if [ ! -e /workspace/CLAUDE.md ] && [ ! -L /workspace/CLAUDE.md ]; then
+    ln -sfn "$CONFIG_DIR/CLAUDE.md" /workspace/CLAUDE.md
+fi
+
+# --- 5. Source .env (UI-configured values become env vars) -----------------
+# Using `set -a` so every variable assigned here is auto-exported.
+set -a
+# shellcheck disable=SC1091
+. "$CONFIG_DIR/.env" 2>/dev/null || true
+set +a
+
+# --- 6. Optional: _FILE env vars (explicit Docker Secrets pattern) ---------
 for file_var in $(compgen -A variable | grep -E '_FILE$' || true); do
     var="${file_var%_FILE}"
     path_val="${!file_var:-}"
@@ -27,6 +74,8 @@ for file_var in $(compgen -A variable | grep -E '_FILE$' || true); do
         export "${var}=$(cat "$path_val")"
     fi
 done
+
+# --- 7. Optional: auto-discover /run/secrets/* -----------------------------
 if [ -d /run/secrets ]; then
     for secret_file in /run/secrets/*; do
         [ -f "$secret_file" ] || continue
@@ -37,48 +86,22 @@ if [ -d /run/secrets ]; then
     done
 fi
 
-# --- 2. Bootstrap writable volumes -----------------------------------------
-CONFIG_DIR=/workspace/config
-DEFAULTS_DIR=/workspace/_defaults
-
-mkdir -p "$CONFIG_DIR" \
-         /workspace/workspace \
-         /workspace/memory \
-         /workspace/ADWs/logs \
-         /workspace/.claude/agent-memory \
-         /workspace/dashboard/data
-
-if [ -d "$DEFAULTS_DIR" ]; then
-    # .env from .env.example (first boot only)
-    if [ ! -f "$CONFIG_DIR/.env" ]; then
-        if [ -f "$DEFAULTS_DIR/.env.example" ]; then
-            cp "$DEFAULTS_DIR/.env.example" "$CONFIG_DIR/.env"
-        else
-            touch "$CONFIG_DIR/.env"
-        fi
-    fi
-    # providers.example.json (needed by providers.py to bootstrap providers.json)
-    if [ -f "$DEFAULTS_DIR/config/providers.example.json" ] && \
-       [ ! -f "$CONFIG_DIR/providers.example.json" ]; then
-        cp "$DEFAULTS_DIR/config/providers.example.json" "$CONFIG_DIR/providers.example.json"
-    fi
-    # heartbeats example, if present
-    if [ -f "$DEFAULTS_DIR/config/heartbeats.example.yaml" ] && \
-       [ ! -f "$CONFIG_DIR/heartbeats.example.yaml" ]; then
-        cp "$DEFAULTS_DIR/config/heartbeats.example.yaml" "$CONFIG_DIR/heartbeats.example.yaml"
-    fi
+# --- 8. Wait for required config (telegram, scheduler) ---------------------
+# The stack sets REQUIRE_ANTHROPIC_KEY=1 on services that can't run without
+# a key. Instead of crash-looping, we wait and re-read .env every 30s. When
+# the user saves the key in dashboard → Providers, it lands in .env and
+# we pick it up on the next iteration — no manual restart needed.
+if [ "${REQUIRE_ANTHROPIC_KEY:-0}" = "1" ]; then
+    while [ -z "${ANTHROPIC_API_KEY:-}" ]; do
+        echo "[$(date -Is)] waiting for ANTHROPIC_API_KEY — configure via dashboard → Providers" >&2
+        sleep 30
+        set -a
+        # shellcheck disable=SC1091
+        . "$CONFIG_DIR/.env" 2>/dev/null || true
+        set +a
+    done
+    echo "[$(date -Is)] ANTHROPIC_API_KEY detected — starting $*" >&2
 fi
 
-# --- 3. Symlink volatile files to the writable volume ----------------------
-# /workspace/.env is where Claude Code CLI and most libs look.
-# /workspace/config/.env is where the dashboard env-editor writes.
-ln -sfn "$CONFIG_DIR/.env" /workspace/.env
-
-# CLAUDE.md may not exist on first boot — the Setup wizard creates it.
-# Once present, it lives in the config volume too.
-if [ ! -L /workspace/CLAUDE.md ] && [ ! -f /workspace/CLAUDE.md ]; then
-    ln -sfn "$CONFIG_DIR/CLAUDE.md" /workspace/CLAUDE.md
-fi
-
-# --- 4. Hand off to the actual process -------------------------------------
+# --- 9. Hand off to the actual process -------------------------------------
 exec "$@"
