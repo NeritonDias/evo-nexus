@@ -52,11 +52,15 @@ services:
         ## Prioridade maior (10) pra ganhar do router principal quando o path
         ## começa com /terminal. WebSocket funciona porque o Traefik detecta
         ## Upgrade header automaticamente no router comum.
+        ## O stripprefix remove /terminal antes de encaminhar — o terminal-server
+        ## expõe /api/... direto (ex.: /api/sessions/for-agent).
         - traefik.http.routers.evonexus_terminal.rule=Host(`evonexus.example.com`) && PathPrefix(`/terminal`) ## mesmo domínio, path prefix
         - traefik.http.routers.evonexus_terminal.entrypoints=websecure
         - traefik.http.routers.evonexus_terminal.priority=10
         - traefik.http.routers.evonexus_terminal.tls.certresolver=letsencryptresolver
         - traefik.http.routers.evonexus_terminal.service=evonexus_terminal
+        - traefik.http.routers.evonexus_terminal.middlewares=evonexus_terminal_strip
+        - traefik.http.middlewares.evonexus_terminal_strip.stripprefix.prefixes=/terminal
         - traefik.http.services.evonexus_terminal.loadbalancer.server.port=32352
         - traefik.http.services.evonexus_terminal.loadbalancer.passHostHeader=true
 

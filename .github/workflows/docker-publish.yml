@@ -68,12 +68,16 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ matrix.image }}
+          # Boa prática: publicar :latest junto com a tag versionada sempre
+          # que um release (tag v*) for empurrado. Push para a branch main
+          # sem tag também atualiza :latest.
+          flavor: |
+            latest=${{ github.ref_type == 'tag' || github.ref == 'refs/heads/main' }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
 
       - name: Build and push
