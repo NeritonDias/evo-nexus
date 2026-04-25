@@ -1501,7 +1501,7 @@ git commit -m "feat(pixel-office): dynamic asset orchestrator loads layout + spr
 
 ---
 
-
+## Phase 3: Reducer + WebSocket Client
 
 ### Task 3.1: Write the event reducer (TDD)
 
