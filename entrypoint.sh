@@ -95,7 +95,31 @@ if ! grep -q '^KNOWLEDGE_MASTER_KEY=' "$CONFIG_DIR/.env" 2>/dev/null; then
     unset _PYBIN _KEY
 fi
 
-# --- 3c. Release the bootstrap lock ----------------------------------------
+# --- 3d. Ensure PIXEL_OFFICE_HOOK_TOKEN exists (pixel-office hook ingestion) --
+# Without this, /api/pixel-office/hook accepts unauthenticated POSTs and the
+# hook script sends requests without a token header. Generated once on first
+# boot and persisted in the same .env the UI edits.
+#
+# .env.example ships this key with an empty value; treat "empty" as "missing"
+# and rewrite the line in place so the UI shows the generated token.
+if ! grep -qE '^PIXEL_OFFICE_HOOK_TOKEN=.+' "$CONFIG_DIR/.env" 2>/dev/null; then
+    _PX_TOKEN="$(openssl rand -hex 32 2>/dev/null || true)"
+    if [ -n "$_PX_TOKEN" ]; then
+        if grep -q '^PIXEL_OFFICE_HOOK_TOKEN=' "$CONFIG_DIR/.env" 2>/dev/null; then
+            # Empty value from .env.example — replace in place
+            # Use | as delimiter to tolerate hex values without clashing
+            sed -i "s|^PIXEL_OFFICE_HOOK_TOKEN=.*|PIXEL_OFFICE_HOOK_TOKEN=$_PX_TOKEN|" "$CONFIG_DIR/.env"
+        else
+            echo "PIXEL_OFFICE_HOOK_TOKEN=$_PX_TOKEN" >> "$CONFIG_DIR/.env"
+        fi
+        echo "[$(date -Is)] Generated PIXEL_OFFICE_HOOK_TOKEN (first boot)" >&2
+    else
+        echo "[$(date -Is)] WARNING: openssl missing — PIXEL_OFFICE_HOOK_TOKEN not generated" >&2
+    fi
+    unset _PX_TOKEN
+fi
+
+# --- 3e. Release the bootstrap lock ----------------------------------------
 flock -u 200
 exec 200>&-
 
