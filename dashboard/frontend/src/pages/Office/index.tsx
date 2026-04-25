@@ -18,6 +18,23 @@ export default function Office() {
   const [zoom, setZoom] = useState(2);
   const panRef = useRef({ x: 0, y: 0 });
   const [tick, setTick] = useState(0);
+  const [isNarrow, setIsNarrow] = useState(false);
+
+  // Detect narrow screens (mobile / split panes) and render a list-only
+  // fallback. The pixel canvas needs horizontal room for the camera + roster.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 720px)');
+    const update = () => setIsNarrow(mql.matches);
+    update();
+    if (mql.addEventListener) {
+      mql.addEventListener('change', update);
+      return () => mql.removeEventListener('change', update);
+    }
+    // Safari < 14 fallback
+    mql.addListener(update);
+    return () => mql.removeListener(update);
+  }, []);
 
   useEffect(() => {
     osRef.current = new OfficeState();
@@ -100,6 +117,33 @@ export default function Office() {
     totalOut += ch.outputTokens || 0;
   }
   const activeCount = os.characters.size;
+
+  // Narrow-screen fallback: skip the canvas (which expects a wide viewport)
+  // and show the roster list full-width with a notice.
+  if (isNarrow) {
+    return (
+      <div className="w-full h-[calc(100vh-56px)] flex flex-col bg-[#0C111D]">
+        <header className="px-4 py-2 border-b border-slate-800 text-slate-200 text-sm flex items-center justify-between">
+          <span>{t('office.title', 'Office — live agent activity')}</span>
+          <span className={wsConnected ? 'text-emerald-400' : 'text-amber-400'}>
+            {wsConnected ? '● live' : '○ reconnecting'}
+          </span>
+        </header>
+        <div className="px-4 py-3 bg-amber-900/20 border-b border-amber-800/40 text-amber-200 text-xs">
+          {t('office.narrow', 'Pixel Office needs a wider screen — showing the roster list instead.')}
+        </div>
+        <div className="flex-1 min-h-0">
+          <RosterPanel
+            officeState={os}
+            onSelect={(id) => {
+              os.selectedAgentId = id;
+              os.cameraFollowId = id;
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-[calc(100vh-56px)] flex flex-col bg-[#0C111D]">
