@@ -43,6 +43,13 @@ const NEEDS_APPROVAL = new Set([
   'Write', 'Edit', 'Bash', 'NotebookEdit', 'Agent',
 ]);
 
+// Pixel-office event emitter — best-effort HTTP POST to the dashboard so the
+// office canvas reflects in-process SDK chats (otherwise only subprocess
+// claude-bridge sessions show up). Same shape as claude-bridge's helper.
+const { postEvent: postPixelOfficeEvent } = require('./pixel-office-client');
+function _poSessionId(sessionId) { return `chat-${sessionId}`; }
+function _nowIso() { return new Date().toISOString(); }
+
 /**
  * Parse a .claude/agents/{name}.md file into an AgentDefinition.
  * Extracts YAML frontmatter for metadata and the body as the prompt.
@@ -525,8 +532,18 @@ class ChatBridge {
       abortController,
       agentName,
       sdkSessionId: sdkSessionId || null,
+      pixelOfficeAgent: agentName || 'main',
+      pixelOfficeSessionId: _poSessionId(sessionId),
     };
     this.sessions.set(sessionId, session);
+    // Pixel-office: announce the session so the office canvas spawns a
+    // character with the right agent slug. Best-effort; never blocks.
+    postPixelOfficeEvent({
+      type: 'agent_started',
+      agent: session.pixelOfficeAgent,
+      session_id: session.pixelOfficeSessionId,
+      ts: _nowIso(),
+    });
 
     // Run query in background
     (async () => {
@@ -555,10 +572,65 @@ class ChatBridge {
           }
 
           // Auto-detect ticket creation in tool_result blocks.
+          // Pixel-office: peek at assistant tool_use blocks and emit
+          // tool_started so the office overlay reflects activity. Done
+          // here (in the for-await loop) so we have direct access to
+          // session.pixelOfficeSessionId.
+          if (message.type === 'assistant') {
+            const cs = message.message?.content || message.content;
+            if (Array.isArray(cs)) {
+              for (const blk of cs) {
+                if (blk?.type === 'tool_use' && blk.name) {
+                  const inp = blk.input || {};
+                  let label = blk.name;
+                  if (blk.name === 'Read' && typeof inp.file_path === 'string')
+                    label = 'Reading ' + inp.file_path.split('/').pop();
+                  else if (blk.name === 'Edit' && typeof inp.file_path === 'string')
+                    label = 'Editing ' + inp.file_path.split('/').pop();
+                  else if (blk.name === 'Write' && typeof inp.file_path === 'string')
+                    label = 'Writing ' + inp.file_path.split('/').pop();
+                  else if (blk.name === 'Bash' && typeof inp.command === 'string')
+                    label = 'Running: ' + (inp.command.length > 50 ? inp.command.slice(0, 50) + '…' : inp.command);
+                  else if (blk.name === 'Grep') label = 'Searching code';
+                  else if (blk.name === 'Glob') label = 'Searching files';
+                  else if ((blk.name === 'Task' || blk.name === 'Agent') && typeof inp.description === 'string')
+                    label = 'Subtask: ' + inp.description.slice(0, 50);
+                  postPixelOfficeEvent({
+                    type: 'tool_started',
+                    agent: session.pixelOfficeAgent,
+                    session_id: session.pixelOfficeSessionId,
+                    tool: label,
+                    ts: _nowIso(),
+                  });
+                }
+              }
+            }
+            // Token usage if SDK reported it
+            const usage = message.message?.usage;
+            if (usage && (usage.input_tokens || usage.output_tokens)) {
+              postPixelOfficeEvent({
+                type: 'token_usage',
+                session_id: session.pixelOfficeSessionId,
+                input_tokens: usage.input_tokens || 0,
+                output_tokens: usage.output_tokens || 0,
+                ts: _nowIso(),
+              });
+            }
+          }
+
           if (message.type === 'user') {
             const content = message.message?.content || message.content;
             if (Array.isArray(content)) {
               for (const block of content) {
+                if (block.type === 'tool_result' && block.tool_use_id) {
+                  postPixelOfficeEvent({
+                    type: 'tool_finished',
+                    agent: session.pixelOfficeAgent,
+                    session_id: session.pixelOfficeSessionId,
+                    tool: '',
+                    ts: _nowIso(),
+                  });
+                }
                 if (block.type !== 'tool_result') continue;
                 const raw = Array.isArray(block.content)
                   ? block.content.map(c => (typeof c === 'string' ? c : c?.text || '')).join('\n')
@@ -582,11 +654,23 @@ class ChatBridge {
 
         session.active = false;
         this.sessions.delete(sessionId);
+        postPixelOfficeEvent({
+          type: 'agent_stopped',
+          agent: session.pixelOfficeAgent,
+          session_id: session.pixelOfficeSessionId,
+          ts: _nowIso(),
+        });
         if (onComplete) onComplete({ sdkSessionId: session.sdkSessionId });
       } catch (err) {
         console.error(`[chat-bridge] Error in session ${sessionId}:`, err.message || err);
         session.active = false;
         this.sessions.delete(sessionId);
+        postPixelOfficeEvent({
+          type: 'agent_stopped',
+          agent: session.pixelOfficeAgent,
+          session_id: session.pixelOfficeSessionId,
+          ts: _nowIso(),
+        });
         if (err.name === 'AbortError') {
           if (onComplete) onComplete({ sdkSessionId: session.sdkSessionId });
         } else {
