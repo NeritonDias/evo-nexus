@@ -357,6 +357,21 @@ with app.app_context():
         _conn.commit()
     # --- End knowledge API keys migration ---
 
+    # --- Pixel Office seats migration (Phase 10) ---
+    _existing_tables_px = {row[0] for row in _cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    if "pixel_office_seats" not in _existing_tables_px:
+        _cur.executescript("""
+            CREATE TABLE IF NOT EXISTS pixel_office_seats (
+                agent_slug TEXT PRIMARY KEY,
+                seat_id TEXT NOT NULL,
+                palette INTEGER NOT NULL,
+                hue_shift INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            );
+        """)
+        _conn.commit()
+    # --- End pixel office seats migration ---
+
     # Fix corrupted datetime columns (NULL or non-string values crash SQLAlchemy)
     for _tbl, _col in [("roles", "created_at"), ("users", "created_at"), ("users", "last_login")]:
         try:
