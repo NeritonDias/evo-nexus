@@ -107,6 +107,10 @@ _AGENT_NAME_RE = re.compile(r"^name:\s*([a-zA-Z0-9_-]+)\s*$", re.MULTILINE)
 _SUBAGENT_FILE_RE = re.compile(r"^agent-([a-f0-9]+)\.jsonl$", re.IGNORECASE)
 
 
+def _is_subagent_path(path: Path) -> bool:
+    return "subagents" in path.parts and bool(_SUBAGENT_FILE_RE.match(path.name))
+
+
 class TranscriptWatcher:
     """Background poller. One instance owns its own thread; safe to start once."""
 
@@ -165,7 +169,21 @@ class TranscriptWatcher:
             size = path.stat().st_size
         except OSError:
             return
-        offset = self._offsets.get(key, 0)
+        # First time we see this file: skip its historical content. Only the
+        # bytes that arrive AFTER the watcher noticed the file count as
+        # "live" activity. Without this, every restart re-publishes events
+        # for every past Claude session in /root/.claude/projects (76+
+        # sessions of "subagent" zombies on a busy box).
+        if key not in self._offsets:
+            self._offsets[key] = size
+            # Pre-extract the agent name from the file's HEAD records so a
+            # subsequent live tool_use lands on the right character even
+            # though we skipped the file's contents.
+            self._known_agent[key] = (
+                self._infer_agent_from_head(path) or self._fallback_agent_for(path)
+            )
+            return
+        offset = self._offsets[key]
         if size == offset:
             return
         if size < offset:
@@ -202,33 +220,42 @@ class TranscriptWatcher:
     # ── Session + agent identity ──────────────────────────────────────────
 
     def _session_id_for(self, path: Path) -> str:
-        """Use the file stem as session_id. Subagents get their own ids
-        because Claude writes them under .../<parent>/subagents/agent-<x>.jsonl
-        and parses them as independent sessions."""
+        """Use the file stem as session_id for top-level files.
+
+        Subagent files live under ``.../<parent-uuid>/subagents/agent-<x>.jsonl``
+        — for those, the parent uuid (the directory name above ``subagents``)
+        IS the session_id. Subagent activity flows into the parent's character;
+        each subagent appears as a small attached pixel, not a standalone one.
+        """
+        if _is_subagent_path(path):
+            # parent dir is "subagents", grandparent is the parent UUID dir
+            try:
+                return path.parent.parent.name
+            except Exception:
+                return path.stem
         return path.stem
+
+    def _fallback_agent_for(self, path: Path) -> str:
+        """When agent-setting wasn't found in the head, fall back to a sane name."""
+        if _is_subagent_path(path):
+            return "subagent"
+        return "main"
 
     def _agent_for(self, path: Path, session_id: str) -> str:
         cached = self._known_agent.get(str(path))
         if cached:
             return cached
-
-        # Subagent file: agent-<hexid>.jsonl — give it a generic name
-        # (real subagent slug isn't in the filename; it's in the parent's
-        # tool_use record. We could correlate later if needed.)
-        m = _SUBAGENT_FILE_RE.match(path.name)
-        if m:
-            agent = "subagent"
-            self._known_agent[str(path)] = agent
-            return agent
-
-        # Top-level session — try to read first ~10 lines to find an agent
-        # slug in the system prompt or settings. Fall back to "main".
-        agent = self._infer_agent_from_head(path) or "main"
+        agent = self._infer_agent_from_head(path) or self._fallback_agent_for(path)
         self._known_agent[str(path)] = agent
         return agent
 
     def _infer_agent_from_head(self, path: Path) -> str | None:
-        """Best-effort agent-slug detection from the first few JSONL records."""
+        """Best-effort agent-slug detection from the first few JSONL records.
+
+        Top-level files start with an ``agent-setting`` record:
+            {"type":"agent-setting","agentSetting":"oracle","sessionId":"…"}
+        Subagent files don't carry one — return None so callers fall back.
+        """
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as fh:
                 for _ in range(10):
@@ -239,11 +266,16 @@ class TranscriptWatcher:
                         rec = json.loads(line)
                     except Exception:
                         continue
-                    # Some Claude writes include {"agent": "<slug>"} in summary
+                    # Authoritative: top-level Claude writes this on first record.
+                    if rec.get("type") == "agent-setting":
+                        a = rec.get("agentSetting")
+                        if isinstance(a, str) and a:
+                            return a
+                    # Some older / alternate writers used a flat "agent" field.
                     a = rec.get("agent")
                     if isinstance(a, str) and a:
                         return a
-                    # System prompt may carry "name: <slug>" YAML-style header
+                    # System prompt fallback — "name: <slug>" anywhere in text.
                     msg = rec.get("message") or {}
                     content = msg.get("content")
                     if isinstance(content, list):
