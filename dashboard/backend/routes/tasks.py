@@ -7,6 +7,15 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user
 from models import db, ScheduledTask, has_permission, audit
 
+# Defensive import — pixel-office emission is a best-effort side-channel.
+# If the ADWs package is not on the path (or the client module is missing),
+# fall back to a no-op so task execution is never broken by visualisation.
+try:
+    from ADWs.pixel_office_client import post_event as _px_emit
+except Exception:  # pragma: no cover — defensive
+    def _px_emit(*_a, **_k):
+        return
+
 bp = Blueprint("tasks", __name__)
 
 
@@ -224,9 +233,34 @@ def _execute_task(task_id: int):
 
             python_bin = shutil.which("uv")
             cmd_args = ["uv", "run", "python", str(script_path)] if python_bin else ["python3", str(script_path)]
-            proc = subprocess.run(
-                cmd_args, capture_output=True, text=True, timeout=900, cwd=str(workspace)
-            )
+
+            # Pixel-office lifecycle emission for the direct-subprocess branch.
+            # The skill/prompt branch is covered by run_claude / run_skill in ADWs/runner.py.
+            _session_id = f"task-{task_id}"
+            _agent_label = getattr(task, "agent", None) or "script"
+            try:
+                _px_emit({
+                    "type": "agent_started",
+                    "agent": _agent_label,
+                    "session_id": _session_id,
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                })
+            except Exception:
+                pass
+            try:
+                proc = subprocess.run(
+                    cmd_args, capture_output=True, text=True, timeout=900, cwd=str(workspace)
+                )
+            finally:
+                try:
+                    _px_emit({
+                        "type": "agent_stopped",
+                        "session_id": _session_id,
+                        "agent": _agent_label,
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                    })
+                except Exception:
+                    pass
             task.status = "completed" if proc.returncode == 0 else "failed"
             task.result_summary = (proc.stdout or "")[:5000]
             if proc.returncode != 0:
