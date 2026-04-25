@@ -358,6 +358,18 @@ with app.app_context():
     # --- End knowledge API keys migration ---
 
     # --- Pixel Office seats migration (Phase 10) ---
+    # NOTE on migration strategy (Phase 23.1):
+    # Alembic is NOT currently used for evonexus.db (the local SQLite database).
+    # The only alembic configuration in this repo lives at
+    #   dashboard/backend/knowledge/migrations/alembic.ini
+    # and targets the Knowledge Base *remote Postgres* schema — a separate DB.
+    # For evonexus.db, all schema evolution is performed via inline,
+    # idempotent CREATE-IF-NOT-EXISTS / ALTER blocks in this file. Future
+    # schema changes for pixel_office_seats (and other evonexus.db tables)
+    # should continue this inline pattern until alembic is introduced
+    # project-wide for evonexus.db. When that happens, this block should be
+    # promoted to a proper alembic revision under a new versions/ directory
+    # dedicated to evonexus.db, and removed from here.
     _existing_tables_px = {row[0] for row in _cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     if "pixel_office_seats" not in _existing_tables_px:
         _cur.executescript("""
