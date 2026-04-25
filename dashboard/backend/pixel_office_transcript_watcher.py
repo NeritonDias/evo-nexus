@@ -368,6 +368,12 @@ def start_transcript_watcher(
             pd = Path(env_dir)
     _watcher = TranscriptWatcher(bus, projects_dir=pd)
     _watcher.start()
+    print(
+        f"[transcript-watcher] started (projects_dir={_watcher._projects_dir}, "
+        f"poll={_watcher._poll_interval_s}s)",
+        file=sys.stderr,
+        flush=True,
+    )
     return _watcher
 
 
@@ -402,4 +408,9 @@ def start_session_janitor(
 
     t = threading.Thread(target=_loop, daemon=True, name="pixel-office-janitor")
     t.start()
+    print(
+        f"[session-janitor] started (interval={interval_s}s, max_idle={max_idle_s}s)",
+        file=sys.stderr,
+        flush=True,
+    )
     return t

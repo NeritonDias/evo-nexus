@@ -207,6 +207,22 @@ def put_seats():
     return jsonify({"ok": True})
 
 
+@bp.get("/departments")
+def departments():
+    """Return the static department mapping for sidebar grouping + room labels.
+
+    Public-ish: any logged-in user gets the full list. Each entry is
+    ``{id, label, color, agents: [slug, ...], count}``. The frontend uses
+    this to (a) render section headers in the roster sidebar, (b) colour
+    each agent's row by department, and (c) decide which room/seat a
+    spawning character should walk to.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({"error": "auth required"}), 401
+    from pixel_office_departments import department_summary
+    return jsonify({"departments": department_summary()})
+
+
 @bp.post("/sessions/clear")
 def clear_sessions():
     """Admin-only: wipe every tracked session and broadcast agent_stopped for each.
