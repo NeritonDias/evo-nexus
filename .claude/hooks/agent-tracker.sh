@@ -27,6 +27,7 @@ grep_json() {
 }
 
 TOOL="$(grep_json tool_name)"
+TOOL_USE_ID="$(grep_json tool_use_id)"
 AGENT_TYPE="$(grep_json subagent_type)"
 DESCRIPTION="$(grep_json description)"
 AGENT_NAME="$(grep_json agent)"
@@ -75,11 +76,15 @@ case "$EVENT" in
   PreToolUse)
     if [ "$TOOL" = "Agent" ]; then
       post_event "{\"type\":\"agent_started\",\"agent\":$(esc "$AGENT_TYPE"),\"session_id\":$(esc "$SESSION_ID"),\"ts\":\"$NOW\"}"
+      post_event "{\"type\":\"subagent_started\",\"parent_session_id\":$(esc "$SESSION_ID"),\"parent_tool_id\":$(esc "$TOOL_USE_ID"),\"subagent_type\":$(esc "$AGENT_TYPE"),\"ts\":\"$NOW\"}"
     fi
     post_event "{\"type\":\"tool_started\",\"session_id\":$(esc "$SESSION_ID"),\"agent\":$(esc "$AGENT_NAME"),\"tool\":$(esc "$TOOL"),\"ts\":\"$NOW\"}"
     ;;
   PostToolUse)
     post_event "{\"type\":\"tool_finished\",\"session_id\":$(esc "$SESSION_ID"),\"agent\":$(esc "$AGENT_NAME"),\"tool\":$(esc "$TOOL"),\"ts\":\"$NOW\"}"
+    if [ "$TOOL" = "Agent" ]; then
+      post_event "{\"type\":\"subagent_finished\",\"parent_session_id\":$(esc "$SESSION_ID"),\"parent_tool_id\":$(esc "$TOOL_USE_ID"),\"ts\":\"$NOW\"}"
+    fi
     ;;
   Notification)
     MESSAGE="$(grep_json message)"

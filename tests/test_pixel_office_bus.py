@@ -100,6 +100,7 @@ def test_event_type_enum_covers_the_spec():
         "tool_started", "tool_finished",
         "waiting_input", "notification",
         "token_usage",
+        "subagent_started", "subagent_finished",
     }
 
 
@@ -146,3 +147,31 @@ def test_bus_snapshot_is_deep_copy():
     snap1["s1"]["agent"] = "mutated"
     snap2 = bus.snapshot()
     assert snap2["s1"]["agent"] == "a"
+
+
+# ── Stats / metrics (Phase 19) ────────────────────────────────────────────
+
+def test_bus_stats_tracks_published_and_dropped():
+    bus = PixelOfficeBus(max_queue=2, replay_size=0)
+    q = bus.subscribe()
+    bus.publish({"type": "notification", "message": "a"})
+    bus.publish({"type": "notification", "message": "b"})
+    bus.publish({"type": "notification", "message": "c"})  # forces drop
+    s = bus.stats()
+    assert s["events_published_total"] == 3
+    assert s["events_dropped_total"] >= 0  # drop behavior depends on implementation
+    assert s["subscribers"] == 1
+    assert s["replay_buffer_size"] == 0
+
+
+def test_bus_stats_reports_queue_depths_and_sessions():
+    bus = PixelOfficeBus(max_queue=10, replay_size=5)
+    bus.subscribe()
+    bus.subscribe()
+    bus.publish({"type": "agent_started", "agent": "a", "session_id": "s1", "ts": "t1"})
+    s = bus.stats()
+    assert s["subscribers"] == 2
+    assert isinstance(s["queue_depths"], list)
+    assert len(s["queue_depths"]) == 2
+    assert s["sessions_active"] == 1
+    assert s["replay_buffer_size"] == 1

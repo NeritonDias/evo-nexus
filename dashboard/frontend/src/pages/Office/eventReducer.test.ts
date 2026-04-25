@@ -53,4 +53,14 @@ describe('applyEvent', () => {
     const ids = Array.from(os.characters.keys());
     expect(ids).toEqual([first]);
   });
+
+  it('spawns a sub-agent next to parent', () => {
+    const os = new OfficeState();
+    applyEvent(os, { type: 'agent_started', agent: 'apex', session_id: 'p', ts: 't' });
+    applyEvent(os, { type: 'subagent_started', parent_session_id: 'p', parent_tool_id: 'T1', subagent_type: 'general-purpose', ts: 't' });
+    expect(os.characters.size).toBe(2);
+    applyEvent(os, { type: 'subagent_finished', parent_session_id: 'p', parent_tool_id: 'T1', ts: 't' });
+    const sub = Array.from(os.characters.values()).find(c => c.isSubagent);
+    expect(sub?.matrixEffect).toBe('despawn');
+  });
 });

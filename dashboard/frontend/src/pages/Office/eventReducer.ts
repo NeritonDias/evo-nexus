@@ -27,7 +27,9 @@ export type PixelOfficeEvent =
   | { type: 'tool_finished'; session_id: string; agent: string; tool: string; ts: string }
   | { type: 'waiting_input'; session_id: string; agent?: string; message?: string; ts: string }
   | { type: 'notification'; message: string; ts: string }
-  | { type: 'token_usage'; session_id: string; input_tokens: number; output_tokens: number; ts: string };
+  | { type: 'token_usage'; session_id: string; input_tokens: number; output_tokens: number; ts: string }
+  | { type: 'subagent_started'; parent_session_id: string; parent_tool_id: string; subagent_type: string; ts: string }
+  | { type: 'subagent_finished'; parent_session_id: string; parent_tool_id: string; ts: string };
 
 // Stable mapping session_id → character id so repeated events hit the same char.
 const sessionToId = new Map<string, number>();
@@ -87,6 +89,18 @@ export function applyEvent(os: OfficeState, evt: PixelOfficeEvent): void {
     case 'notification':
       // banner-level event handled at page layer — no OfficeState mutation
       break;
+    case 'subagent_started': {
+      const parentId = sessionToId.get(evt.parent_session_id);
+      if (parentId === undefined) return;
+      os.addSubagent(parentId, evt.parent_tool_id);
+      break;
+    }
+    case 'subagent_finished': {
+      const parentId = sessionToId.get(evt.parent_session_id);
+      if (parentId === undefined) return;
+      os.removeSubagent(parentId, evt.parent_tool_id);
+      break;
+    }
   }
 }
 

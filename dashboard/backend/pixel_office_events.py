@@ -14,6 +14,8 @@ class EventType(str, Enum):
     WAITING_INPUT = "waiting_input"     # Notification hook (permission prompt)
     NOTIFICATION = "notification"       # generic notification (banner)
     TOKEN_USAGE = "token_usage"         # periodic token counter update
+    SUBAGENT_STARTED = "subagent_started"   # Agent tool launched a sub-agent
+    SUBAGENT_FINISHED = "subagent_finished"  # Agent tool sub-agent completed
 
 
 _REQUIRED = {
@@ -24,6 +26,8 @@ _REQUIRED = {
     EventType.WAITING_INPUT: {"session_id"},
     EventType.NOTIFICATION: {"message"},
     EventType.TOKEN_USAGE: {"session_id", "input_tokens", "output_tokens"},
+    EventType.SUBAGENT_STARTED: {"parent_session_id", "parent_tool_id", "subagent_type"},
+    EventType.SUBAGENT_FINISHED: {"parent_session_id", "parent_tool_id"},
 }
 
 
