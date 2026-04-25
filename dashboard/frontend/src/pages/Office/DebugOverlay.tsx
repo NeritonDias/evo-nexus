@@ -28,7 +28,7 @@ export function DebugOverlay({ officeState, wsConnected }: Props) {
 
   return (
     <div
-      className="absolute top-2 right-2 px-3 py-2 rounded bg-black/80 text-emerald-400 text-xs font-mono pointer-events-none"
+      className="absolute bottom-2 right-2 px-3 py-2 rounded bg-black/80 text-emerald-400 text-xs font-mono pointer-events-none"
       style={{ zIndex: 50 }}
     >
       <div>FPS: {fps}</div>

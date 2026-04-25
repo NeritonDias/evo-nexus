@@ -9,6 +9,7 @@ import { RosterPanel } from './RosterPanel.js';
 import { setRoster, getPendingQueueSize } from './eventReducer.js';
 import { OfficeErrorBoundary } from './ErrorBoundary.js';
 import { DebugOverlay } from './DebugOverlay.js';
+import { loadAllAssets } from '../../pixel-office/assets/orchestrator.js';
 
 export default function Office() {
   const { t } = useTranslation();
@@ -37,9 +38,30 @@ export default function Office() {
     return () => mql.removeListener(update);
   }, []);
 
+  // Load all pixel-office assets (sprites + layout + furniture catalog) BEFORE
+  // constructing OfficeState so characters render with real sprites (not empty
+  // placeholders) and the office uses the shipped default-layout-1.json (not
+  // the code-only fallback in createDefaultLayout).
   useEffect(() => {
-    osRef.current = new OfficeState();
-    setReady(true);
+    let cancelled = false;
+    loadAllAssets()
+      .then(({ layout }) => {
+        if (cancelled) return;
+        osRef.current = new OfficeState(layout ?? undefined);
+        setReady(true);
+      })
+      .catch((err) => {
+        // Asset load failure must not block the page — fall back to the
+        // empty-sprite render so at least the UI shell works.
+        // eslint-disable-next-line no-console
+        console.error('[pixel-office] loadAllAssets failed, falling back:', err);
+        if (cancelled) return;
+        osRef.current = new OfficeState();
+        setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch the roster on mount and feed it to the event reducer so palette
