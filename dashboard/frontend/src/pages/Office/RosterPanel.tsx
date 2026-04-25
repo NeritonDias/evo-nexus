@@ -100,7 +100,6 @@ export function RosterPanel({ officeState, onSelect }: Props) {
 
   const renderAgent = (a: RosterEntry, deptColor: string) => {
     const isActive = active.has(a.name);
-    const statusDot = isActive ? '#22c55e' : '#475569';
     return (
       <li
         key={a.name}
@@ -114,17 +113,28 @@ export function RosterPanel({ officeState, onSelect }: Props) {
             activate(a.name);
           }
         }}
-        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 focus:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer text-sm"
+        className={`group flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12px] transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 ${
+          isActive
+            ? 'bg-emerald-500/[0.06] hover:bg-emerald-500/10 text-slate-100'
+            : 'hover:bg-[#101824] text-[#a0aec0]'
+        }`}
         title={a.description}
       >
+        <span className="relative shrink-0" aria-label={isActive ? 'active' : 'idle'}>
+          <span
+            className="inline-block w-1.5 h-1.5 rounded-full"
+            style={{ background: isActive ? '#22c55e' : '#2d3d4f' }}
+          />
+          {isActive && (
+            <span
+              className="absolute inset-0 w-1.5 h-1.5 rounded-full animate-ping"
+              style={{ background: '#22c55e', opacity: 0.6 }}
+            />
+          )}
+        </span>
+        <span className="flex-1 truncate font-medium">{a.name}</span>
         <span
-          className="inline-block w-2 h-2 rounded-full shrink-0"
-          style={{ background: statusDot }}
-          aria-label={isActive ? 'active' : 'idle'}
-        />
-        <span className="flex-1 text-slate-200 truncate">{a.name}</span>
-        <span
-          className="inline-block w-2 h-2 rounded-full shrink-0"
+          className="inline-block w-1 h-3 rounded-full shrink-0 opacity-50 group-hover:opacity-100 transition-opacity"
           style={{ background: a.color || deptColor }}
           aria-hidden="true"
         />
@@ -132,42 +142,69 @@ export function RosterPanel({ officeState, onSelect }: Props) {
     );
   };
 
-  // Total count for the header.
+  // Header counts
   const total = roster.length;
+  const onlineTotal = roster.filter((a) => active.has(a.name)).length;
 
   return (
-    <aside className="w-64 shrink-0 border-r border-slate-800 overflow-y-auto bg-[#0C111D]">
-      <header className="px-4 py-3 text-xs uppercase tracking-wide text-slate-400">
-        Agents ({total})
+    <aside className="w-64 shrink-0 h-full overflow-y-auto bg-transparent">
+      <header className="px-4 pt-4 pb-3 border-b border-[#152030] sticky top-0 bg-[#0b1018]/95 backdrop-blur-sm z-10">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-[10px] uppercase tracking-widest font-semibold text-[#4a5a6e]">
+            Agents
+          </h2>
+          <span className="text-[10px] tabular-nums text-[#4a5a6e]">
+            <span className="text-emerald-400 font-semibold">{onlineTotal}</span>
+            <span className="mx-1 text-[#2d3d4f]">/</span>
+            <span>{total}</span>
+          </span>
+        </div>
       </header>
-      <div className="pb-4">
+      <div className="py-2">
         {departments.map((dept) => {
           const list = byDept.get(dept.id);
           if (!list || list.length === 0) return null;
           const onlineInDept = list.filter((a) => active.has(a.name)).length;
           return (
-            <section key={dept.id} className="mb-3">
+            <section key={dept.id} className="mb-1.5">
               <header
-                className="flex items-center justify-between px-4 py-1.5 text-[10px] uppercase tracking-widest font-semibold border-l-2"
-                style={{ borderLeftColor: dept.color, color: dept.color }}
+                className="flex items-center justify-between px-4 pt-3 pb-1.5"
               >
-                <span>{dept.label}</span>
-                <span className="text-slate-500 normal-case tracking-normal">
-                  {onlineInDept}/{list.length}
+                <span className="flex items-center gap-2">
+                  <span
+                    className="inline-block w-1 h-3.5 rounded-full"
+                    style={{ background: dept.color }}
+                  />
+                  <span
+                    className="text-[10px] uppercase tracking-widest font-semibold"
+                    style={{ color: dept.color }}
+                  >
+                    {dept.label}
+                  </span>
+                </span>
+                <span className="text-[10px] tabular-nums text-[#4a5a6e]">
+                  {onlineInDept > 0 && (
+                    <span className="text-emerald-400 font-semibold">{onlineInDept}</span>
+                  )}
+                  {onlineInDept > 0 && <span className="mx-0.5 text-[#2d3d4f]">/</span>}
+                  <span>{list.length}</span>
                 </span>
               </header>
-              <ul className="px-2 space-y-0.5 mt-1">
+              <ul className="px-2 space-y-0.5">
                 {list.map((a) => renderAgent(a, dept.color))}
               </ul>
             </section>
           );
         })}
         {unplaced.length > 0 && (
-          <section className="mb-3">
-            <header className="px-4 py-1.5 text-[10px] uppercase tracking-widest font-semibold text-slate-500 border-l-2 border-slate-600">
-              Other
+          <section className="mb-1.5">
+            <header className="flex items-center gap-2 px-4 pt-3 pb-1.5">
+              <span className="inline-block w-1 h-3.5 rounded-full bg-slate-600" />
+              <span className="text-[10px] uppercase tracking-widest font-semibold text-[#4a5a6e]">
+                Other
+              </span>
             </header>
-            <ul className="px-2 space-y-0.5 mt-1">
+            <ul className="px-2 space-y-0.5">
               {unplaced.map((a) => renderAgent(a, '#64748b'))}
             </ul>
           </section>

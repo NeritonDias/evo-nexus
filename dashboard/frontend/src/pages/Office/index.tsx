@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { OfficeState } from '../../pixel-office/engine/officeState.js';
 import { OfficeCanvasLite } from '../../pixel-office/components/OfficeCanvasLite.js';
 import { ToolOverlay } from '../../pixel-office/components/ToolOverlay.js';
+import { NetworkBackground } from './NetworkBackground.js';
 import { usePixelOfficeSocket } from './usePixelOfficeSocket.js';
 import { RosterPanel } from './RosterPanel.js';
 import { setRoster, getPendingQueueSize } from './eventReducer.js';
@@ -231,24 +232,48 @@ export default function Office() {
   // Surfaced from the reducer so the user knows agents are spawning past the cap.
   const queuedCount = getPendingQueueSize();
 
+  // ── Shared chrome bits ──────────────────────────────────────────────
+  const StatusPill = (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium tracking-wide uppercase border ${
+        wsConnected
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+          : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+      }`}
+    >
+      <span
+        className={`inline-block w-1.5 h-1.5 rounded-full ${
+          wsConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+        }`}
+      />
+      {wsConnected ? t('office.live', 'live') : t('office.reconnecting', 'reconnecting')}
+    </span>
+  );
+
   // Narrow-screen fallback: skip the canvas (which expects a wide viewport)
   // and show the roster list full-width with a notice.
   if (isNarrow) {
     return (
-      <div className="w-full h-[calc(100vh-56px)] flex flex-col bg-[#0C111D]">
+      <div className="relative w-full h-[calc(100vh-56px)] flex flex-col bg-[#080c14] overflow-hidden font-[Inter,-apple-system,sans-serif]">
+        <NetworkBackground />
         <header
           role="banner"
-          className="px-4 py-2 border-b border-slate-800 text-slate-200 text-sm flex items-center justify-between"
+          className="relative z-10 px-5 py-3 border-b border-[#152030] bg-[#0b1018]/80 backdrop-blur-sm flex items-center justify-between"
         >
-          <span>{t('office.title', 'Office — live agent activity')}</span>
-          <span className={wsConnected ? 'text-emerald-400' : 'text-amber-400'}>
-            {wsConnected ? '● live' : '○ reconnecting'}
-          </span>
+          <div>
+            <h1 className="text-sm font-semibold text-slate-100 tracking-tight">
+              {t('office.title', 'Office')}
+            </h1>
+            <p className="text-[11px] text-[#4a5a6e] mt-0.5">
+              {t('office.subtitle', 'Live agent activity')}
+            </p>
+          </div>
+          {StatusPill}
         </header>
-        <div className="px-4 py-3 bg-amber-900/20 border-b border-amber-800/40 text-amber-200 text-xs">
+        <div className="relative z-10 px-5 py-3 bg-amber-500/5 border-b border-amber-500/20 text-amber-300 text-xs">
           {t('office.narrow', 'Pixel Office needs a wider screen — showing the roster list instead.')}
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="relative z-10 flex-1 min-h-0">
           <RosterPanel
             officeState={os}
             onSelect={(id) => {
@@ -262,34 +287,56 @@ export default function Office() {
   }
 
   return (
-    <div className="w-full h-[calc(100vh-56px)] flex flex-col bg-[#0C111D]">
+    <div className="relative w-full h-[calc(100vh-56px)] flex flex-col bg-[#080c14] overflow-hidden font-[Inter,-apple-system,sans-serif]">
+      <NetworkBackground />
       <header
         role="banner"
-        className="px-4 py-2 border-b border-slate-800 text-slate-200 text-sm flex items-center justify-between"
+        className="relative z-10 px-5 py-3 border-b border-[#152030] bg-[#0b1018]/80 backdrop-blur-sm flex items-center justify-between"
       >
-        <span>{t('office.title', 'Office — live agent activity')}</span>
-        <span className={wsConnected ? 'text-emerald-400' : 'text-amber-400'}>
-          {wsConnected ? '● live' : '○ reconnecting'}
-        </span>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-sm font-semibold text-slate-100 tracking-tight">
+              {t('office.title', 'Office')}
+            </h1>
+            <p className="text-[11px] text-[#4a5a6e] mt-0.5">
+              {t('office.subtitle', 'Live agent activity')}
+            </p>
+          </div>
+          <span className="hidden md:inline-block w-px h-8 bg-[#152030]" aria-hidden="true" />
+          <div className="hidden md:flex items-center gap-5 text-[11px]">
+            <span aria-live="polite" className="text-slate-300">
+              <span className="text-emerald-400 font-semibold">{activeCount}</span>
+              <span className="ml-1.5 text-[#4a5a6e]">
+                {activeCount === 1 ? t('office.agentOnline', 'agent') : t('office.agentsOnline', 'agents')}
+              </span>
+            </span>
+            <span aria-live="polite" className="text-slate-300">
+              <span className="font-semibold tabular-nums">{totalIn.toLocaleString()}</span>
+              <span className="text-[#4a5a6e] ml-1">in</span>
+              <span className="text-[#2d3d4f] mx-1">·</span>
+              <span className="font-semibold tabular-nums">{totalOut.toLocaleString()}</span>
+              <span className="text-[#4a5a6e] ml-1">out</span>
+            </span>
+          </div>
+        </div>
+        {StatusPill}
       </header>
-      <div className="h-10 flex items-center gap-6 px-4 text-xs text-slate-400 border-b border-slate-900">
-        <span aria-live="polite">
-          {activeCount} {activeCount === 1 ? 'agent' : 'agents'} online
-        </span>
-        <span aria-live="polite">
-          {totalIn.toLocaleString()} in · {totalOut.toLocaleString()} out tokens
-        </span>
-      </div>
-      <div className="flex-1 min-h-0 flex">
-        <RosterPanel
-          officeState={os}
-          onSelect={(id) => {
-            os.selectedAgentId = id;
-            os.cameraFollowId = id;
-          }}
-        />
+
+      <div className="relative z-10 flex-1 min-h-0 flex p-4 gap-4">
+        {/* Roster panel — own card */}
+        <div className="rounded-xl border border-[#152030] bg-[#0b1018]/95 shadow-[0_4px_30px_rgba(0,0,0,0.35)] overflow-hidden">
+          <RosterPanel
+            officeState={os}
+            onSelect={(id) => {
+              os.selectedAgentId = id;
+              os.cameraFollowId = id;
+            }}
+          />
+        </div>
+
+        {/* Canvas card */}
         <div
-          className="flex-1 min-w-0 relative"
+          className="flex-1 min-w-0 relative rounded-xl border border-[#152030] bg-[#0b1018] shadow-[0_4px_40px_rgba(0,0,0,0.45)] overflow-hidden"
           role="img"
           aria-label={t('office.title', 'Office — live agent activity')}
         >
@@ -303,30 +350,47 @@ export default function Office() {
             />
             <ToolOverlay officeState={os} zoom={zoom} panRef={panRef} />
           </OfficeErrorBoundary>
+
           {queuedCount > 0 && (
-            <div className="absolute top-2 right-2 px-2 py-1 rounded bg-slate-900/80 border border-slate-700 text-amber-300 text-xs font-medium pointer-events-none shadow">
+            <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-medium pointer-events-none shadow-lg backdrop-blur-sm">
               {t('office.queued', '+{{count}} agents queued', { count: queuedCount })}
             </div>
           )}
           {debugEnabled && <DebugOverlay officeState={os} wsConnected={wsConnected} />}
+
+          {/* Hint card — bottom-right corner, very subtle */}
+          <div className="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-md bg-[#080c14]/80 border border-[#152030] text-[10px] text-[#4a5a6e] pointer-events-none backdrop-blur-sm">
+            <kbd className="px-1 py-0.5 rounded bg-[#152030] text-[#a0aec0] text-[9px] font-mono">Ctrl</kbd>
+            <span className="mx-1">+</span>
+            <kbd className="px-1 py-0.5 rounded bg-[#152030] text-[#a0aec0] text-[9px] font-mono">Wheel</kbd>
+            <span className="ml-2 text-[#2d3d4f]">zoom</span>
+            <span className="mx-2 text-[#2d3d4f]">·</span>
+            <kbd className="px-1 py-0.5 rounded bg-[#152030] text-[#a0aec0] text-[9px] font-mono">middle-click</kbd>
+            <span className="ml-1.5 text-[#2d3d4f]">pan</span>
+          </div>
+
           {activeCount === 0 && (
             <div
               role="status"
               aria-label="Office is empty"
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none p-6"
             >
-              <div className="text-slate-500 text-sm">
-                <div className="text-center max-w-sm">
-                  <div className="text-base text-slate-300 mb-2">
-                    {t('office.empty', 'Office is quiet')}
-                  </div>
-                  <div className="text-xs leading-relaxed">
-                    Each character represents a Claude session that is currently running.
-                    The 38 agents in the sidebar appear here when they're invoked
-                    (via routine, trigger, heartbeat, or terminal session).
-                    Use Ctrl+Wheel to zoom, middle-click to pan.
-                  </div>
+              <div
+                className="max-w-md w-full px-7 py-6 rounded-xl border border-[#152030] bg-[#0b1018]/90 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.5)] text-center"
+                style={{ pointerEvents: 'auto' }}
+              >
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
                 </div>
+                <h2 className="text-base font-semibold text-slate-100 mb-1.5">
+                  {t('office.empty', 'Office is quiet')}
+                </h2>
+                <p className="text-[11px] leading-relaxed text-[#a0aec0]">
+                  {t(
+                    'office.emptyHelp',
+                    'Each character is an active Claude session. The 38 agents in the sidebar enter the office when invoked — via a routine, trigger, heartbeat, or terminal chat.',
+                  )}
+                </p>
               </div>
             </div>
           )}
