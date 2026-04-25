@@ -6,6 +6,7 @@ const {
   resolveProviderModel,
   getProviderMode,
 } = require('./provider-config');
+const { postEvent: postPixelOfficeEvent } = require('./pixel-office-client');
 
 class ClaudeBridge {
   constructor() {
@@ -231,6 +232,18 @@ class ClaudeBridge {
 
       this.sessions.set(sessionId, session);
 
+      // Emit pixel-office agent_started event (best-effort, non-blocking).
+      const pixelOfficeAgent = agent || 'claude';
+      const pixelOfficeSessionId = `term-${sessionId}`;
+      session.pixelOfficeAgent = pixelOfficeAgent;
+      session.pixelOfficeSessionId = pixelOfficeSessionId;
+      postPixelOfficeEvent({
+        type: 'agent_started',
+        agent: pixelOfficeAgent,
+        session_id: pixelOfficeSessionId,
+        ts: new Date().toISOString(),
+      });
+
       // Track if we've seen the trust prompt
       let trustPromptHandled = false;
       let dataBuffer = '';
@@ -272,6 +285,13 @@ class ClaudeBridge {
         }
         session.active = false;
         this.sessions.delete(sessionId);
+        // Emit pixel-office agent_stopped (best-effort, non-blocking).
+        postPixelOfficeEvent({
+          type: 'agent_stopped',
+          agent: session.pixelOfficeAgent || agent || 'claude',
+          session_id: session.pixelOfficeSessionId || `term-${sessionId}`,
+          ts: new Date().toISOString(),
+        });
         onExit(exitCode, signal);
       });
 
@@ -284,6 +304,13 @@ class ClaudeBridge {
         }
         session.active = false;
         this.sessions.delete(sessionId);
+        // Emit pixel-office agent_stopped on error (best-effort, non-blocking).
+        postPixelOfficeEvent({
+          type: 'agent_stopped',
+          agent: session.pixelOfficeAgent || agent || 'claude',
+          session_id: session.pixelOfficeSessionId || `term-${sessionId}`,
+          ts: new Date().toISOString(),
+        });
         onError(error);
       });
 
