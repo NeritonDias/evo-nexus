@@ -442,6 +442,20 @@ with app.app_context():
     except Exception as _cw_exc:
         print(f"WARNING: knowledge classify worker init failed: {_cw_exc}")
 
+    # Pixel-office transcript watcher (rich tool content) + session janitor
+    # (zombie cleanup). Both background threads, both best-effort: failure to
+    # start them never blocks the dashboard.
+    try:
+        from pixel_office_bus import bus as _po_bus
+        from pixel_office_transcript_watcher import (
+            start_transcript_watcher as _po_start_watcher,
+            start_session_janitor as _po_start_janitor,
+        )
+        _po_start_watcher(_po_bus)
+        _po_start_janitor(_po_bus, interval_s=60, max_idle_s=600)
+    except Exception as _po_exc:
+        print(f"WARNING: pixel-office watcher/janitor init failed: {_po_exc}")
+
     # Cleanup: remove old disabled share records (expired + disabled + older than 30 days)
     from datetime import datetime as _dt, timezone as _tz, timedelta as _td
     from models import FileShare as _FileShare

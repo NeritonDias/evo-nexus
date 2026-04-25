@@ -17,7 +17,10 @@ export default function Office() {
   const [ready, setReady] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const osRef = useRef<OfficeState | null>(null);
-  const [zoom, setZoom] = useState(2);
+  // Default zoom 4× — the office is 21x22 tiles (336x352 world px); at zoom 2
+  // it filled ~40% of a 1080p viewport, looking sparse. Zoom 4 fills more of
+  // the canvas while still leaving room for sub-agents and labels.
+  const [zoom, setZoom] = useState(4);
   const panRef = useRef({ x: 0, y: 0 });
   const [tick, setTick] = useState(0);
   const [isNarrow, setIsNarrow] = useState(false);
@@ -313,7 +316,17 @@ export default function Office() {
               className="absolute inset-0 flex items-center justify-center pointer-events-none"
             >
               <div className="text-slate-500 text-sm">
-                {t('office.empty', 'Office is quiet. Trigger an agent to see them at work.')}
+                <div className="text-center max-w-sm">
+                  <div className="text-base text-slate-300 mb-2">
+                    {t('office.empty', 'Office is quiet')}
+                  </div>
+                  <div className="text-xs leading-relaxed">
+                    Each character represents a Claude session that is currently running.
+                    The 38 agents in the sidebar appear here when they're invoked
+                    (via routine, trigger, heartbeat, or terminal session).
+                    Use Ctrl+Wheel to zoom, middle-click to pan.
+                  </div>
+                </div>
               </div>
             </div>
           )}

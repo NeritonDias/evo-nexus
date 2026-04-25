@@ -22,6 +22,7 @@ from __future__ import annotations
 import copy
 import queue
 import threading
+import time
 from collections import deque
 from typing import Any, Callable, Optional
 
@@ -74,6 +75,7 @@ class PixelOfficeBus:
         sid = event.get("session_id")
         if not sid:
             return
+        now = time.time()
         if t == "agent_started":
             self._sessions[sid] = {
                 "agent": event.get("agent", "main"),
@@ -82,20 +84,25 @@ class PixelOfficeBus:
                 "input_tokens": 0,
                 "output_tokens": 0,
                 "waiting": False,
+                "last_event_at": now,
             }
         elif t == "tool_started":
             if sid in self._sessions:
                 self._sessions[sid]["tool"] = event.get("tool")
+                self._sessions[sid]["last_event_at"] = now
         elif t == "tool_finished":
             if sid in self._sessions:
                 self._sessions[sid]["tool"] = None
+                self._sessions[sid]["last_event_at"] = now
         elif t == "waiting_input":
             if sid in self._sessions:
                 self._sessions[sid]["waiting"] = True
+                self._sessions[sid]["last_event_at"] = now
         elif t == "token_usage":
             if sid in self._sessions:
                 self._sessions[sid]["input_tokens"] = int(event.get("input_tokens", 0))
                 self._sessions[sid]["output_tokens"] = int(event.get("output_tokens", 0))
+                self._sessions[sid]["last_event_at"] = now
         elif t == "agent_stopped":
             self._sessions.pop(sid, None)
 
@@ -152,6 +159,49 @@ class PixelOfficeBus:
                 for sid, info in self._sessions.items()
                 if info.get("agent") in allowed_slugs
             }
+
+    def reap_stale_sessions(self, max_idle_seconds: int = 600) -> list[str]:
+        """Drop sessions that have not seen any event for ``max_idle_seconds``.
+
+        Returns the list of session_ids that were reaped. Each reaping
+        publishes a synthetic ``agent_stopped`` event so any connected
+        subscriber removes the character cleanly. Default idle threshold
+        is 10 minutes — long enough for a slow Claude turn, short enough
+        to clear zombie sessions from network blips, aborts, or test
+        traffic that never sent ``agent_stopped``.
+        """
+        reaped: list[str] = []
+        cutoff = time.time() - max_idle_seconds
+        with self._lock:
+            for sid, info in list(self._sessions.items()):
+                last = info.get("last_event_at", 0) or 0
+                if last < cutoff:
+                    reaped.append(sid)
+                    self._sessions.pop(sid, None)
+        # Publish stop events OUTSIDE the lock so subscribers can flow
+        # through publish() naturally.
+        for sid in reaped:
+            self.publish({
+                "type": "agent_stopped",
+                "session_id": sid,
+                "agent": "reaper",
+                "ts": "",
+            })
+        return reaped
+
+    def clear_all_sessions(self) -> list[str]:
+        """Drop every session right now (admin reset). Returns the list of cleared ids."""
+        with self._lock:
+            cleared = list(self._sessions.keys())
+            self._sessions.clear()
+        for sid in cleared:
+            self.publish({
+                "type": "agent_stopped",
+                "session_id": sid,
+                "agent": "admin",
+                "ts": "",
+            })
+        return cleared
 
     def stats(self) -> dict[str, Any]:
         """Return runtime metrics for the bus. Safe for concurrent reads."""

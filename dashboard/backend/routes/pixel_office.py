@@ -207,6 +207,52 @@ def put_seats():
     return jsonify({"ok": True})
 
 
+@bp.post("/sessions/clear")
+def clear_sessions():
+    """Admin-only: wipe every tracked session and broadcast agent_stopped for each.
+
+    Useful after smoke tests left zombie sessions on screen, or when the bus
+    drifted during a deploy. Requires ``agents:manage`` so a viewer can't nuke
+    every other operator's office.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({"error": "auth required"}), 401
+    if not has_permission(current_user.role, "agents", "manage"):
+        return jsonify({"error": "forbidden"}), 403
+    cleared = bus.clear_all_sessions()
+    try:
+        audit(
+            current_user,
+            "pixel_office.sessions_cleared",
+            resource="pixel_office",
+            detail=f"cleared {len(cleared)} session(s)",
+        )
+    except Exception:
+        pass
+    return jsonify({"ok": True, "cleared": cleared})
+
+
+@bp.post("/sessions/reap")
+def reap_stale():
+    """Admin-only: force a janitor pass right now. Returns ids reaped.
+
+    The background janitor thread (started in app.py) runs every 60 s with the
+    default 10-minute idle cutoff; this endpoint lets an operator force a
+    sweep on demand and accept a different cutoff via ``?max_idle_seconds=N``.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({"error": "auth required"}), 401
+    if not has_permission(current_user.role, "agents", "manage"):
+        return jsonify({"error": "forbidden"}), 403
+    try:
+        max_idle = int(request.args.get("max_idle_seconds", "600"))
+        max_idle = max(30, min(86400, max_idle))
+    except ValueError:
+        max_idle = 600
+    reaped = bus.reap_stale_sessions(max_idle_seconds=max_idle)
+    return jsonify({"ok": True, "reaped": reaped, "max_idle_seconds": max_idle})
+
+
 def _build_subscriber_filter(allowed: set[str] | None):
     """Return a (event, ctx) -> bool predicate or None when no filter applies."""
     if allowed is None:
