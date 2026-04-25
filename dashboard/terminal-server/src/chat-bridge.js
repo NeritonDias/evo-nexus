@@ -534,6 +534,13 @@ class ChatBridge {
       sdkSessionId: sdkSessionId || null,
       pixelOfficeAgent: agentName || 'main',
       pixelOfficeSessionId: _poSessionId(sessionId),
+      // Pixel-office: when this session delegates via the Task tool, we
+      // spawn a *separate* character in the office for the subagent.
+      // tool_use_id (from the parent's tool_use block) -> {slug, sessionId,
+      //   stopped} so we can (a) route its sub-stream tool events via
+      // parent_tool_use_id and (b) emit agent_stopped exactly once when
+      // the parent's tool_result lands.
+      pixelOfficeSubagents: new Map(),
     };
     this.sessions.set(sessionId, session);
     // Pixel-office: announce the session so the office canvas spawns a
@@ -571,6 +578,23 @@ class ChatBridge {
             }
           }
 
+          // ───────── Pixel-office routing ─────────
+          // Decide whether this SDK message is from the parent session or
+          // from a delegated subagent stream. The SDK marks subagent
+          // messages with `parent_tool_use_id` matching the parent's Task
+          // tool block id. We keep a per-session subagent map that lets
+          // us emit events as if the subagent were its own session — so
+          // the office canvas spawns a NEW character (e.g. apex-architect)
+          // in its department's room while oracle keeps its own seat.
+          const ptid = message.parent_tool_use_id;
+          let effAgent = session.pixelOfficeAgent;
+          let effSessionId = session.pixelOfficeSessionId;
+          if (ptid && session.pixelOfficeSubagents.has(ptid)) {
+            const sub = session.pixelOfficeSubagents.get(ptid);
+            effAgent = sub.slug;
+            effSessionId = sub.sessionId;
+          }
+
           // Auto-detect ticket creation in tool_result blocks.
           // Pixel-office: peek at assistant tool_use blocks and emit
           // tool_started so the office overlay reflects activity. Done
@@ -580,37 +604,65 @@ class ChatBridge {
             const cs = message.message?.content || message.content;
             if (Array.isArray(cs)) {
               for (const blk of cs) {
-                if (blk?.type === 'tool_use' && blk.name) {
-                  const inp = blk.input || {};
-                  let label = blk.name;
-                  if (blk.name === 'Read' && typeof inp.file_path === 'string')
-                    label = 'Reading ' + inp.file_path.split('/').pop();
-                  else if (blk.name === 'Edit' && typeof inp.file_path === 'string')
-                    label = 'Editing ' + inp.file_path.split('/').pop();
-                  else if (blk.name === 'Write' && typeof inp.file_path === 'string')
-                    label = 'Writing ' + inp.file_path.split('/').pop();
-                  else if (blk.name === 'Bash' && typeof inp.command === 'string')
-                    label = 'Running: ' + (inp.command.length > 50 ? inp.command.slice(0, 50) + '…' : inp.command);
-                  else if (blk.name === 'Grep') label = 'Searching code';
-                  else if (blk.name === 'Glob') label = 'Searching files';
-                  else if ((blk.name === 'Task' || blk.name === 'Agent') && typeof inp.description === 'string')
-                    label = 'Subtask: ' + inp.description.slice(0, 50);
+                if (blk?.type !== 'tool_use' || !blk.name) continue;
+                const inp = blk.input || {};
+
+                // Delegation: when oracle (or anyone) calls Task/Agent on
+                // a known subagent slug, spawn that agent as a separate
+                // character. The subagent's own work then streams in via
+                // messages with parent_tool_use_id === blk.id.
+                if (
+                  (blk.name === 'Task' || blk.name === 'Agent') &&
+                  typeof inp.subagent_type === 'string' &&
+                  blk.id &&
+                  !session.pixelOfficeSubagents.has(blk.id)
+                ) {
+                  const subSlug = inp.subagent_type;
+                  const subSessionId = `sub-${blk.id}`;
+                  session.pixelOfficeSubagents.set(blk.id, {
+                    slug: subSlug,
+                    sessionId: subSessionId,
+                  });
                   postPixelOfficeEvent({
-                    type: 'tool_started',
-                    agent: session.pixelOfficeAgent,
-                    session_id: session.pixelOfficeSessionId,
-                    tool: label,
+                    type: 'agent_started',
+                    agent: subSlug,
+                    session_id: subSessionId,
                     ts: _nowIso(),
                   });
                 }
+
+                let label = blk.name;
+                if (blk.name === 'Read' && typeof inp.file_path === 'string')
+                  label = 'Reading ' + inp.file_path.split('/').pop();
+                else if (blk.name === 'Edit' && typeof inp.file_path === 'string')
+                  label = 'Editing ' + inp.file_path.split('/').pop();
+                else if (blk.name === 'Write' && typeof inp.file_path === 'string')
+                  label = 'Writing ' + inp.file_path.split('/').pop();
+                else if (blk.name === 'Bash' && typeof inp.command === 'string')
+                  label = 'Running: ' + (inp.command.length > 50 ? inp.command.slice(0, 50) + '…' : inp.command);
+                else if (blk.name === 'Grep') label = 'Searching code';
+                else if (blk.name === 'Glob') label = 'Searching files';
+                else if ((blk.name === 'Task' || blk.name === 'Agent') && typeof inp.description === 'string')
+                  label = 'Subtask: ' + inp.description.slice(0, 50);
+
+                // Tool emission goes to whichever session is "live" for
+                // this stream — parent or delegated subagent.
+                postPixelOfficeEvent({
+                  type: 'tool_started',
+                  agent: effAgent,
+                  session_id: effSessionId,
+                  tool: label,
+                  ts: _nowIso(),
+                });
               }
             }
-            // Token usage if SDK reported it
+            // Token usage if SDK reported it — also routed to the right
+            // session so each character shows its own running counters.
             const usage = message.message?.usage;
             if (usage && (usage.input_tokens || usage.output_tokens)) {
               postPixelOfficeEvent({
                 type: 'token_usage',
-                session_id: session.pixelOfficeSessionId,
+                session_id: effSessionId,
                 input_tokens: usage.input_tokens || 0,
                 output_tokens: usage.output_tokens || 0,
                 ts: _nowIso(),
@@ -623,13 +675,35 @@ class ChatBridge {
             if (Array.isArray(content)) {
               for (const block of content) {
                 if (block.type === 'tool_result' && block.tool_use_id) {
-                  postPixelOfficeEvent({
-                    type: 'tool_finished',
-                    agent: session.pixelOfficeAgent,
-                    session_id: session.pixelOfficeSessionId,
-                    tool: '',
-                    ts: _nowIso(),
-                  });
+                  // If this tool_result closes a delegation, emit
+                  // agent_stopped for the subagent character (it walks
+                  // back / despawns) AND a tool_finished for the parent
+                  // (oracle's Task block is now done).
+                  const sub = session.pixelOfficeSubagents.get(block.tool_use_id);
+                  if (sub) {
+                    postPixelOfficeEvent({
+                      type: 'agent_stopped',
+                      agent: sub.slug,
+                      session_id: sub.sessionId,
+                      ts: _nowIso(),
+                    });
+                    session.pixelOfficeSubagents.delete(block.tool_use_id);
+                    postPixelOfficeEvent({
+                      type: 'tool_finished',
+                      agent: session.pixelOfficeAgent,
+                      session_id: session.pixelOfficeSessionId,
+                      tool: '',
+                      ts: _nowIso(),
+                    });
+                  } else {
+                    postPixelOfficeEvent({
+                      type: 'tool_finished',
+                      agent: effAgent,
+                      session_id: effSessionId,
+                      tool: '',
+                      ts: _nowIso(),
+                    });
+                  }
                 }
                 if (block.type !== 'tool_result') continue;
                 const raw = Array.isArray(block.content)
@@ -654,6 +728,18 @@ class ChatBridge {
 
         session.active = false;
         this.sessions.delete(sessionId);
+        // Despawn any delegated subagent characters that didn't get a
+        // tool_result close (rare — usually means the parent stopped
+        // mid-delegation).
+        for (const sub of session.pixelOfficeSubagents.values()) {
+          postPixelOfficeEvent({
+            type: 'agent_stopped',
+            agent: sub.slug,
+            session_id: sub.sessionId,
+            ts: _nowIso(),
+          });
+        }
+        session.pixelOfficeSubagents.clear();
         postPixelOfficeEvent({
           type: 'agent_stopped',
           agent: session.pixelOfficeAgent,
@@ -665,6 +751,15 @@ class ChatBridge {
         console.error(`[chat-bridge] Error in session ${sessionId}:`, err.message || err);
         session.active = false;
         this.sessions.delete(sessionId);
+        for (const sub of session.pixelOfficeSubagents.values()) {
+          postPixelOfficeEvent({
+            type: 'agent_stopped',
+            agent: sub.slug,
+            session_id: sub.sessionId,
+            ts: _nowIso(),
+          });
+        }
+        session.pixelOfficeSubagents.clear();
         postPixelOfficeEvent({
           type: 'agent_stopped',
           agent: session.pixelOfficeAgent,
