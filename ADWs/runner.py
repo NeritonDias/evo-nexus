@@ -14,6 +14,16 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.theme import Theme
 
+# Pixel-office event emission is a best-effort side-channel.
+# runner.py is invoked from many contexts (CLI, scheduler, ad-hoc scripts);
+# the import must be defensive so a missing module / misconfigured env never
+# prevents `run_claude` from working.
+try:
+    from ADWs.pixel_office_client import post_event as _px_emit
+except Exception:  # pragma: no cover — defensive import
+    def _px_emit(*_args, **_kwargs):  # noqa: ANN001
+        return
+
 theme = Theme({
     "info": "cyan",
     "success": "bold green",
@@ -219,6 +229,17 @@ def run_claude(prompt: str, log_name: str = "unnamed", timeout: int = 600, agent
 
     start_time = datetime.now()
 
+    _session_id = f"{log_name}-{_timestamp()}"
+    try:
+        _px_emit({
+            "type": "agent_started",
+            "agent": agent or "main",
+            "session_id": _session_id,
+            "ts": datetime.now().isoformat(),
+        })
+    except Exception:
+        pass
+
     try:
         process = _spawn_cli(cli_command, prompt, agent, provider_env)
 
@@ -261,6 +282,24 @@ def run_claude(prompt: str, log_name: str = "unnamed", timeout: int = 600, agent
                 for err_line in stderr.strip().splitlines()[:3]:
                     console.print(f"    [error]{err_line}[/error]")
 
+        try:
+            if usage:
+                _px_emit({
+                    "type": "token_usage",
+                    "session_id": _session_id,
+                    "input_tokens": usage["input_tokens"],
+                    "output_tokens": usage["output_tokens"],
+                    "ts": datetime.now().isoformat(),
+                })
+            _px_emit({
+                "type": "agent_stopped",
+                "session_id": _session_id,
+                "agent": agent or "main",
+                "ts": datetime.now().isoformat(),
+            })
+        except Exception:
+            pass
+
         return {
             "success": process.returncode == 0,
             "stdout": result_text,
@@ -275,6 +314,15 @@ def run_claude(prompt: str, log_name: str = "unnamed", timeout: int = 600, agent
         duration = (datetime.now() - start_time).total_seconds()
         console.print(f"\r  [error]✗[/error] {log_name} [warning](timeout {timeout}s)[/warning]")
         _log_to_file(log_name, prompt, "", f"Timeout after {timeout}s", -1, duration)
+        try:
+            _px_emit({
+                "type": "agent_stopped",
+                "session_id": _session_id,
+                "agent": agent or "main",
+                "ts": datetime.now().isoformat(),
+            })
+        except Exception:
+            pass
         return {"success": False, "stdout": "", "stderr": f"Timeout after {timeout}s", "returncode": -1, "duration": duration}
 
     except KeyboardInterrupt:
@@ -282,12 +330,30 @@ def run_claude(prompt: str, log_name: str = "unnamed", timeout: int = 600, agent
         duration = (datetime.now() - start_time).total_seconds()
         console.print(f"\n  [warning]⚠ Cancelled by user[/warning]")
         _log_to_file(log_name, prompt, "", "Cancelled by user", -2, duration)
+        try:
+            _px_emit({
+                "type": "agent_stopped",
+                "session_id": _session_id,
+                "agent": agent or "main",
+                "ts": datetime.now().isoformat(),
+            })
+        except Exception:
+            pass
         raise
 
     except Exception as e:
         duration = (datetime.now() - start_time).total_seconds()
         console.print(f"\r  [error]✗[/error] {log_name} [error]({e})[/error]")
         _log_to_file(log_name, prompt, "", str(e), -3, duration)
+        try:
+            _px_emit({
+                "type": "agent_stopped",
+                "session_id": _session_id,
+                "agent": agent or "main",
+                "ts": datetime.now().isoformat(),
+            })
+        except Exception:
+            pass
         return {"success": False, "stdout": "", "stderr": str(e), "returncode": -3, "duration": duration}
 
 
