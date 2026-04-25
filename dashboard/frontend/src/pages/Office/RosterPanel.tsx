@@ -68,18 +68,28 @@ export function RosterPanel({ officeState, onSelect }: Props) {
           const isActive = active.has(a.name);
           const statusDot = isActive ? '#22c55e' : '#475569';
           const colorDot = a.color || '#64748b';
+          const activate = () => {
+            for (const [id, ch] of officeState.characters) {
+              if (ch.folderName === a.name) {
+                onSelect(id);
+                return;
+              }
+            }
+          };
           return (
             <li
               key={a.name}
-              onClick={() => {
-                for (const [id, ch] of officeState.characters) {
-                  if (ch.folderName === a.name) {
-                    onSelect(id);
-                    return;
-                  }
+              role="button"
+              tabIndex={0}
+              aria-label={a.name}
+              onClick={activate}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  activate();
                 }
               }}
-              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 cursor-pointer text-sm"
+              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 focus:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer text-sm"
               title={a.description}
             >
               <span

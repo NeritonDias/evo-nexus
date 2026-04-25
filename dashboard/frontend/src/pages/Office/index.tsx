@@ -211,7 +211,10 @@ export default function Office() {
   if (isNarrow) {
     return (
       <div className="w-full h-[calc(100vh-56px)] flex flex-col bg-[#0C111D]">
-        <header className="px-4 py-2 border-b border-slate-800 text-slate-200 text-sm flex items-center justify-between">
+        <header
+          role="banner"
+          className="px-4 py-2 border-b border-slate-800 text-slate-200 text-sm flex items-center justify-between"
+        >
           <span>{t('office.title', 'Office — live agent activity')}</span>
           <span className={wsConnected ? 'text-emerald-400' : 'text-amber-400'}>
             {wsConnected ? '● live' : '○ reconnecting'}
@@ -235,17 +238,20 @@ export default function Office() {
 
   return (
     <div className="w-full h-[calc(100vh-56px)] flex flex-col bg-[#0C111D]">
-      <header className="px-4 py-2 border-b border-slate-800 text-slate-200 text-sm flex items-center justify-between">
+      <header
+        role="banner"
+        className="px-4 py-2 border-b border-slate-800 text-slate-200 text-sm flex items-center justify-between"
+      >
         <span>{t('office.title', 'Office — live agent activity')}</span>
         <span className={wsConnected ? 'text-emerald-400' : 'text-amber-400'}>
           {wsConnected ? '● live' : '○ reconnecting'}
         </span>
       </header>
       <div className="h-10 flex items-center gap-6 px-4 text-xs text-slate-400 border-b border-slate-900">
-        <span>
+        <span aria-live="polite">
           {activeCount} {activeCount === 1 ? 'agent' : 'agents'} online
         </span>
-        <span>
+        <span aria-live="polite">
           {totalIn.toLocaleString()} in · {totalOut.toLocaleString()} out tokens
         </span>
       </div>
@@ -257,7 +263,11 @@ export default function Office() {
             os.cameraFollowId = id;
           }}
         />
-        <div className="flex-1 min-w-0 relative">
+        <div
+          className="flex-1 min-w-0 relative"
+          role="img"
+          aria-label={t('office.title', 'Office — live agent activity')}
+        >
           <OfficeErrorBoundary>
             <OfficeCanvasLite
               officeState={os}
@@ -275,7 +285,11 @@ export default function Office() {
           )}
           {debugEnabled && <DebugOverlay officeState={os} wsConnected={wsConnected} />}
           {activeCount === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div
+              role="status"
+              aria-label="Office is empty"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            >
               <div className="text-slate-500 text-sm">
                 {t('office.empty', 'Office is quiet. Trigger an agent to see them at work.')}
               </div>
