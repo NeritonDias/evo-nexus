@@ -65,6 +65,88 @@ export default function Office() {
 
   usePixelOfficeSocket(ready ? osRef.current : null);
 
+  // Seat persistence: fetch saved seat assignments on mount, reconcile periodically
+  // while the page is open, and persist on unmount.
+  const savedSeatsRef = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/pixel-office/seats')
+      .then((r) => (r.ok ? r.json() : { seats: [] }))
+      .then((data: { seats?: Array<{ agent_slug: string; seat_id: string }> }) => {
+        if (cancelled || !data || !Array.isArray(data.seats)) return;
+        const map = new Map<string, string>();
+        for (const s of data.seats) {
+          if (s && typeof s.agent_slug === 'string' && typeof s.seat_id === 'string' && s.seat_id) {
+            map.set(s.agent_slug, s.seat_id);
+          }
+        }
+        savedSeatsRef.current = map;
+      })
+      .catch(() => {
+        /* best-effort — fall back to default seat assignment */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Reconcile loop: when a character is spawned without our preferred seat,
+  // ask the engine to reassign. Runs every second; cheap because reassignSeat
+  // is a no-op when the character is already at the saved seat.
+  useEffect(() => {
+    if (!ready) return;
+    const id = window.setInterval(() => {
+      const os = osRef.current;
+      if (!os) return;
+      const saved = savedSeatsRef.current;
+      if (saved.size === 0) return;
+      for (const ch of os.characters.values()) {
+        if (!ch.folderName) continue;
+        const want = saved.get(ch.folderName);
+        if (!want) continue;
+        if (ch.seatId === want) continue;
+        // Only reassign if the saved seat exists and is free (or is already ours).
+        const seat = os.seats.get(want);
+        if (!seat) continue;
+        if (seat.assigned && ch.seatId !== want) continue;
+        os.reassignSeat(ch.id, want);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [ready]);
+
+  // Persist seat assignments on unmount.
+  useEffect(() => {
+    return () => {
+      const os = osRef.current;
+      if (!os) return;
+      const seats: Array<{
+        agent_slug: string;
+        seat_id: string;
+        palette: number;
+        hue_shift: number;
+      }> = [];
+      for (const ch of os.characters.values()) {
+        if (!ch.folderName || !ch.seatId) continue;
+        seats.push({
+          agent_slug: ch.folderName,
+          seat_id: ch.seatId,
+          palette: ch.palette,
+          hue_shift: ch.hueShift || 0,
+        });
+      }
+      if (seats.length > 0) {
+        fetch('/api/pixel-office/seats', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ seats }),
+        }).catch(() => {
+          /* best-effort — unmount fire-and-forget */
+        });
+      }
+    };
+  }, []);
+
   // Re-render every second to refresh metrics display (cheap: no canvas redraw)
   useEffect(() => {
     const id = window.setInterval(() => setTick((v) => v + 1), 1000);
