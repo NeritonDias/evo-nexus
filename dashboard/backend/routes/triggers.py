@@ -16,6 +16,15 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user
 from models import db, Trigger, TriggerExecution, has_permission, audit
 
+# Pixel-office event emission — best-effort side channel. Defensive import so
+# triggers continue to work even if the ADWs package layout changes or the
+# client isn't importable (e.g. running tests without the ADWs path on sys.path).
+try:
+    from ADWs.pixel_office_client import post_event as _px_emit
+except Exception:  # pragma: no cover — fall back to a no-op
+    def _px_emit(*_a, **_k):
+        return
+
 bp = Blueprint("triggers", __name__)
 
 WORKSPACE = Path(__file__).resolve().parent.parent.parent.parent
@@ -524,10 +533,37 @@ def _execute_trigger(trigger_id: int, execution_id: int, event_data: dict):
             if not script_path.exists():
                 raise FileNotFoundError(f"Script not found: {trigger.action_payload}")
 
-            proc = subprocess.run(
-                [PYTHON_CMD.split()[0]] + PYTHON_CMD.split()[1:] + [str(script_path)],
-                capture_output=True, text=True, timeout=660, cwd=str(WORKSPACE)
+            # Pixel-office: announce script start so a character pops in.
+            _session_id = f"trigger-{trigger.id}-{execution_id}"
+            _agent_label = (
+                getattr(trigger, "action_target", None)
+                or getattr(trigger, "agent", None)
+                or "script"
             )
+            try:
+                _px_emit({
+                    "type": "agent_started",
+                    "agent": _agent_label,
+                    "session_id": _session_id,
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                })
+            except Exception:
+                pass
+            try:
+                proc = subprocess.run(
+                    [PYTHON_CMD.split()[0]] + PYTHON_CMD.split()[1:] + [str(script_path)],
+                    capture_output=True, text=True, timeout=660, cwd=str(WORKSPACE)
+                )
+            finally:
+                try:
+                    _px_emit({
+                        "type": "agent_stopped",
+                        "session_id": _session_id,
+                        "agent": _agent_label,
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                    })
+                except Exception:
+                    pass
             result = {
                 "success": proc.returncode == 0,
                 "stdout": (proc.stdout or "")[:5000],
