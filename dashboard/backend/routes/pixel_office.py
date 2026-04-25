@@ -1,9 +1,12 @@
-"""Pixel-office routes: hook ingestion (HTTP POST), WebSocket stream, agent roster.
+"""Pixel-office routes: hook ingestion (HTTP POST), WebSocket stream, agent roster,
+snapshot for late joiners, seat persistence.
 
 Authentication: the HTTP hook endpoint expects a shared secret
 `PIXEL_OFFICE_HOOK_TOKEN` env var that the hook script reads too. Missing or
 wrong token → 401. This endpoint is explicitly allow-listed upstream of
 login_required because local shell hooks can't carry a user session.
+
+Authenticated endpoints (/snapshot, /seats) require session login.
 """
 from __future__ import annotations
 
@@ -11,9 +14,12 @@ import json
 import os
 import re
 import secrets
+import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
+from flask_login import current_user
 from flask_sock import Sock
 
 from pixel_office_bus import bus
@@ -85,6 +91,80 @@ def roster():
                 "slug": md.stem,
             })
     return jsonify({"agents": agents})
+
+
+@bp.get("/snapshot")
+def snapshot():
+    """Return the current session map for late joiners reconstructing state."""
+    if not current_user.is_authenticated:
+        return jsonify({"error": "auth required"}), 401
+    return jsonify({"sessions": bus.snapshot()})
+
+
+# ── Seat persistence (Phase 10) ──────────────────────────────────────────────
+
+
+def _db_path() -> str:
+    return current_app.config["SQLALCHEMY_DATABASE_URI"].replace("sqlite:///", "")
+
+
+@bp.get("/seats")
+def list_seats():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "auth required"}), 401
+    conn = sqlite3.connect(_db_path())
+    try:
+        rows = conn.execute(
+            "SELECT agent_slug, seat_id, palette, hue_shift FROM pixel_office_seats"
+        ).fetchall()
+    except sqlite3.OperationalError:
+        # Table may not exist yet (migration runs on app startup). Return empty.
+        rows = []
+    finally:
+        conn.close()
+    return jsonify({
+        "seats": [
+            {"agent_slug": r[0], "seat_id": r[1], "palette": r[2], "hue_shift": r[3]}
+            for r in rows
+        ]
+    })
+
+
+@bp.put("/seats")
+def put_seats():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "auth required"}), 401
+    data = request.get_json(silent=True) or {}
+    items = data.get("seats", [])
+    if not isinstance(items, list):
+        return jsonify({"error": "seats must be a list"}), 400
+    now = datetime.now(timezone.utc).isoformat()
+    conn = sqlite3.connect(_db_path())
+    try:
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            slug = item.get("agent_slug")
+            if not slug or not isinstance(slug, str):
+                continue
+            conn.execute(
+                """INSERT INTO pixel_office_seats (agent_slug, seat_id, palette, hue_shift, updated_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(agent_slug) DO UPDATE SET
+                     seat_id=excluded.seat_id, palette=excluded.palette,
+                     hue_shift=excluded.hue_shift, updated_at=excluded.updated_at""",
+                (
+                    slug,
+                    str(item.get("seat_id", "")),
+                    int(item.get("palette", 0)),
+                    int(item.get("hue_shift", 0)),
+                    now,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True})
 
 
 @sock.route("/ws/pixel-office")

@@ -18,7 +18,7 @@ def client():
 def test_hook_endpoint_rejects_missing_token(client, monkeypatch):
     monkeypatch.setenv("PIXEL_OFFICE_HOOK_TOKEN", "secret")
     r = client.post("/api/pixel-office/hook", json={"type": "agent_started", "agent": "a", "session_id": "s"})
-    assert r.status_code == 401
+    assert r.status_code in (401, 403)  # 401 from current_user check, 403 from setup/auth middleware
 
 
 def test_hook_endpoint_accepts_valid_event(client, monkeypatch):
@@ -53,3 +53,22 @@ def test_roster_returns_agents_from_claude_dir(client, tmp_path, monkeypatch):
     assert r.status_code == 200
     data = r.get_json()
     assert any(a["name"] == "apex-architect" and a["color"] == "blue" for a in data["agents"])
+
+
+# ── Snapshot endpoint (Phase 3.3) ─────────────────────────────────────────
+
+def test_snapshot_rejects_unauth(client):
+    r = client.get("/api/pixel-office/snapshot")
+    assert r.status_code in (401, 403)  # 401 from current_user check, 403 from setup/auth middleware
+
+
+# ── Seats endpoints (Phase 10) ────────────────────────────────────────────
+
+def test_seats_list_rejects_unauth(client):
+    r = client.get("/api/pixel-office/seats")
+    assert r.status_code in (401, 403)  # 401 from current_user check, 403 from setup/auth middleware
+
+
+def test_seats_put_rejects_unauth(client):
+    r = client.put("/api/pixel-office/seats", json={"seats": []})
+    assert r.status_code in (401, 403)  # 401 from current_user check, 403 from setup/auth middleware

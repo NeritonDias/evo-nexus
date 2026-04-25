@@ -101,3 +101,48 @@ def test_event_type_enum_covers_the_spec():
         "waiting_input", "notification",
         "token_usage",
     }
+
+
+# ── Snapshot (Phase 3.3) ──────────────────────────────────────────────────
+
+def test_bus_snapshot_returns_current_sessions():
+    bus = PixelOfficeBus()
+    bus.publish({"type": "agent_started", "agent": "a", "session_id": "s1", "ts": "t1"})
+    bus.publish({"type": "tool_started", "session_id": "s1", "agent": "a", "tool": "Read", "ts": "t2"})
+    bus.publish({"type": "agent_started", "agent": "b", "session_id": "s2", "ts": "t3"})
+    snap = bus.snapshot()
+    assert "s1" in snap and snap["s1"]["agent"] == "a" and snap["s1"]["tool"] == "Read"
+    assert "s2" in snap and snap["s2"]["agent"] == "b"
+
+
+def test_bus_snapshot_drops_stopped_sessions():
+    bus = PixelOfficeBus()
+    bus.publish({"type": "agent_started", "agent": "a", "session_id": "s1", "ts": "t1"})
+    bus.publish({"type": "agent_stopped", "session_id": "s1", "agent": "a", "ts": "t2"})
+    assert "s1" not in bus.snapshot()
+
+
+def test_bus_snapshot_tracks_token_usage():
+    bus = PixelOfficeBus()
+    bus.publish({"type": "agent_started", "agent": "a", "session_id": "s1", "ts": "t1"})
+    bus.publish({"type": "token_usage", "session_id": "s1", "input_tokens": 100, "output_tokens": 50, "ts": "t2"})
+    snap = bus.snapshot()
+    assert snap["s1"]["input_tokens"] == 100
+    assert snap["s1"]["output_tokens"] == 50
+
+
+def test_bus_snapshot_clears_tool_on_finish():
+    bus = PixelOfficeBus()
+    bus.publish({"type": "agent_started", "agent": "a", "session_id": "s1", "ts": "t1"})
+    bus.publish({"type": "tool_started", "session_id": "s1", "agent": "a", "tool": "Bash", "ts": "t2"})
+    bus.publish({"type": "tool_finished", "session_id": "s1", "agent": "a", "tool": "Bash", "ts": "t3"})
+    assert bus.snapshot()["s1"]["tool"] is None
+
+
+def test_bus_snapshot_is_deep_copy():
+    bus = PixelOfficeBus()
+    bus.publish({"type": "agent_started", "agent": "a", "session_id": "s1", "ts": "t1"})
+    snap1 = bus.snapshot()
+    snap1["s1"]["agent"] = "mutated"
+    snap2 = bus.snapshot()
+    assert snap2["s1"]["agent"] == "a"
