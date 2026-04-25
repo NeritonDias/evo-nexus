@@ -20,6 +20,13 @@ from pathlib import Path
 
 import schedule
 
+# Pixel Office event emission — best-effort, never fail a heartbeat run.
+try:
+    from ADWs.pixel_office_client import post_event as _px_emit
+except Exception:
+    def _px_emit(*_a, **_k):
+        return
+
 WORKSPACE = Path(__file__).resolve().parent.parent.parent
 
 # Thread pool for async heartbeat runs (size 4)
@@ -109,10 +116,13 @@ def dispatch(heartbeat_id: str, trigger_type: str, payload: dict | None = None) 
     # Check if heartbeat is enabled in DB
     conn = _get_db()
     try:
-        row = conn.execute("SELECT enabled FROM heartbeats WHERE id = ?", (heartbeat_id,)).fetchone()
+        row = conn.execute(
+            "SELECT enabled, agent FROM heartbeats WHERE id = ?", (heartbeat_id,)
+        ).fetchone()
         if not row or not row["enabled"]:
             print(f"[dispatcher] heartbeat {heartbeat_id} is disabled, skipping", flush=True)
             return False, None
+        heartbeat_agent_slug = row["agent"]
     finally:
         conn.close()
 
@@ -132,6 +142,16 @@ def dispatch(heartbeat_id: str, trigger_type: str, payload: dict | None = None) 
 
     def _run():
         from heartbeat_runner import run_heartbeat
+        _ts_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            _px_emit({
+                "type": "agent_started",
+                "agent": heartbeat_agent_slug,
+                "session_id": f"hb-{run_id}",
+                "ts": _ts_iso,
+            })
+        except Exception:
+            pass
         try:
             _mark_trigger_consumed(trigger_id)
             run_heartbeat(
@@ -142,6 +162,16 @@ def dispatch(heartbeat_id: str, trigger_type: str, payload: dict | None = None) 
             )
         except Exception as exc:
             print(f"[dispatcher] ERROR running {heartbeat_id} run_id={run_id}: {exc}", flush=True)
+        finally:
+            try:
+                _px_emit({
+                    "type": "agent_stopped",
+                    "session_id": f"hb-{run_id}",
+                    "agent": heartbeat_agent_slug,
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                })
+            except Exception:
+                pass
 
     print(f"[dispatcher] dispatching {heartbeat_id} trigger_type={trigger_type} run_id={run_id}", flush=True)
     _executor.submit(_run)
