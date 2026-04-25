@@ -21,9 +21,18 @@ interface Props {
   zoom: number;
   onZoomChange: (z: number) => void;
   panRef: React.MutableRefObject<{ x: number; y: number }>;
+  /** When true, every character renders its agent slug above its head. Default: true. */
+  alwaysShowLabels?: boolean;
 }
 
-export function OfficeCanvasLite({ officeState, onSelect, zoom, onZoomChange, panRef }: Props) {
+export function OfficeCanvasLite({
+  officeState,
+  onSelect,
+  zoom,
+  onZoomChange,
+  panRef,
+  alwaysShowLabels = true,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef({ x: 0, y: 0 });
@@ -117,13 +126,14 @@ export function OfficeCanvasLite({ officeState, onSelect, zoom, onZoomChange, pa
           officeState.getLayout().tileColors,
           officeState.getLayout().cols,
           officeState.getLayout().rows,
+          alwaysShowLabels,
         );
         offsetRef.current = { x: offsetX, y: offsetY };
       },
     });
 
     return () => { stop(); observer.disconnect(); };
-  }, [officeState, resizeCanvas, zoom, panRef]);
+  }, [officeState, resizeCanvas, zoom, panRef, alwaysShowLabels]);
 
   const screenToWorld = useCallback(
     (clientX: number, clientY: number) => {

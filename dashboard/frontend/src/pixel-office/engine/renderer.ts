@@ -485,6 +485,60 @@ function renderRotateButton(
   return { cx, cy, radius };
 }
 
+// ── Always-on name labels ──────────────────────────────────────
+
+/** Draws each character's `folderName` as a small label above its head. */
+function renderLabels(
+  ctx: CanvasRenderingContext2D,
+  characters: Character[],
+  offsetX: number,
+  offsetY: number,
+  zoom: number,
+): void {
+  ctx.save();
+  // Pixel-style label: monospace, no smoothing, small caps height.
+  const fontPx = Math.max(8, Math.round(5 * zoom));
+  ctx.font = `${fontPx}px ui-monospace, "Courier New", monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.imageSmoothingEnabled = false;
+
+  for (const ch of characters) {
+    if (!ch.folderName) continue;
+    if (ch.matrixEffect === 'despawn') continue;
+
+    const sittingOffset = ch.state === CharacterState.TYPE ? CHARACTER_SITTING_OFFSET_PX : 0;
+    // Position: centered above head. Character sprite is ~24px tall, anchored bottom-center.
+    const cx = Math.round(offsetX + ch.x * zoom);
+    const cy = Math.round(offsetY + (ch.y + sittingOffset) * zoom - 26 * zoom);
+
+    const text = ch.folderName;
+    const padX = Math.max(2, Math.round(zoom));
+    const padY = Math.max(1, Math.round(zoom / 2));
+    const metrics = ctx.measureText(text);
+    const w = Math.ceil(metrics.width) + padX * 2;
+    const h = fontPx + padY * 2;
+
+    // Rounded-pixel background for legibility over busy floors.
+    ctx.fillStyle = 'rgba(12, 17, 29, 0.78)';
+    ctx.fillRect(cx - w / 2, cy - h + padY, w, h);
+
+    // Subtle 1px border, scaled with zoom for pixel feel.
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      cx - w / 2 + 0.5,
+      cy - h + padY + 0.5,
+      w - 1,
+      h - 1,
+    );
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillText(text, cx, cy);
+  }
+  ctx.restore();
+}
+
 // ── Speech bubbles ──────────────────────────────────────────────
 
 function renderBubbles(
@@ -583,6 +637,7 @@ export function renderFrame(
   tileColors?: Array<ColorValue | null>,
   layoutCols?: number,
   layoutRows?: number,
+  alwaysShowLabels: boolean = true,
 ): { offsetX: number; offsetY: number } {
   // Clear
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -625,6 +680,11 @@ export function renderFrame(
 
   // Speech bubbles (always on top of characters)
   renderBubbles(ctx, characters, offsetX, offsetY, zoom);
+
+  // Always-on name labels (above bubbles so the slug stays legible)
+  if (alwaysShowLabels) {
+    renderLabels(ctx, characters, offsetX, offsetY, zoom);
+  }
 
   // Editor overlays
   if (editor) {
