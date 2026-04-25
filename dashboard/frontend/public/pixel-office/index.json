@@ -1,0 +1,52 @@
+{
+  "floors": [
+    "floor_0.png",
+    "floor_1.png",
+    "floor_2.png",
+    "floor_3.png",
+    "floor_4.png",
+    "floor_5.png",
+    "floor_6.png",
+    "floor_7.png",
+    "floor_8.png"
+  ],
+  "walls": [
+    "wall_0.png"
+  ],
+  "characters": [
+    "char_0.png",
+    "char_1.png",
+    "char_2.png",
+    "char_3.png",
+    "char_4.png",
+    "char_5.png"
+  ],
+  "furniture": [
+    "BIN",
+    "BOOKSHELF",
+    "CACTUS",
+    "CLOCK",
+    "COFFEE",
+    "COFFEE_TABLE",
+    "CUSHIONED_BENCH",
+    "CUSHIONED_CHAIR",
+    "DESK",
+    "DOUBLE_BOOKSHELF",
+    "HANGING_PLANT",
+    "LARGE_PAINTING",
+    "LARGE_PLANT",
+    "PC",
+    "PLANT",
+    "PLANT_2",
+    "POT",
+    "SMALL_PAINTING",
+    "SMALL_PAINTING_2",
+    "SMALL_TABLE",
+    "SOFA",
+    "TABLE_FRONT",
+    "WHITEBOARD",
+    "WOODEN_BENCH",
+    "WOODEN_CHAIR"
+  ],
+  "defaultLayout": "default-layout-1.json"
+}
