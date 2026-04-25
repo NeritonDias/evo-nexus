@@ -452,6 +452,8 @@ PUBLIC_PATHS = {
     "/api/version",
     "/api/version/check",
     "/api/agents/active",
+    "/api/pixel-office/hook",
+    "/api/pixel-office/roster",
 }
 
 def _try_api_token_auth():
@@ -549,6 +551,7 @@ from routes.knowledge_public import bp as knowledge_public_bp
 from routes.knowledge_proxy import bp as knowledge_proxy_bp
 from routes.knowledge_v1 import bp as knowledge_v1_bp
 from routes.databases import bp as databases_bp
+from routes.pixel_office import bp as pixel_office_bp, sock as pixel_office_sock
 
 app.register_blueprint(overview_bp)
 app.register_blueprint(workspace_bp)
@@ -580,6 +583,8 @@ app.register_blueprint(knowledge_public_bp)
 app.register_blueprint(knowledge_proxy_bp)
 app.register_blueprint(knowledge_v1_bp)
 app.register_blueprint(databases_bp)
+app.register_blueprint(pixel_office_bp)
+pixel_office_sock.init_app(app)
 
 # --------------- Social Auth blueprints ---------------
 from auth.youtube import bp as youtube_auth_bp
