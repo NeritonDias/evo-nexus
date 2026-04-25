@@ -93,3 +93,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+## Pixel Office
+
+`dashboard/frontend/src/pixel-office/` and `dashboard/frontend/public/pixel-office/`
+contain code and art assets adapted from
+[pablodelucca/pixel-agents](https://github.com/pablodelucca/pixel-agents),
+licensed under MIT. See
+`dashboard/frontend/src/pixel-office/LICENSE-pixel-agents` for the full text.

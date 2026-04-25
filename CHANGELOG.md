@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Pixel Office** (`/office`): real-time pixel-art visualization of all
+  active Claude Code agents, adapted from pixel-agents (MIT) by Pablo De Lucca.
+- Broader Claude Code hook coverage (`PreToolUse *`, `PostToolUse *`,
+  `Notification`) feeding a new `/ws/pixel-office` WebSocket stream.
+
 ## [0.30.4] - 2026-04-24
 
 Patch release with a **P0 race-condition fix** in the container entrypoint plus a complete Docker install experience (ready-to-run compose + full tutorial).
