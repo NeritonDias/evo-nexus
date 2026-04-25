@@ -480,7 +480,6 @@ PUBLIC_PATHS = {
     "/api/version/check",
     "/api/agents/active",
     "/api/pixel-office/hook",
-    "/api/pixel-office/roster",
 }
 
 def _try_api_token_auth():

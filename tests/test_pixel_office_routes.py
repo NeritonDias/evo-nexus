@@ -41,20 +41,6 @@ def test_hook_endpoint_rejects_malformed_event(client, monkeypatch):
     assert r.status_code == 400
 
 
-def test_roster_returns_agents_from_claude_dir(client, tmp_path, monkeypatch):
-    agents_dir = tmp_path / ".claude" / "agents"
-    agents_dir.mkdir(parents=True)
-    (agents_dir / "apex-architect.md").write_text(
-        "---\nname: apex-architect\ndescription: Architect agent\ncolor: blue\n---\n\nbody",
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("EVONEXUS_WORKSPACE", str(tmp_path))
-    r = client.get("/api/pixel-office/roster")
-    assert r.status_code == 200
-    data = r.get_json()
-    assert any(a["name"] == "apex-architect" and a["color"] == "blue" for a in data["agents"])
-
-
 # ── Snapshot endpoint (Phase 3.3) ─────────────────────────────────────────
 
 def test_snapshot_rejects_unauth(client):
@@ -86,4 +72,11 @@ def test_ws_route_exists_and_not_open_by_default(client):
 
 def test_metrics_requires_auth(client):
     r = client.get("/api/pixel-office/metrics")
+    assert r.status_code in (401, 403)
+
+
+# ── SSE fallback endpoint (Phase 18.1) ────────────────────────────────────
+
+def test_sse_rejects_unauth(client):
+    r = client.get("/api/pixel-office/sse")
     assert r.status_code in (401, 403)

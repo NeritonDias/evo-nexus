@@ -54,11 +54,15 @@ async function replaySnapshot(os: OfficeState): Promise<void> {
 /** Wires the office canvas to the event bus:
  *  1. Replays snapshot on mount.
  *  2. Opens WebSocket; on disconnect, falls back to polling /api/agents/active.
- *  3. Reconnects with exponential backoff (500ms → 15s). */
+ *  3. Reconnects with exponential backoff (500ms → 15s).
+ *  4. After 3 failed WebSocket reconnects, switches to SSE (/api/pixel-office/sse)
+ *     for environments where WebSocket is blocked (proxies, restrictive firewalls). */
 export function usePixelOfficeSocket(os: OfficeState | null): void {
   const retryRef = useRef(RECONNECT_MIN_MS);
   const pollTimer = useRef<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const wsFailures = useRef(0);
+  const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
     if (!os) return;
@@ -93,6 +97,32 @@ export function usePixelOfficeSocket(os: OfficeState | null): void {
       }
     };
 
+    const switchToSSE = () => {
+      if (closed || esRef.current) return;
+      let es: EventSource;
+      try {
+        es = new EventSource('/api/pixel-office/sse');
+      } catch {
+        return;
+      }
+      esRef.current = es;
+      es.onopen = () => {
+        stopPolling();
+      };
+      es.onmessage = (msg) => {
+        try {
+          const evt = JSON.parse(msg.data) as PixelOfficeEvent;
+          applyEvent(os, evt);
+        } catch {
+          /* drop malformed */
+        }
+      };
+      es.onerror = () => {
+        /* EventSource auto-retries; keep polling fallback active in the meantime */
+        startPolling();
+      };
+    };
+
     const connect = () => {
       if (closed) return;
       const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -102,13 +132,21 @@ export function usePixelOfficeSocket(os: OfficeState | null): void {
         ws = new WebSocket(url);
       } catch {
         startPolling();
+        wsFailures.current += 1;
+        if (wsFailures.current >= 3) {
+          switchToSSE();
+          return;
+        }
         setTimeout(connect, retryRef.current);
         retryRef.current = Math.min(retryRef.current * 2, RECONNECT_MAX_MS);
         return;
       }
       wsRef.current = ws;
+      let opened = false;
 
       ws.onopen = () => {
+        opened = true;
+        wsFailures.current = 0;
         retryRef.current = RECONNECT_MIN_MS;
         stopPolling();
       };
@@ -125,7 +163,14 @@ export function usePixelOfficeSocket(os: OfficeState | null): void {
       };
       ws.onclose = () => {
         if (closed) return;
+        if (!opened) {
+          wsFailures.current += 1;
+        }
         startPolling();
+        if (wsFailures.current >= 3) {
+          switchToSSE();
+          return;
+        }
         const delay = retryRef.current;
         retryRef.current = Math.min(retryRef.current * 2, RECONNECT_MAX_MS);
         setTimeout(connect, delay);
@@ -140,6 +185,8 @@ export function usePixelOfficeSocket(os: OfficeState | null): void {
       closed = true;
       stopPolling();
       wsRef.current?.close();
+      esRef.current?.close();
+      esRef.current = null;
     };
   }, [os]);
 }
