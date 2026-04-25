@@ -34,6 +34,22 @@ export type PixelOfficeEvent =
 
 // Stable mapping session_id → character id so repeated events hit the same char.
 const sessionToId = new Map<string, number>();
+// Dedup: ONE character per agent slug, even if multiple session_ids are
+// concurrently active for that agent. Without this, every Oracle chat
+// session showed up twice (chat-bridge emits 'chat-<sid>', JSONL watcher
+// emits the actual UUID — two distinct session_ids, both agent='oracle').
+const agentToId = new Map<string, number>();
+// Refcount per agent slug: tracks how many session_ids currently anchor
+// each character. We only despawn when this hits 0, so flash sessions
+// (subagents that respond with one-line text in <1 s) stay visible until
+// the linger timeout fires.
+const agentRefcount = new Map<string, number>();
+// When an agent's refcount hits 0, schedule despawn LINGER_MS later. If
+// a new session for the same agent arrives before the timeout, cancel
+// and keep the character. Without this, subagent spawns flicker on/off
+// faster than a human eye can track.
+const lingerTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const LINGER_MS = 5000;
 let nextId = 1;
 
 /**
@@ -67,10 +83,47 @@ function liveCharacterCount(os: OfficeState): number {
 }
 
 function spawnAgent(os: OfficeState, agent: string, sessionId: string): void {
+  // Reuse the existing character for this agent slug if any session is
+  // already active for it. Cancel any pending despawn (the agent is back).
+  const existingTimer = lingerTimers.get(agent);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+    lingerTimers.delete(agent);
+  }
+  const existingId = agentToId.get(agent);
+  if (existingId !== undefined) {
+    sessionToId.set(sessionId, existingId);
+    agentRefcount.set(agent, (agentRefcount.get(agent) || 0) + 1);
+    return;
+  }
   const id = resolveId(sessionId);
+  agentToId.set(agent, id);
+  agentRefcount.set(agent, 1);
   const entry = roster.get(agent);
   const { palette, hueShift } = paletteForAgent(agent, { color: entry?.color });
   os.addAgent(id, palette, hueShift, undefined, false, agent);
+}
+
+/** Decrement agent refcount; despawn (with linger) when it reaches zero. */
+function dropAgentRef(os: OfficeState, agent: string): void {
+  const count = (agentRefcount.get(agent) || 0) - 1;
+  if (count > 0) {
+    agentRefcount.set(agent, count);
+    return;
+  }
+  agentRefcount.delete(agent);
+  const id = agentToId.get(agent);
+  if (id === undefined) return;
+  // Hold the character on screen LINGER_MS so flash sessions are visible.
+  const t = setTimeout(() => {
+    lingerTimers.delete(agent);
+    if ((agentRefcount.get(agent) || 0) === 0) {
+      os.removeAgent(id);
+      agentToId.delete(agent);
+      drainQueue(os);
+    }
+  }, LINGER_MS);
+  lingerTimers.set(agent, t);
 }
 
 /** Drain queued spawns until the cap is reached again. */
@@ -103,19 +156,28 @@ export function applyEvent(os: OfficeState, evt: PixelOfficeEvent): void {
       break;
     }
     case 'agent_stopped': {
-      // If the agent never spawned (still queued), just drop it from the queue.
+      // Queued (never spawned)? Just drop from the queue.
       const queuedIdx = pendingQueue.findIndex((q) => q.session_id === evt.session_id);
       if (queuedIdx !== -1) {
         pendingQueue.splice(queuedIdx, 1);
         break;
       }
       const id = sessionToId.get(evt.session_id);
-      if (id !== undefined) {
-        os.removeAgent(id);
-        sessionToId.delete(evt.session_id);
+      if (id === undefined) break;
+      sessionToId.delete(evt.session_id);
+      // Find the agent slug this id belongs to and refcount it down. If
+      // other sessions still hold the slug, the character stays put.
+      let stoppedAgent: string | undefined;
+      for (const [agent, aid] of agentToId.entries()) {
+        if (aid === id) { stoppedAgent = agent; break; }
       }
-      // A slot may now be free — drain the queue.
-      drainQueue(os);
+      if (stoppedAgent) {
+        dropAgentRef(os, stoppedAgent);
+      } else {
+        // Defensive: legacy / orphan path — despawn directly.
+        os.removeAgent(id);
+        drainQueue(os);
+      }
       break;
     }
     case 'tool_started': {
@@ -164,10 +226,16 @@ export function applyEvent(os: OfficeState, evt: PixelOfficeEvent): void {
 // Exposed for tests so each case can start from a clean session map.
 export const _internals = {
   sessionToId,
+  agentToId,
+  agentRefcount,
   roster,
   pendingQueue,
   reset: (): void => {
     sessionToId.clear();
+    agentToId.clear();
+    agentRefcount.clear();
+    for (const t of lingerTimers.values()) clearTimeout(t);
+    lingerTimers.clear();
     nextId = 1;
     roster.clear();
     pendingQueue.length = 0;

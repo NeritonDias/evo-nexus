@@ -64,8 +64,13 @@ export function ToolOverlay({ officeState, zoom, panRef }: ToolOverlayProps) {
   }, []);
 
   // Match the canvas world→screen transform used in OfficeCanvasLite.
+  // We MUST grab the office canvas specifically — querySelector('canvas')
+  // returns the FIRST <canvas> in the DOM, which is now the
+  // NetworkBackground (full-viewport, fixed-position) and produced label
+  // positions hundreds of pixels off the office card. The office canvas
+  // sits inside `.po-office-card`.
   if (typeof window === 'undefined') return null;
-  const canvas = document.querySelector('canvas');
+  const canvas = document.querySelector<HTMLCanvasElement>('.po-office-card canvas');
   if (!canvas) return null;
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;

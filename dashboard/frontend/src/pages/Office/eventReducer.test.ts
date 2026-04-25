@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { OfficeState } from '../../pixel-office/engine/officeState.js';
 import { MAX_VISIBLE_CHARACTERS } from '../../pixel-office/constants.js';
 import { applyEvent, getPendingQueueSize, _internals } from './eventReducer.js';
@@ -32,12 +32,21 @@ describe('applyEvent', () => {
     expect(os.characters.get(id)?.bubbleType).toBe('permission');
   });
 
-  it('despawns on agent_stopped', () => {
-    const os = new OfficeState();
-    applyEvent(os, { type: 'agent_started', agent: 'a', ...sess('s1') });
-    applyEvent(os, { type: 'agent_stopped', agent: 'a', ...sess('s1') });
-    const id = Array.from(os.characters.keys())[0];
-    expect(os.characters.get(id)?.matrixEffect).toBe('despawn');
+  it('despawns on agent_stopped after the linger window', () => {
+    vi.useFakeTimers();
+    try {
+      const os = new OfficeState();
+      applyEvent(os, { type: 'agent_started', agent: 'a', ...sess('s1') });
+      applyEvent(os, { type: 'agent_stopped', agent: 'a', ...sess('s1') });
+      const id = Array.from(os.characters.keys())[0];
+      // Linger keeps the character on screen so flash subagents are visible.
+      expect(os.characters.get(id)?.matrixEffect).not.toBe('despawn');
+      // After the linger window, removeAgent runs and the matrix effect flips.
+      vi.advanceTimersByTime(6000);
+      expect(os.characters.get(id)?.matrixEffect).toBe('despawn');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('ignores tool_started for unknown session', () => {
@@ -83,18 +92,24 @@ describe('applyEvent', () => {
   });
 
   it('dequeues the next pending agent on agent_stopped', () => {
-    const os = new OfficeState();
-    for (let i = 0; i < MAX_VISIBLE_CHARACTERS; i++) {
-      applyEvent(os, { type: 'agent_started', agent: 'a' + i, ...sess('s' + i) });
-    }
-    applyEvent(os, { type: 'agent_started', agent: 'q1', ...sess('q1') });
-    expect(getPendingQueueSize()).toBe(1);
+    vi.useFakeTimers();
+    try {
+      const os = new OfficeState();
+      for (let i = 0; i < MAX_VISIBLE_CHARACTERS; i++) {
+        applyEvent(os, { type: 'agent_started', agent: 'a' + i, ...sess('s' + i) });
+      }
+      applyEvent(os, { type: 'agent_started', agent: 'q1', ...sess('q1') });
+      expect(getPendingQueueSize()).toBe(1);
 
-    // Stop one of the live agents — the queued one should spawn immediately.
-    applyEvent(os, { type: 'agent_stopped', ...sess('s0') });
-    expect(getPendingQueueSize()).toBe(0);
-    // q1 now has a tracked session id (it was spawned)
-    expect(_internals.sessionToId.has('q1')).toBe(true);
+      // Stop one of the live agents. The queue drains AFTER the linger
+      // window — that's the new contract: refcount-aware despawn.
+      applyEvent(os, { type: 'agent_stopped', ...sess('s0') });
+      vi.advanceTimersByTime(6000);
+      expect(getPendingQueueSize()).toBe(0);
+      expect(_internals.sessionToId.has('q1')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('drops queued agents when their agent_stopped arrives before they spawn', () => {

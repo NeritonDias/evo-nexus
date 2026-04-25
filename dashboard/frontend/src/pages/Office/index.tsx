@@ -336,7 +336,7 @@ export default function Office() {
 
         {/* Canvas card */}
         <div
-          className="flex-1 min-w-0 relative rounded-xl border border-[#152030] bg-[#0b1018] shadow-[0_4px_40px_rgba(0,0,0,0.45)] overflow-hidden"
+          className="po-office-card flex-1 min-w-0 relative rounded-xl border border-[#152030] bg-[#0b1018] shadow-[0_4px_40px_rgba(0,0,0,0.45)] overflow-hidden"
           role="img"
           aria-label={t('office.title', 'Office — live agent activity')}
         >
