@@ -42,6 +42,7 @@
 - [x] **Active agent visualization** — Claude Code hooks track agent launches via `PreToolUse` events, writing to `agent-status.json`. Dashboard polls `/api/agents/active` and shows "RUNNING" badges with pulse animation on agent cards and overview.
 - [x] **Agents page redesign** — unique icons and accent colors per agent, status dots, slash command badges, memory count pills, hover glow effects.
 - [x] **Overview page redesign** — stat cards with icons and trend indicators, active agents bar, quick actions row, improved reports and routines tables.
+- [ ] **Pixel Office** (`/office`) — real-time pixel-art visualization of every active Claude Code agent (Phase 0–23 plan committed 2026-04-24; implementation in progress). See `docs/superpowers/plans/2026-04-24-pixel-office-visualization.md`.
 
 ### Agent Generalization
 

@@ -50,6 +50,7 @@ It turns a single CLI installation into a team of **38 specialized agents** orga
 - **150+ Skills + Custom** — organized by domain prefix (`social-`, `fin-`, `int-`, `prod-`, `mkt-`, `gog-`, `obs-`, `discord-`, `pulse-`, `sage-`, `hr-`, `legal-`, `ops-`, `cs-`, `data-`, `pm-`). Includes `prod-activation-plan` — the canonical skill for producing phased activation plans (index + folder-per-phase + file-per-item) used by Oracle
 - **7 Core + 20 Custom Routines** — daily, weekly, and monthly ADWs managed by a scheduler (core routines ship with the repo; custom routines are user-created and gitignored)
 - **Web Dashboard** — React + Flask app with auth, roles, web terminal, service management
+- **Pixel Office** (`/office`) — real-time pixel-art visualization of every active Claude Code agent. See [docs/pixel-office.md](docs/pixel-office.md).
 - **19 Integrations** — Google Calendar, Gmail, Linear, GitHub, Discord, Telegram, Stripe, Omie, Bling, Asaas, Fathom, Todoist, YouTube, Instagram, LinkedIn, Evolution API, Evolution Go, Evo CRM, and more
 - **2 core + custom HTML report templates** — dark-themed dashboards for every domain
 - **Persistent Memory** — two-tier system (CLAUDE.md + memory/) with LLM Wiki pattern: ingest propagation, weekly lint, centralized index, and operation log
