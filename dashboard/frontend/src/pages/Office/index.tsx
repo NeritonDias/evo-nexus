@@ -8,6 +8,7 @@ import { usePixelOfficeSocket } from './usePixelOfficeSocket.js';
 import { RosterPanel } from './RosterPanel.js';
 import { setRoster } from './eventReducer.js';
 import { OfficeErrorBoundary } from './ErrorBoundary.js';
+import { DebugOverlay } from './DebugOverlay.js';
 
 export default function Office() {
   const { t } = useTranslation();
@@ -192,6 +193,9 @@ export default function Office() {
 
   const os = osRef.current;
   void tick; // force re-render for the metrics below
+  const debugEnabled =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('debug') === '1';
   let totalIn = 0;
   let totalOut = 0;
   for (const ch of os.characters.values()) {
@@ -262,6 +266,7 @@ export default function Office() {
             />
             <ToolOverlay officeState={os} zoom={zoom} panRef={panRef} />
           </OfficeErrorBoundary>
+          {debugEnabled && <DebugOverlay officeState={os} wsConnected={wsConnected} />}
           {activeCount === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-slate-500 text-sm">
