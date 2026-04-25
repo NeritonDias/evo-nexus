@@ -1,7 +1,7 @@
 #!/bin/bash
 # Agent Activity Tracker Hook
-# (1) Keeps .claude/agent-status.json up-to-date for /api/agents/active.
-# (2) POSTs a structured event to /api/pixel-office/hook for the WS bus.
+# POSTs a structured event to /api/pixel-office/hook for the WS bus.
+# Legacy .claude/agent-status.json writes retired — bus snapshot is now the source of truth.
 #
 # Env:
 #   EVONEXUS_DASHBOARD_URL   default http://127.0.0.1:8080
@@ -10,7 +10,6 @@
 # Fires on hook events: PreToolUse, PostToolUse, Notification, Stop.
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
-STATUS_FILE="$PROJECT_DIR/.claude/agent-status.json"
 EVENT="$CLAUDE_HOOK_EVENT"
 DASHBOARD_URL="${EVONEXUS_DASHBOARD_URL:-http://127.0.0.1:8080}"
 HOOK_TOKEN="${PIXEL_OFFICE_HOOK_TOKEN:-}"
@@ -34,29 +33,7 @@ AGENT_NAME="$(grep_json agent)"
 [ -z "$AGENT_NAME" ] && AGENT_NAME="$AGENT_TYPE"
 [ -z "$AGENT_NAME" ] && AGENT_NAME="main"
 
-# --- Legacy status file maintenance (existing behaviour) ---
-if [ ! -f "$STATUS_FILE" ]; then
-  echo '{"active_agents":[],"last_updated":""}' > "$STATUS_FILE"
-fi
-if [ "$EVENT" = "PreToolUse" ] && [ "$TOOL" = "Agent" ]; then
-  python3 - <<PY 2>/dev/null
-import json
-try:
-    with open("$STATUS_FILE") as f: data = json.load(f)
-except Exception:
-    data = {"active_agents": [], "last_updated": ""}
-data["active_agents"].append({
-    "agent": "$AGENT_TYPE" or "general-purpose",
-    "description": "$DESCRIPTION",
-    "started_at": "$NOW",
-})
-data["active_agents"] = data["active_agents"][-20:]
-data["last_updated"] = "$NOW"
-with open("$STATUS_FILE", "w") as f: json.dump(data, f)
-PY
-elif [ "$EVENT" = "Stop" ]; then
-  echo "{\"active_agents\":[],\"last_updated\":\"$NOW\"}" > "$STATUS_FILE"
-fi
+# Legacy agent-status.json writes retired — /api/agents/active now reads from pixel-office bus
 
 # --- Pixel-office event POST ---
 post_event() {
