@@ -72,3 +72,32 @@ def test_thread_safe_concurrent_publish():
         except Exception:
             break
     assert len(received) == 500
+
+
+from dashboard.backend.pixel_office_events import validate_event, EventType
+
+
+def test_validate_agent_started_accepts_valid_payload():
+    e = {"type": "agent_started", "agent": "apex-architect", "session_id": "s1", "ts": "2026-04-24T10:00:00Z"}
+    assert validate_event(e) is None
+
+
+def test_validate_rejects_unknown_type():
+    err = validate_event({"type": "garbage", "session_id": "s1"})
+    assert err is not None
+    assert "unknown" in err.lower()
+
+
+def test_validate_rejects_missing_session_id():
+    err = validate_event({"type": "agent_started", "agent": "apex-architect"})
+    assert err is not None
+    assert "session_id" in err
+
+
+def test_event_type_enum_covers_the_spec():
+    assert {e.value for e in EventType} == {
+        "agent_started", "agent_stopped",
+        "tool_started", "tool_finished",
+        "waiting_input", "notification",
+        "token_usage",
+    }
