@@ -164,6 +164,7 @@ const translations = {
         admin: 'Admin',
       },
       overview: 'Resumen',
+      office: 'Oficina',
       agents: 'Agentes',
       skills: 'Habilidades',
       memory: 'Memoria',

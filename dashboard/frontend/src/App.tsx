@@ -26,6 +26,7 @@ import Triggers from './pages/Triggers'
 import Backups from './pages/Backups'
 import Providers from './pages/Providers'
 import Workspace from './pages/Workspace'
+import Office from './pages/Office'
 import Settings from './pages/Settings'
 import ShareView from './pages/ShareView'
 import ShareLinks from './pages/ShareLinks'
@@ -106,6 +107,7 @@ function AppContent() {
       >
         <Routes>
           <Route path="/" element={<Overview />} />
+          {hasPermission('agents', 'view') && <Route path="/office" element={<Office />} />}
           <Route path="/workspace/*" element={<Workspace />} />
           <Route path="/agents" element={<Agents />} />
           <Route path="/agents/:name" element={<AgentDetail />} />

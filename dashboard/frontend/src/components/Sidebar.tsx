@@ -8,6 +8,7 @@ import {
   Brain, Plug, DollarSign, FolderOpen, Cpu,
   Monitor, Users, ScrollText, LogOut, Menu, X, Shield, BookOpen, Library, Database,
   ArrowUpCircle, ChevronDown, Webhook, HardDriveDownload, Settings, Share2, Heart, Target, Ticket, Activity,
+  Building2,
 } from 'lucide-react'
 
 interface VersionInfo {
@@ -39,6 +40,7 @@ const navGroups: NavGroup[] = [
     collapsible: false,
     items: [
       { to: '/', labelKey: 'overview', icon: LayoutDashboard, resource: null },
+      { to: '/office', labelKey: 'office', icon: Building2, resource: 'agents' },
     ],
   },
   {

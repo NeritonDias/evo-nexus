@@ -171,6 +171,7 @@ const translations = {
         admin: 'Admin',
       },
       overview: 'Visão geral',
+      office: 'Escritório',
       agents: 'Agentes',
       skills: 'Habilidades',
       memory: 'Memória',
