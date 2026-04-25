@@ -80,3 +80,10 @@ def test_ws_route_exists_and_not_open_by_default(client):
     # Without upgrade headers Flask-Sock returns 400/426 not 200 — we just confirm not 200.
     r = client.get("/ws/pixel-office")
     assert r.status_code != 200
+
+
+# ── Metrics endpoint (Phase 19) ───────────────────────────────────────────
+
+def test_metrics_requires_auth(client):
+    r = client.get("/api/pixel-office/metrics")
+    assert r.status_code in (401, 403)

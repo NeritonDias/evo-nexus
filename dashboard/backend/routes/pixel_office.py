@@ -29,6 +29,7 @@ bp = Blueprint("pixel_office", __name__, url_prefix="/api/pixel-office")
 sock = Sock()  # attached to app in app.py
 
 _WORKSPACE_ENV = "EVONEXUS_WORKSPACE"
+_BUS_STARTED_AT = datetime.now(timezone.utc)
 
 
 def _workspace_root() -> Path:
@@ -99,6 +100,16 @@ def snapshot():
     if not current_user.is_authenticated:
         return jsonify({"error": "auth required"}), 401
     return jsonify({"sessions": bus.snapshot()})
+
+
+@bp.get("/metrics")
+def metrics():
+    """Return runtime metrics for the pixel-office bus (Phase 19 observability)."""
+    if not current_user.is_authenticated:
+        return jsonify({"error": "auth required"}), 401
+    stats = bus.stats()
+    stats["uptime_seconds"] = int((datetime.now(timezone.utc) - _BUS_STARTED_AT).total_seconds())
+    return jsonify(stats)
 
 
 # ── Seat persistence (Phase 10) ──────────────────────────────────────────────

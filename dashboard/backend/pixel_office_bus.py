@@ -27,6 +27,8 @@ class PixelOfficeBus:
         self._max_queue = max_queue
         self._replay: deque = deque(maxlen=replay_size) if replay_size > 0 else deque(maxlen=0)
         self._sessions: dict[str, dict[str, Any]] = {}
+        self._events_published: int = 0
+        self._events_dropped: int = 0
 
     def subscribe(self) -> queue.Queue:
         q: queue.Queue = queue.Queue(maxsize=self._max_queue)
@@ -77,6 +79,7 @@ class PixelOfficeBus:
 
     def publish(self, event: dict[str, Any]) -> None:
         with self._lock:
+            self._events_published += 1
             self._update_sessions(event)
             self._replay.append(event)
             dead: list[queue.Queue] = []
@@ -87,6 +90,7 @@ class PixelOfficeBus:
                     # Drop oldest to make room
                     try:
                         q.get_nowait()
+                        self._events_dropped += 1
                     except queue.Empty:
                         pass
                     try:
@@ -100,6 +104,18 @@ class PixelOfficeBus:
         """Return a deep-copy of the current session map. Safe for concurrent reads."""
         with self._lock:
             return copy.deepcopy(self._sessions)
+
+    def stats(self) -> dict[str, Any]:
+        """Return runtime metrics for the bus. Safe for concurrent reads."""
+        with self._lock:
+            return {
+                "subscribers": len(self._subscribers),
+                "events_published_total": self._events_published,
+                "events_dropped_total": self._events_dropped,
+                "queue_depths": [q.qsize() for q in self._subscribers],
+                "replay_buffer_size": len(self._replay),
+                "sessions_active": len(self._sessions),
+            }
 
 
 # Module-level singleton used by routes + hook endpoint
