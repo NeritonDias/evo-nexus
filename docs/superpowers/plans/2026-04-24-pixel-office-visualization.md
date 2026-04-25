@@ -10,7 +10,11 @@
 
 **Branch:** `feat/pixel-office` (already created off `origin/develop`).
 
-**Non-goals for this release:** in-browser furniture editor UI, drag-to-move furniture, audio cues. Team tmux visualisation is deferred but data shape is reserved. Everything else (sub-agents, seat persistence, rich runner events, heartbeat integration, roster sidebar, tool overlay, always-on labels, WS auth, Docker build parity) is **in scope** and covered in Phases 6–14.
+**Non-goals for this release:** in-browser furniture editor UI, drag-to-move furniture, audio cues. Team tmux visualisation is deferred but data shape is reserved. Everything else (sub-agents, seat persistence, rich runner events, heartbeat integration, roster sidebar, tool overlay, always-on labels, WS auth, Docker build parity, full asset pipeline, browser-side PNG decoder, dynamic furniture catalog, RBAC filtering, multi-source emission for triggers/tasks/terminal-server, snapshot endpoint, SSE fallback, observability metrics, E2E Playwright tests, error boundary, responsive fallback, alembic migration, CI lint) is **in scope** and covered in Phases 6–23.
+
+**Plan revision history:**
+- 2026-04-24 v1 (commit `1908cf5`): initial 14-phase plan (0–14).
+- 2026-04-24 v2: deep re-analysis surfaced gaps. Phase 2 expanded with full asset pipeline (Tasks 2.5-2.7); Phase 3 gets snapshot endpoint (Task 3.3); Phase 4 gets i18n + RBAC + click→AgentDetail integration; new Phases 15–23 added: multi-source emission, RBAC, performance/scale, SSE+snapshot, observability, E2E tests, resilience UI, legacy unification, CI/build.
 
 **Route clash resolved:** `/workspace` is already taken by the existing file browser page (`dashboard/frontend/src/pages/Workspace.tsx`). This feature lives at `/office` with page file `dashboard/frontend/src/pages/Office/index.tsx` — no rename of existing code.
 
@@ -1185,9 +1189,319 @@ git add dashboard/frontend/public/pixel-office dashboard/frontend/src/pixel-offi
 git commit -m "feat(pixel-office): ship sprite sheet and manifest under /pixel-office/"
 ```
 
+> **Important correction (v2):** pixel-agents does NOT ship a single `characters.png`. The real asset tree is `webview-ui/public/assets/{characters,floors,walls,furniture,fonts}/...` with 6 character PNGs, 9 floor PNGs, 1 wall PNG, ~25 furniture subfolders (each with manifest.json + N PNGs), `default-layout-1.json`, and a custom pixel TTF font. Treat Task 2.4 as "minimal happy path"; the real asset pipeline is Tasks 2.5–2.7.
+
 ---
 
-## Phase 3: Reducer + WebSocket Client
+### Task 2.5: Full public asset harvest
+
+**Goal:** copy the entire `webview-ui/public/assets/` tree (plus `webview-ui/public/fonts/`) to `dashboard/frontend/public/pixel-office/`, preserving relative structure, so the catalog/loader can find them at runtime.
+
+**Files:**
+- Create: `dashboard/frontend/public/pixel-office/characters/char_0..5.png`
+- Create: `dashboard/frontend/public/pixel-office/floors/floor_0..8.png`
+- Create: `dashboard/frontend/public/pixel-office/walls/wall_0.png`
+- Create: `dashboard/frontend/public/pixel-office/furniture/<TYPE>/manifest.json` + sprite PNGs (≈25 subfolders)
+- Create: `dashboard/frontend/public/pixel-office/default-layout-1.json`
+- Create: `dashboard/frontend/public/pixel-office/fonts/FSPixelSansUnicode-Regular.ttf`
+- Create: `dashboard/frontend/public/pixel-office/index.json` — generated index `{floors:[...], walls:[...], characters:[...], furniture:[<id>...], defaultLayout: "default-layout-1.json"}`
+
+- [ ] **Step 1: Bulk copy preserving structure**
+
+```bash
+cd /d/evo-nexus
+mkdir -p dashboard/frontend/public/pixel-office
+cp -R /c/Users/Neriton/.claude/cache/pixel-agents-ref/webview-ui/public/assets/* \
+      dashboard/frontend/public/pixel-office/
+cp -R /c/Users/Neriton/.claude/cache/pixel-agents-ref/webview-ui/public/fonts \
+      dashboard/frontend/public/pixel-office/
+```
+
+Sanity:
+```bash
+ls dashboard/frontend/public/pixel-office/{characters,floors,walls,furniture,fonts,default-layout-1.json}
+find dashboard/frontend/public/pixel-office -name '*.png' | wc -l   # expect 60+
+find dashboard/frontend/public/pixel-office -name 'manifest.json' | wc -l  # expect 24+
+```
+
+- [ ] **Step 2: Generate `index.json`**
+
+This is the runtime equivalent of pixel-agents' `buildAssetIndex` in `shared/assets/build.ts` — a single JSON the browser fetches once to know what's available.
+
+Create `dashboard/frontend/public/pixel-office/_build_index.mjs`:
+
+```javascript
+// Run once at build/harvest time. Idempotent.
+import { readdirSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const ROOT = new URL('.', import.meta.url).pathname;
+const matchPng = (prefix) => (f) => new RegExp(`^${prefix}_\\d+\\.png$`, 'i').test(f);
+const sortByNumber = (a, b) => parseInt(/(\d+)/.exec(a)?.[1] ?? '0') - parseInt(/(\d+)/.exec(b)?.[1] ?? '0');
+const listSorted = (sub, prefix) => {
+  try {
+    return readdirSync(join(ROOT, sub)).filter(matchPng(prefix)).sort(sortByNumber);
+  } catch { return []; }
+};
+const furniture = readdirSync(join(ROOT, 'furniture'), { withFileTypes: true })
+  .filter(d => d.isDirectory()).map(d => d.name).sort();
+let defaultLayout = null, bestRev = 0;
+for (const f of readdirSync(ROOT)) {
+  const m = /^default-layout-(\d+)\.json$/.exec(f);
+  if (m && +m[1] > bestRev) { bestRev = +m[1]; defaultLayout = f; }
+}
+const idx = {
+  floors: listSorted('floors', 'floor'),
+  walls: listSorted('walls', 'wall'),
+  characters: listSorted('characters', 'char'),
+  furniture,
+  defaultLayout,
+};
+writeFileSync(join(ROOT, 'index.json'), JSON.stringify(idx, null, 2));
+console.log('Wrote index.json:', idx);
+```
+
+Run: `node dashboard/frontend/public/pixel-office/_build_index.mjs`
+
+- [ ] **Step 3: Sanity-check generated index**
+
+`cat dashboard/frontend/public/pixel-office/index.json` should list all PNGs and furniture folders.
+
+- [ ] **Step 4: Tests — at least one frontend test verifies fetchability**
+
+Create `dashboard/frontend/src/pixel-office/assets/index.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest';
+import indexJson from '../../../public/pixel-office/index.json';
+
+describe('pixel-office asset index', () => {
+  it('lists at least 6 character palettes', () => {
+    expect(indexJson.characters.length).toBeGreaterThanOrEqual(6);
+  });
+  it('lists at least 8 floor variants', () => {
+    expect(indexJson.floors.length).toBeGreaterThanOrEqual(8);
+  });
+  it('lists at least 20 furniture types', () => {
+    expect(indexJson.furniture.length).toBeGreaterThanOrEqual(20);
+  });
+  it('has a default layout', () => {
+    expect(indexJson.defaultLayout).toMatch(/^default-layout-\d+\.json$/);
+  });
+});
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add dashboard/frontend/public/pixel-office dashboard/frontend/src/pixel-office/assets/index.test.ts
+git commit -m "feat(pixel-office): full public asset harvest (chars+floors+walls+furniture+layout+font)"
+```
+
+---
+
+### Task 2.6: Browser-side PNG decoder pipeline
+
+**Goal:** port the relevant decoders from pixel-agents `shared/assets/pngDecoder.ts` (Node) to a browser equivalent that uses `fetch` + `OffscreenCanvas` + `getImageData`. Produces the same `SpriteData = string[][]` shape that the engine consumes.
+
+**Files:**
+- Modify: `dashboard/frontend/src/pixel-office/assets/pngDecoder.ts` (replace Node fs/Buffer paths)
+- Create: `dashboard/frontend/src/pixel-office/assets/browserDecoder.ts` (canvas-backed loader)
+- Test: `dashboard/frontend/src/pixel-office/assets/browserDecoder.test.ts`
+
+- [ ] **Step 1: Audit the existing harvested decoder**
+
+Read the harvested `pixel-office/assets/pngDecoder.ts`. Identify Node-specific calls (`fs`, `Buffer`, `path`). The pure-pixel logic (RGB→hex, anim-frame slicing) stays.
+
+- [ ] **Step 2: Write the failing tests**
+
+Create `browserDecoder.test.ts` with vitest + a small fixture PNG (use the actual `char_0.png` from public/):
+
+```ts
+import { describe, it, expect, beforeAll } from 'vitest';
+import { decodeCharacterPngFromUrl, rgbaToHex } from './browserDecoder';
+
+describe('browserDecoder', () => {
+  it('rgbaToHex converts a fully opaque pixel', () => {
+    expect(rgbaToHex([255, 0, 0, 255])).toBe('#ff0000');
+  });
+  it('rgbaToHex returns empty string for fully transparent', () => {
+    expect(rgbaToHex([255, 0, 0, 0])).toBe('');
+  });
+  it('decodes char_0.png into walking/typing/reading frames', async () => {
+    const sprites = await decodeCharacterPngFromUrl('/pixel-office/characters/char_0.png');
+    expect(sprites.down.length).toBeGreaterThanOrEqual(7);  // walk×3 + typing×2 + reading×2
+    expect(sprites.up.length).toBeGreaterThanOrEqual(7);
+    expect(sprites.right.length).toBeGreaterThanOrEqual(7);
+  });
+});
+```
+
+- [ ] **Step 3: Implement the browser decoder**
+
+```ts
+// dashboard/frontend/src/pixel-office/assets/browserDecoder.ts
+/* Adapted from pixel-agents pngDecoder.ts (MIT © 2026 Pablo De Lucca) */
+import type { SpriteData } from '../types';
+import { CHAR_FRAMES_PER_ROW } from './constants';
+
+export interface CharacterDirectionSprites {
+  down: SpriteData[];
+  up: SpriteData[];
+  right: SpriteData[];
+}
+
+export function rgbaToHex([r, g, b, a]: [number, number, number, number]): string {
+  if (a === 0) return '';
+  const h = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+async function fetchImageData(url: string): Promise<ImageData> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`fetch ${url}: ${res.status}`);
+  const blob = await res.blob();
+  const bmp = await createImageBitmap(blob);
+  const canvas = new OffscreenCanvas(bmp.width, bmp.height);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('OffscreenCanvas 2d unavailable');
+  ctx.drawImage(bmp, 0, 0);
+  return ctx.getImageData(0, 0, bmp.width, bmp.height);
+}
+
+function imageDataToSprite(img: ImageData, x: number, y: number, w: number, h: number): SpriteData {
+  const out: string[][] = [];
+  for (let row = 0; row < h; row++) {
+    const r: string[] = [];
+    for (let col = 0; col < w; col++) {
+      const i = ((y + row) * img.width + (x + col)) * 4;
+      r.push(rgbaToHex([img.data[i], img.data[i + 1], img.data[i + 2], img.data[i + 3]]));
+    }
+    out.push(r);
+  }
+  return out;
+}
+
+/** Slice a character PNG into [down, up, right] direction strips, each containing
+ *  N animation frames (walk, typing, reading) of size 16×32. */
+export async function decodeCharacterPngFromUrl(url: string): Promise<CharacterDirectionSprites> {
+  const img = await fetchImageData(url);
+  const FRAME_W = 16;
+  const FRAME_H = 32;
+  const decode = (rowIdx: number, frames: number): SpriteData[] => {
+    const arr: SpriteData[] = [];
+    for (let i = 0; i < frames; i++) {
+      arr.push(imageDataToSprite(img, i * FRAME_W, rowIdx * FRAME_H, FRAME_W, FRAME_H));
+    }
+    return arr;
+  };
+  return {
+    down: decode(0, CHAR_FRAMES_PER_ROW),
+    up: decode(1, CHAR_FRAMES_PER_ROW),
+    right: decode(2, CHAR_FRAMES_PER_ROW),
+  };
+}
+
+export async function decodeFloorPngFromUrl(url: string): Promise<SpriteData> {
+  const img = await fetchImageData(url);
+  return imageDataToSprite(img, 0, 0, img.width, img.height);
+}
+
+export async function decodeWallPngFromUrl(url: string): Promise<SpriteData[]> {
+  // Wall PNG is a horizontal strip of bitmask variants
+  const img = await fetchImageData(url);
+  const frameW = img.height; // square tiles
+  const frameH = img.height;
+  const count = Math.floor(img.width / frameW);
+  const out: SpriteData[] = [];
+  for (let i = 0; i < count; i++) out.push(imageDataToSprite(img, i * frameW, 0, frameW, frameH));
+  return out;
+}
+
+export async function decodeFurnitureSpritePngFromUrl(url: string, w: number, h: number): Promise<SpriteData> {
+  const img = await fetchImageData(url);
+  return imageDataToSprite(img, 0, 0, w, h);
+}
+```
+
+- [ ] **Step 4: Make tests pass**
+
+Run: `npx vitest run src/pixel-office/assets/browserDecoder.test.ts`. May require enabling a `happy-dom` or `jsdom-like` environment that provides `OffscreenCanvas`. If vitest's jsdom doesn't ship it, add `vitest-environment-jsdom-canvas` or run those tests in a real browser via Playwright (deferred to Phase 20).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add dashboard/frontend/src/pixel-office/assets/browserDecoder.ts dashboard/frontend/src/pixel-office/assets/browserDecoder.test.ts
+git commit -m "feat(pixel-office): browser-side PNG decoder (fetch + OffscreenCanvas)"
+```
+
+---
+
+### Task 2.7: Dynamic furniture catalog + asset orchestrator
+
+**Goal:** at runtime, after fetching `index.json`, fetch each furniture `manifest.json`, run the catalog flatten logic (already harvested from pixel-agents), and call the engine's `setCharacterTemplates` / `setFloorSprites` / `setWallSprites` / `buildDynamicCatalog`.
+
+**Files:**
+- Create: `dashboard/frontend/src/pixel-office/assets/orchestrator.ts`
+- Test: `dashboard/frontend/src/pixel-office/assets/orchestrator.test.ts` (vitest with mocked fetch)
+
+- [ ] **Step 1: Write failing test**
+
+```ts
+// orchestrator.test.ts
+import { describe, it, expect, vi } from 'vitest';
+import { loadAllAssets } from './orchestrator';
+
+describe('orchestrator', () => {
+  it('fetches index.json then each furniture manifest', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ characters: ['char_0.png'], floors: ['floor_0.png'], walls: ['wall_0.png'], furniture: ['DESK'], defaultLayout: 'default-layout-1.json' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'DESK', name: 'Desk', category: 'desks', type: 'asset', width: 16, height: 32, footprintW: 1, footprintH: 1 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ /* default layout */ version: 1, cols: 5, rows: 5, tiles: [], tileColors: [], furniture: [] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await loadAllAssets({ skipDecode: true });
+    expect(result.indexLoaded).toBe(true);
+    expect(result.furnitureCount).toBe(1);
+    expect(result.layout).toBeDefined();
+  });
+});
+```
+
+- [ ] **Step 2: Implement orchestrator**
+
+Two-phase:
+1. Fetch `index.json` + `default-layout-X.json` (parallel).
+2. For each character/floor/wall PNG: decode in parallel via Promise.all → call `setCharacterTemplates` / `setFloorSprites` / `setWallSprites` from the engine.
+3. For each furniture folder: fetch manifest, flatten via the harvested `flattenManifest` helper, decode each sprite PNG, build the in-memory sprite map → call `buildDynamicCatalog`.
+
+Public API:
+```ts
+export interface LoadResult {
+  indexLoaded: boolean;
+  furnitureCount: number;
+  layout: OfficeLayout;
+}
+export async function loadAllAssets(opts?: { skipDecode?: boolean }): Promise<LoadResult>;
+```
+
+- [ ] **Step 3: Wire from `pages/Office/index.tsx`**
+
+In the page mount effect, before opening the WS, await `loadAllAssets()`. Show a "Loading office…" spinner while it runs (target <2s on loopback / cached fetch). Pass the loaded layout to `new OfficeState(layout)`.
+
+- [ ] **Step 4: Tests pass**
+
+Run: `npx vitest run src/pixel-office/assets`
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add dashboard/frontend/src/pixel-office/assets/orchestrator.ts dashboard/frontend/src/pixel-office/assets/orchestrator.test.ts dashboard/frontend/src/pages/Office/index.tsx
+git commit -m "feat(pixel-office): dynamic asset orchestrator loads layout + sprites at runtime"
+```
+
+---
+
+
 
 ### Task 3.1: Write the event reducer (TDD)
 
@@ -1474,6 +1788,78 @@ git commit -m "feat(pixel-office): add WS hook with exponential backoff + pollin
 
 ---
 
+### Task 3.3: Snapshot endpoint for late joiners
+
+**Goal:** when a client opens the WS or page after agents have already started, it should reconstruct full state — not just receive future deltas. Endpoint `/api/pixel-office/snapshot` returns the bus's current view: list of active sessions with their last-known state.
+
+**Files:**
+- Modify: `dashboard/backend/pixel_office_bus.py` (add `snapshot()` returning current sessions map)
+- Modify: `dashboard/backend/routes/pixel_office.py` (add `/snapshot` endpoint)
+- Modify: `dashboard/frontend/src/pages/Office/usePixelOfficeSocket.ts` (call snapshot on mount before WS open)
+- Test: append to `tests/test_pixel_office_bus.py` and `tests/test_pixel_office_routes.py`
+
+- [ ] **Step 1: Failing tests**
+
+Append to `tests/test_pixel_office_bus.py`:
+```python
+def test_bus_snapshot_returns_current_sessions():
+    bus = PixelOfficeBus()
+    bus.publish({"type": "agent_started", "agent": "a", "session_id": "s1", "ts": "t1"})
+    bus.publish({"type": "tool_started", "session_id": "s1", "agent": "a", "tool": "Read", "ts": "t2"})
+    bus.publish({"type": "agent_started", "agent": "b", "session_id": "s2", "ts": "t3"})
+    snap = bus.snapshot()
+    assert "s1" in snap and snap["s1"]["agent"] == "a" and snap["s1"]["tool"] == "Read"
+    assert "s2" in snap and snap["s2"]["agent"] == "b"
+
+def test_bus_snapshot_drops_stopped_sessions():
+    bus = PixelOfficeBus()
+    bus.publish({"type": "agent_started", "agent": "a", "session_id": "s1", "ts": "t1"})
+    bus.publish({"type": "agent_stopped", "session_id": "s1", "agent": "a", "ts": "t2"})
+    assert "s1" not in bus.snapshot()
+```
+
+- [ ] **Step 2: Implement snapshot in `PixelOfficeBus`**
+
+Add a `_sessions: dict[str, dict]` populated in `publish()` based on event type. Track per-session `{agent, tool, status, started_at, input_tokens, output_tokens}`. Drop on `agent_stopped`. Expose `snapshot() → dict[str, dict]` (deep copy under lock).
+
+- [ ] **Step 3: Endpoint**
+
+In `routes/pixel_office.py`:
+```python
+@bp.get("/snapshot")
+def snapshot():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "auth required"}), 401
+    return jsonify({"sessions": bus.snapshot()})
+```
+
+- [ ] **Step 4: Frontend uses it on mount**
+
+In `usePixelOfficeSocket`, before opening the WS:
+```ts
+const r = await fetch('/api/pixel-office/snapshot');
+if (r.ok) {
+  const { sessions } = await r.json();
+  for (const [sid, info] of Object.entries(sessions)) {
+    applyEvent(os, { type: 'agent_started', agent: info.agent, session_id: sid, ts: info.started_at });
+    if (info.tool) applyEvent(os, { type: 'tool_started', agent: info.agent, session_id: sid, tool: info.tool, ts: info.started_at });
+  }
+}
+```
+
+- [ ] **Step 5: Tests pass**
+
+Run pytest + vitest. Verify a refresh in mid-session reconstructs all visible characters.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add dashboard/backend/pixel_office_bus.py dashboard/backend/routes/pixel_office.py dashboard/frontend/src/pages/Office/usePixelOfficeSocket.ts tests/test_pixel_office_bus.py tests/test_pixel_office_routes.py
+git commit -m "feat(pixel-office): /api/pixel-office/snapshot for late-joiner state recovery"
+```
+
+---
+
 ## Phase 4: Office Page (route scaffolding)
 
 ### Task 4.1: Build the page
@@ -1524,17 +1910,47 @@ export default function Office() {
 }
 ```
 
-- [ ] **Step 2: Add the route**
+- [ ] **Step 2: Add the route + permission gate + nav + i18n + click→AgentDetail**
 
-Edit `dashboard/frontend/src/App.tsx`. Locate the route registration block and add:
-
+(2a) `dashboard/frontend/src/App.tsx`: import + route, but gate with `hasPermission('agents','view')`:
 ```tsx
 import Office from './pages/Office';
 // …
-<Route path="/office" element={<Office />} />
+{hasPermission('agents', 'view') && <Route path="/office" element={<Office />} />}
 ```
 
-Edit `dashboard/frontend/src/components/Sidebar.tsx` and add a new nav entry labelled "Office" pointing to `/office`, using a `Building2` or `Users` icon from lucide-react. Position it right after the existing "Overview" entry.
+(2b) `dashboard/frontend/src/components/Sidebar.tsx`: the file is structured as `navGroups` with `key`, `items: NavItem[]` shape. Append to the `operations` group items:
+```ts
+{ to: '/office', labelKey: 'office', icon: Building2, resource: 'agents' },
+```
+Import `Building2` from lucide-react.
+
+(2c) i18n: add to `dashboard/frontend/src/i18n/locales/en.json` (and equivalent files for other locales) under `nav`:
+```json
+{ "nav": { "office": "Office" } }
+```
+Mirror in `pt.json` (or whatever locales exist) → `"office": "Escritório"`.
+
+(2d) Click→AgentDetail: in `pages/Office/index.tsx` update `onSelect`:
+```tsx
+import { useNavigate } from 'react-router-dom';
+const navigate = useNavigate();
+// …
+const handleSelect = (agentId: number | null) => {
+  if (agentId === null) return;
+  const ch = osRef.current?.characters.get(agentId);
+  if (ch?.folderName) navigate(`/agents/${ch.folderName}`);
+};
+// …
+<OfficeCanvasLite … onSelect={handleSelect} />
+```
+
+(2e) Replace the static header copy with `{t('office.title')}` once i18n keys exist.
+
+(2f) `i18n/locales/*.json` add:
+```json
+{ "office": { "title": "Office — live agent activity", "loading": "Loading office…", "empty": "Office is quiet. Trigger an agent to see them at work." } }
+```
 
 - [ ] **Step 3: Dev smoke test**
 
@@ -2596,6 +3012,279 @@ git add -A && git commit -m "chore(pixel-office): regression sweep" || echo "not
 
 ---
 
+---
+
+## Phase 15: Multi-Source Event Integration
+
+Phase 8 covers `ADWs/runner.py::run_claude`. Phase 9 covers heartbeat dispatcher. But evo-nexus has at least three other paths that spawn agents and currently bypass our emission:
+
+1. `dashboard/backend/routes/triggers.py::_execute_trigger` line 471 — calls `run_claude` (auto-covered) **and** `subprocess.run` directly at line 527 for the `script` action_type (NOT covered).
+2. `dashboard/backend/routes/tasks.py::_execute_task` line 170 — same pattern; line 227 has direct `subprocess.run` for script tasks.
+3. `dashboard/terminal-server/src/claude-bridge.js` — Node service spawning Claude for interactive terminals; never touches Python.
+
+### Task 15.1: Trigger script-path emission
+
+**Files:** Modify `dashboard/backend/routes/triggers.py`
+
+- [ ] **Step 1:** Locate `_execute_trigger` script branch (around line 527). Wrap the `subprocess.run(...)` with:
+  ```python
+  from ADWs.pixel_office_client import post_event as _px_emit  # safe — no-op if env missing
+  _session_id = f"trigger-{trigger.id}-{execution_id}"
+  _px_emit({"type":"agent_started","agent":trigger.action_target or "script","session_id":_session_id,"ts":datetime.now(timezone.utc).isoformat()})
+  try:
+      proc = subprocess.run(...)
+  finally:
+      _px_emit({"type":"agent_stopped","session_id":_session_id,"agent":trigger.action_target or "script","ts":datetime.now(timezone.utc).isoformat()})
+  ```
+- [ ] **Step 2:** Add a regression test that mocks `subprocess.run` and verifies `post_event` is called twice.
+- [ ] **Step 3:** Commit `feat(pixel-office): trigger script executions emit office events`.
+
+### Task 15.2: Scheduled task script-path emission
+
+**Files:** Modify `dashboard/backend/routes/tasks.py`
+
+Same pattern as 15.1 but for `_execute_task`. Use `_session_id = f"task-{task_id}"`.
+
+Commit `feat(pixel-office): scheduled task executions emit office events`.
+
+### Task 15.3: Terminal-server Node bridge emission
+
+**Files:** Modify `dashboard/terminal-server/src/claude-bridge.js`, optionally add `dashboard/terminal-server/src/pixel-office-client.js`.
+
+- [ ] **Step 1:** Read `claude-bridge.js` and `chat-bridge.js` to find the Claude spawn point (likely a `child_process.spawn(...)`).
+- [ ] **Step 2:** Create `pixel-office-client.js`:
+  ```js
+  const http = require('node:http');
+  function postEvent(payload) {
+    try {
+      const url = new URL(process.env.EVONEXUS_DASHBOARD_URL || 'http://127.0.0.1:8080');
+      const req = http.request({
+        host: url.hostname, port: url.port, path: '/api/pixel-office/hook',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json',
+                   ...(process.env.PIXEL_OFFICE_HOOK_TOKEN ? { 'X-Hook-Token': process.env.PIXEL_OFFICE_HOOK_TOKEN } : {}) },
+        timeout: 1500,
+      });
+      req.on('error', () => {}); req.on('timeout', () => req.destroy());
+      req.write(JSON.stringify(payload)); req.end();
+    } catch { /* swallow */ }
+  }
+  module.exports = { postEvent };
+  ```
+- [ ] **Step 3:** In `claude-bridge.js`, on spawn: `postEvent({type:'agent_started', agent: agentName, session_id: terminalSessionId, ts: new Date().toISOString()})`. On exit: `agent_stopped`.
+- [ ] **Step 4:** Test by opening an agent terminal in the dashboard — character should appear in `/office`.
+- [ ] **Step 5:** Commit `feat(pixel-office): terminal-server emits office events for interactive sessions`.
+
+---
+
+## Phase 16: Permissions, RBAC & Privacy
+
+The dashboard has a Role model with `agent_access_json` (`{"mode": "all"|"none"|"allowlist", "agents": [...]}`) and `permissions_json` per resource. `agents.view` gates listing; `agents.manage` gates editing.
+
+### Task 16.1: Reuse `/api/agents` for the roster (drop the duplicate)
+
+**Files:** Modify `dashboard/backend/routes/pixel_office.py`, `dashboard/frontend/src/pages/Office/RosterPanel.tsx`, `eventReducer.ts`.
+
+- [ ] **Step 1:** Delete the `/api/pixel-office/roster` endpoint added in Phase 1.3. Update tests.
+- [ ] **Step 2:** Frontend uses `/api/agents` (which already returns `name/description/color/locked/model`). The `locked` flag means the current user has no `agent_access` for that agent.
+- [ ] **Step 3:** In RosterPanel, render locked agents in slate at the bottom of the list, non-clickable. Don't expect them to ever appear in the office (they get filtered server-side).
+- [ ] **Step 4:** Commit `refactor(pixel-office): reuse /api/agents for roster, drop pixel-office/roster`.
+
+### Task 16.2: Server-side WS event filtering
+
+**Files:** Modify `dashboard/backend/routes/pixel_office.py`, `dashboard/backend/pixel_office_bus.py`.
+
+- [ ] **Step 1:** Per-subscriber filter: `bus.subscribe(filter_fn=None)` accepts an optional predicate `(event, allowed_slugs) → bool`. The WS handler builds `allowed_slugs` from `current_user.role.agent_access` once at connect; passes the filter.
+- [ ] **Step 2:** In `publish()`, after building the event, run each subscriber's filter; only enqueue if it passes.
+- [ ] **Step 3:** Concurrency-safe tests: subscribe two subscribers with different allowlists, publish 10 events, assert each got the right subset.
+- [ ] **Step 4:** Snapshot endpoint also filters: `bus.snapshot(allowed_slugs)`.
+- [ ] **Step 5:** Commit `feat(pixel-office): per-user RBAC filtering on WS events and snapshot`.
+
+### Task 16.3: Sanitise `waiting_input` payloads
+
+**Files:** Modify `dashboard/backend/routes/pixel_office.py` (hook ingestion).
+
+- [ ] **Step 1:** Strip `message` field from `waiting_input` events before publishing — only the bubble icon matters; the prompt text could leak sensitive data to viewers without `agents.manage`.
+- [ ] **Step 2:** When `current_user.role` has `agents.manage`, allow the unredacted version to flow (use a separate event type `waiting_input_full` filtered to managers only).
+- [ ] **Step 3:** Tests verifying reader-role sees redacted, manager sees full.
+- [ ] **Step 4:** Commit `feat(pixel-office): sanitise waiting_input prompts for non-managers`.
+
+### Task 16.4: Audit log on seat reassignment
+
+Use existing `models.audit(actor, action, resource, payload)` helper in the seats PUT endpoint. Action `pixel_office.seat_reassigned`. Commit `feat(pixel-office): audit log seat reassignments`.
+
+---
+
+## Phase 17: Performance & Scale
+
+### Task 17.1: Character cap + overflow indicator
+
+**Files:** Modify `pages/Office/index.tsx`, `pixel-office/engine/officeState.ts` (small extension).
+
+- [ ] **Step 1:** Define `MAX_VISIBLE_CHARACTERS = 50` in constants.
+- [ ] **Step 2:** Reducer maintains a hidden queue once the cap is hit. Show "+N agents queued" overlay when cap hit.
+- [ ] **Step 3:** When a character despawns, dequeue the next.
+- [ ] **Step 4:** Tests verify overflow indicator + dequeue.
+- [ ] **Step 5:** Commit `feat(pixel-office): cap visible characters and show overflow indicator`.
+
+### Task 17.2: Tab visibility throttling
+
+**Files:** Modify `pixel-office/engine/gameLoop.ts` or `OfficeCanvasLite`.
+
+- [ ] **Step 1:** Listen on `document.visibilitychange`. When `document.hidden`, drop the gameLoop frame rate from 60→4 fps; restore on visibility.
+- [ ] **Step 2:** Commit `perf(pixel-office): throttle gameLoop when tab is hidden`.
+
+### Task 17.3: Bus back-pressure metrics
+
+**Files:** Modify `dashboard/backend/pixel_office_bus.py`.
+
+- [ ] **Step 1:** Add counters: `dropped_events`, `slow_subscribers`, exposed via `bus.stats()`.
+- [ ] **Step 2:** Used by Phase 19 metrics endpoint.
+- [ ] **Step 3:** Commit `feat(pixel-office): bus exposes back-pressure stats`.
+
+---
+
+## Phase 18: SSE & Polling Enrichment
+
+### Task 18.1: SSE endpoint as third transport
+
+Some corporate networks block WS but allow SSE. Add `/sse/pixel-office` returning `text/event-stream`.
+
+**Files:** Modify `dashboard/backend/routes/pixel_office.py`, frontend `usePixelOfficeSocket.ts`.
+
+- [ ] **Step 1:** Endpoint subscribes to bus, yields `data: {json}\n\n` per event. Auth via session cookie or `?token=` query param.
+- [ ] **Step 2:** Frontend tries WS first; on close after 3 retries, switches to `EventSource('/sse/pixel-office')`. Polling becomes the third tier.
+- [ ] **Step 3:** Tests: mock `WebSocket = undefined` in jsdom and verify SSE path.
+- [ ] **Step 4:** Commit `feat(pixel-office): SSE fallback when WebSocket is blocked`.
+
+### Task 18.2: Enrich `/api/agents/active`
+
+**Files:** Modify `dashboard/backend/app.py` (the existing `/api/agents/active` route reads `agent-status.json`).
+
+- [ ] **Step 1:** Replace the implementation with `bus.snapshot()` filtered to last 10 minutes. Backward-compatible response shape.
+- [ ] **Step 2:** Add `session_id` field to each entry.
+- [ ] **Step 3:** Update polling fallback in `usePixelOfficeSocket.ts` to use the new field.
+- [ ] **Step 4:** Commit `refactor(pixel-office): /api/agents/active reads from bus snapshot`.
+
+---
+
+## Phase 19: Observability
+
+### Task 19.1: `/api/pixel-office/metrics` endpoint
+
+**Files:** Modify `dashboard/backend/routes/pixel_office.py`.
+
+- [ ] **Step 1:** Returns JSON:
+  ```json
+  {
+    "subscribers": 3,
+    "events_published_total": 12345,
+    "events_dropped_total": 2,
+    "queue_depths": [12, 0, 1],
+    "replay_buffer_size": 50,
+    "uptime_seconds": 3600
+  }
+  ```
+- [ ] **Step 2:** Optional Prometheus exposition at `/api/pixel-office/metrics?format=prometheus` if `EVONEXUS_PROMETHEUS=1`.
+- [ ] **Step 3:** Commit `feat(pixel-office): expose runtime metrics for the bus`.
+
+### Task 19.2: Frontend debug overlay
+
+**Files:** Modify `pages/Office/index.tsx`, add `pages/Office/DebugOverlay.tsx`.
+
+- [ ] **Step 1:** When `?debug=1` query param: show floating panel with FPS (from gameLoop), event lag (now − last event ts), character count, WS state.
+- [ ] **Step 2:** Commit `feat(pixel-office): debug overlay (?debug=1) shows FPS + event lag`.
+
+---
+
+## Phase 20: E2E Tests (Playwright)
+
+### Task 20.1: Playwright setup + first spec
+
+**Files:** Create `dashboard/frontend/e2e/playwright.config.ts`, `dashboard/frontend/e2e/office.spec.ts`.
+
+- [ ] **Step 1:** `npm i -D @playwright/test` in `dashboard/frontend`. Add `e2e:install` and `e2e` scripts in `package.json`.
+- [ ] **Step 2:** Config targets the running dashboard at `http://localhost:8080`. Reuses an existing test user (created in setup).
+- [ ] **Step 3:** Specs:
+  - `office-empty.spec.ts`: login → navigate `/office` → assert canvas present, no characters.
+  - `office-spawn.spec.ts`: login → POST `/api/pixel-office/hook` with `agent_started` → wait for character → assert canvas pixel non-empty around expected coords (use `toHaveScreenshot()` baseline).
+  - `office-rbac.spec.ts`: login as user with `agents.view = false` → `/office` redirects to `/`.
+  - `office-reconnect.spec.ts`: kill backend mid-session → frontend shows `○ reconnecting`. Restart → `● live`.
+- [ ] **Step 4:** Add `playwright` step to CI (Phase 23).
+- [ ] **Step 5:** Commit `test(pixel-office): Playwright e2e suite covering empty/spawn/rbac/reconnect`.
+
+---
+
+## Phase 21: Resilience UI
+
+### Task 21.1: ErrorBoundary around the canvas
+
+**Files:** Create `dashboard/frontend/src/pages/Office/ErrorBoundary.tsx`, modify `pages/Office/index.tsx`.
+
+- [ ] **Step 1:** Standard React class ErrorBoundary capturing render-phase exceptions; fallback UI: "The Office canvas crashed. Reload to retry. Logs: <copy button>".
+- [ ] **Step 2:** Wrap `<OfficeCanvasLite />` and the asset orchestrator's loading code.
+- [ ] **Step 3:** Sentry-style hook so the error can be surfaced to the existing notification system.
+- [ ] **Step 4:** Commit `feat(pixel-office): ErrorBoundary keeps the dashboard alive on canvas crash`.
+
+### Task 21.2: Responsive list-view fallback
+
+**Files:** Modify `pages/Office/index.tsx`.
+
+- [ ] **Step 1:** When `window.innerWidth < 720`, render only `RosterPanel` (full-width) and a banner "Pixel Office requires a wider screen". No canvas mount → no asset decode cost.
+- [ ] **Step 2:** Commit `feat(pixel-office): list-view fallback for narrow screens`.
+
+---
+
+## Phase 22: Legacy Unification
+
+### Task 22.1: Retire `agent-status.json` writes
+
+The hook script writes to `.claude/agent-status.json` which the existing `/api/agents/active` reads. Once Phase 18.2 lands, the JSON file is dead code.
+
+**Files:** Modify `.claude/hooks/agent-tracker.sh`.
+
+- [ ] **Step 1:** Remove the JSON-writing branch from the hook. Keep only the HTTP POST.
+- [ ] **Step 2:** Update `/api/agents/active` (already done in 18.2).
+- [ ] **Step 3:** Manual smoke: delete `.claude/agent-status.json` → ensure `/api/agents/active` still works (now sourced from bus).
+- [ ] **Step 4:** Commit `chore(pixel-office): retire .claude/agent-status.json file in favour of bus snapshot`.
+
+---
+
+## Phase 23: Build, Migrations & CI
+
+### Task 23.1: Alembic migration for `pixel_office_seats`
+
+The Phase 10 migration is raw SQL inside `app.py`'s startup. Promote to a proper alembic revision so the schema change is tracked.
+
+**Files:** Create `dashboard/backend/alembic/versions/<rev>_pixel_office_seats.py` (or whatever the existing alembic layout is), remove the raw SQL block from `app.py`.
+
+- [ ] **Step 1:** `grep -rn "alembic" /d/evo-nexus/dashboard/backend/` to find the alembic config.
+- [ ] **Step 2:** `alembic revision -m "add pixel_office_seats"` and fill in the upgrade/downgrade.
+- [ ] **Step 3:** Remove the inline `CREATE TABLE` from `app.py`.
+- [ ] **Step 4:** Test fresh DB + existing DB upgrade paths.
+- [ ] **Step 5:** Commit `chore(pixel-office): alembic migration for seats table`.
+
+### Task 23.2: Lint + typecheck CI
+
+**Files:** Modify `.github/workflows/ci.yml` (or whatever the CI file is).
+
+- [ ] **Step 1:** Inspect existing CI workflow.
+- [ ] **Step 2:** Add jobs:
+  - `pytest tests/test_pixel_office_*`
+  - `cd dashboard/frontend && npm ci && npx tsc --noEmit && npx vitest run --coverage && npm run lint`
+  - `cd dashboard/frontend && npx playwright install --with-deps && npx playwright test` (gated behind label `e2e` to keep PR cycle fast)
+- [ ] **Step 3:** Commit `ci(pixel-office): lint, typecheck, test pixel-office on every PR`.
+
+### Task 23.3: README + ROADMAP updates
+
+**Files:** Modify root `README.md`, `ROADMAP.md`.
+
+- [ ] **Step 1:** Add a "Pixel Office" subsection to the README features list with a screenshot path placeholder.
+- [ ] **Step 2:** Add the feature to ROADMAP.md as completed once merged.
+- [ ] **Step 3:** Commit `docs(pixel-office): mention feature in README and ROADMAP`.
+
+---
+
 ## PR Workflow (DO NOT EXECUTE UNTIL USER EXPLICITLY ASKS)
 
 The user has asked to hold off on the PR until manual testing is complete.
@@ -2610,9 +3299,27 @@ When green-lit:
 
 ---
 
-## Self-Review Checklist
+## Self-Review Checklist (v2)
 
-- **Spec coverage:** Yes — goal (visualise agents in pixel-art) → Phase 2-4; realistic assessment (MIT licence, WS via existing Flask-Sock, React 19 parity) → Phase 1 & 2; PR deferred → "PR Workflow" section.
-- **Placeholders:** None left.
-- **Type consistency:** `applyEvent`, `sessionToId`, `PixelOfficeEvent`, `OfficeState` method names match across tasks. Event payload fields (`type`, `agent`, `session_id`, `tool`, `ts`) match between `pixel_office_events.py` (Python) and `eventReducer.ts` (TypeScript). Hook script emits the same field names.
-- **Scope discipline:** No furniture editor, no tmux, no settings modal, no drag-to-move — deferred to a future "Pixel Office v2" plan.
+- **Spec coverage**:
+  - Goal "visualise agents in pixel-art" → Phases 2 (harvest), 3 (state mapping), 4 (page) are the core. Phases 6 (visual identity), 11 (roster), 14 (polish) raise the bar from MVP to production.
+  - Realistic compatibility assessment → confirmed locally: flask-sock present, React 19 + Vite + Tailwind v4 match, `/api/agents` already exists with RBAC, `.claude/hooks/agent-tracker.sh` already exists, dashboard already serves `dashboard/frontend/dist/`, `/workspace` route is taken so we use `/office`.
+  - Deep gaps surfaced in v2 review: full asset pipeline (Phase 2.5–2.7), browser-side PNG decoder (no extension host), snapshot endpoint (3.3), multi-source emission (Phase 15), RBAC at WS subscriber level (Phase 16), performance/scale (17), SSE fallback (18), observability (19), e2e Playwright (20), error boundary + responsive (21), legacy unification (22), alembic + CI (23).
+  - PR workflow deferred until manual user sign-off.
+
+- **Placeholders**: None left except `<rev>` in alembic filename (Task 23.1) which alembic itself fills in.
+
+- **Type consistency** across Python ↔ TypeScript ↔ Bash:
+  - Event field names: `type`, `agent`, `session_id`, `tool`, `ts`, `parent_session_id`, `parent_tool_id`, `subagent_type`, `input_tokens`, `output_tokens`, `message`. Defined once in `pixel_office_events.py`, mirrored in `eventReducer.ts` union type.
+  - Method names on `OfficeState` referenced in plan: `addAgent(id, palette?, hueShift?, seatId?, skipSpawn?, folderName?)`, `removeAgent`, `setAgentActive`, `setAgentTool`, `showPermissionBubble`, `dismissBubble`, `setAgentTokens`, `addSubagent(parent, toolId)`, `removeSubagent`, `reassignSeat`, `getCharacterAt` — all confirmed against the harvested `officeState.ts`.
+  - Asset pipeline contract: `setCharacterTemplates`, `setFloorSprites`, `setWallSprites`, `buildDynamicCatalog` are the four engine entry points; orchestrator calls all four after decode.
+
+- **Scope discipline**: still excluded — in-browser furniture editor, drag-to-move, audio cues. Everything else (sub-agents, seats, runner emission, heartbeat, trigger/task/terminal-server emission, RBAC, perf, SSE, metrics, Playwright, ErrorBoundary, responsive, alembic, CI, README) is in scope.
+
+- **Open assumptions worth validating during execution**:
+  1. Vitest's jsdom environment may lack `OffscreenCanvas`. Plan-B is to gate browser-decoder unit tests behind Playwright (Phase 20) rather than vitest. Acceptance: if `npx vitest run` skips/errors on canvas tests, mark them `it.skip` with a comment pointing to Phase 20 e2e.
+  2. The pixel-agents `flattenManifest` helper in `manifestUtils.ts` is harvested in Phase 2.1 but used in Phase 2.7. Confirm during 2.7 that no Node-only API leaked through.
+  3. `terminal-server/src/claude-bridge.js` may already track sessions in its own `session-store.js`. Phase 15.3 should reuse that session id rather than fabricate a new one.
+  4. RBAC `agent_access_json` allowlist filtering at WS level (Phase 16.2) needs a re-evaluation when a role changes mid-session — currently the filter is captured at connect. Acceptable for v1; document the limitation.
+
+- **Effort estimate (v2 plan)**: original 14-phase plan ≈ 2 weeks of focused engineering. v2 with 23 phases ≈ 3.5–4 weeks. Asset pipeline (2.5–2.7) alone is ~3 days. RBAC + SSE + observability + Playwright are another ~5 days. The new ceiling is "production-ready, not MVP" exactly as the user requested.
