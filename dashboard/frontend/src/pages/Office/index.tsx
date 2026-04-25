@@ -7,6 +7,7 @@ import { ToolOverlay } from '../../pixel-office/components/ToolOverlay.js';
 import { usePixelOfficeSocket } from './usePixelOfficeSocket.js';
 import { RosterPanel } from './RosterPanel.js';
 import { setRoster } from './eventReducer.js';
+import { OfficeErrorBoundary } from './ErrorBoundary.js';
 
 export default function Office() {
   const { t } = useTranslation();
@@ -125,14 +126,16 @@ export default function Office() {
           }}
         />
         <div className="flex-1 min-w-0 relative">
-          <OfficeCanvasLite
-            officeState={os}
-            onSelect={handleSelect}
-            zoom={zoom}
-            onZoomChange={setZoom}
-            panRef={panRef}
-          />
-          <ToolOverlay officeState={os} zoom={zoom} panRef={panRef} />
+          <OfficeErrorBoundary>
+            <OfficeCanvasLite
+              officeState={os}
+              onSelect={handleSelect}
+              zoom={zoom}
+              onZoomChange={setZoom}
+              panRef={panRef}
+            />
+            <ToolOverlay officeState={os} zoom={zoom} panRef={panRef} />
+          </OfficeErrorBoundary>
           {activeCount === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-slate-500 text-sm">
