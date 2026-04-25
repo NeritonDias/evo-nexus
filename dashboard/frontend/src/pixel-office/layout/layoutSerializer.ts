@@ -1,7 +1,7 @@
 /* Adapted from pixel-agents (https://github.com/pablodelucca/pixel-agents) — MIT © 2026 Pablo De Lucca */
-import type { ColorValue } from '../../components/ui/types.js';
 import { getColorizedSprite } from '../colorize.js';
 import type {
+  ColorValue,
   FurnitureInstance,
   OfficeLayout,
   PlacedFurniture,

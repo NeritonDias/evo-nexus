@@ -1,5 +1,5 @@
 /* Adapted from pixel-agents (https://github.com/pablodelucca/pixel-agents) — MIT © 2026 Pablo De Lucca */
-import { MAX_DELTA_TIME_SEC } from '../../constants.js';
+import { MAX_DELTA_TIME_SEC } from '../constants.js';
 
 /** @internal */
 export interface GameLoopCallbacks {

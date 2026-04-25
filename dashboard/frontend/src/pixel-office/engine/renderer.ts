@@ -1,5 +1,5 @@
 /* Adapted from pixel-agents (https://github.com/pablodelucca/pixel-agents) — MIT © 2026 Pablo De Lucca */
-import type { ColorValue } from '../../components/ui/types.js';
+import type { ColorValue } from '../types.js';
 import {
   BUBBLE_FADE_DURATION_SEC,
   BUBBLE_SITTING_OFFSET_PX,
@@ -33,7 +33,7 @@ import {
   SELECTION_HIGHLIGHT_COLOR,
   VOID_TILE_DASH_PATTERN,
   VOID_TILE_OUTLINE_COLOR,
-} from '../../constants.js';
+} from '../constants.js';
 import { getColorizedFloorSprite, hasFloorSprites, WALL_COLOR } from '../floorTiles.js';
 import { getCachedSprite, getOutlineSprite } from '../sprites/spriteCache.js';
 import {

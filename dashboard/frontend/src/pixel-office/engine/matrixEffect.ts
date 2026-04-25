@@ -14,7 +14,7 @@ import {
   matrixGreenBright,
   matrixGreenDim,
   matrixGreenMid,
-} from '../../constants.js';
+} from '../constants.js';
 import type { Character, SpriteData } from '../types.js';
 import { MATRIX_EFFECT_DURATION } from '../types.js';
 

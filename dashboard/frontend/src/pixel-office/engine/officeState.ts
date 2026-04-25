@@ -12,7 +12,7 @@ import {
   INACTIVE_SEAT_TIMER_MIN_SEC,
   INACTIVE_SEAT_TIMER_RANGE_SEC,
   WAITING_BUBBLE_DURATION_SEC,
-} from '../../constants.js';
+} from '../constants.js';
 import { getAnimationFrames, getCatalogEntry, getOnStateType } from '../layout/furnitureCatalog.js';
 import {
   createDefaultLayout,

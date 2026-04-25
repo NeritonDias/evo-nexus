@@ -9,7 +9,7 @@ import {
   WANDER_MOVES_BEFORE_REST_MIN,
   WANDER_PAUSE_MAX_SEC,
   WANDER_PAUSE_MIN_SEC,
-} from '../../constants.js';
+} from '../constants.js';
 import { findPath } from '../layout/tileMap.js';
 import type { CharacterSprites } from '../sprites/spriteData.js';
 import type { Character, Seat, SpriteData, TileType as TileTypeVal } from '../types.js';

@@ -1,6 +1,6 @@
 /* Adapted from pixel-agents (https://github.com/pablodelucca/pixel-agents) — MIT © 2026 Pablo De Lucca */
-import type { ColorValue } from '../../components/ui/types.js';
-import { PALETTE_COUNT } from '../../constants.js';
+import type { ColorValue } from '../types.js';
+import { PALETTE_COUNT } from '../constants.js';
 import { adjustSprite } from '../colorize.js';
 import type { Direction, SpriteData } from '../types.js';
 import { Direction as Dir } from '../types.js';

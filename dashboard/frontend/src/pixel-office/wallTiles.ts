@@ -11,9 +11,8 @@
  * Bitmask convention: N=1, E=2, S=4, W=8. Out-of-bounds = NOT wall.
  */
 
-import type { ColorValue } from '../components/ui/types.js';
 import { getColorizedSprite } from './colorize.js';
-import type { FurnitureInstance, SpriteData, TileType as TileTypeVal } from './types.js';
+import type { ColorValue, FurnitureInstance, SpriteData, TileType as TileTypeVal } from './types.js';
 import { TILE_SIZE, TileType } from './types.js';
 
 /** Wall tile sets: each set has 16 sprites indexed by bitmask (0-15) */
