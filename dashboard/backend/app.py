@@ -636,14 +636,36 @@ def api_version():
 
 @app.route("/api/agents/active")
 def api_agents_active():
-    """Return currently active agents from hook-generated status file."""
+    """Return currently active agents from the pixel-office bus snapshot.
+    Falls back to the legacy agent-status.json file if the bus is empty."""
+    from datetime import datetime, timezone, timedelta
+    try:
+        from pixel_office_bus import bus
+        sessions = bus.snapshot()
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+        active = []
+        for sid, info in sessions.items():
+            try:
+                started = datetime.fromisoformat(info.get("started_at", "").replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                continue
+            if started > cutoff:
+                active.append({
+                    "agent": info.get("agent", "main"),
+                    "description": "",
+                    "started_at": info.get("started_at", ""),
+                    "session_id": sid,
+                })
+        if active:
+            return {"active_agents": active, "last_updated": datetime.now(timezone.utc).isoformat()}
+    except Exception:
+        pass
+    # Legacy fallback — read agent-status.json (original behaviour)
     import json
     status_file = WORKSPACE / ".claude" / "agent-status.json"
     try:
         if status_file.is_file():
             data = json.loads(status_file.read_text())
-            # Filter entries older than 10 minutes (stale)
-            from datetime import datetime, timezone, timedelta
             cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
             active = []
             for entry in data.get("active_agents", []):
