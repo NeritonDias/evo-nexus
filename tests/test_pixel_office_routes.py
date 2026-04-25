@@ -72,3 +72,11 @@ def test_seats_list_rejects_unauth(client):
 def test_seats_put_rejects_unauth(client):
     r = client.put("/api/pixel-office/seats", json={"seats": []})
     assert r.status_code in (401, 403)  # 401 from current_user check, 403 from setup/auth middleware
+
+
+# ── WebSocket endpoint (Phase 12) ─────────────────────────────────────────
+
+def test_ws_route_exists_and_not_open_by_default(client):
+    # Without upgrade headers Flask-Sock returns 400/426 not 200 — we just confirm not 200.
+    r = client.get("/ws/pixel-office")
+    assert r.status_code != 200

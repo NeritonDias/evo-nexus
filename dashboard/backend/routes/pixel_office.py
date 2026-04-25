@@ -169,6 +169,21 @@ def put_seats():
 
 @sock.route("/ws/pixel-office")
 def ws_stream(ws):
+    # Require either a logged-in session OR a valid DASHBOARD_API_TOKEN via
+    # ?token= query string. Frontend uses session cookies automatically; the
+    # query-string token is for CLI / headless clients (wscat, integration tests).
+    authed = current_user.is_authenticated
+    if not authed:
+        token_qs = request.args.get("token", "")
+        expected = os.environ.get("DASHBOARD_API_TOKEN", "").strip()
+        if token_qs and expected and secrets.compare_digest(token_qs, expected):
+            authed = True
+    if not authed:
+        try:
+            ws.close(code=4401, reason="unauthorized")
+        except Exception:
+            pass
+        return
     q = bus.subscribe()
     try:
         while True:
