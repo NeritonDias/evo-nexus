@@ -10,6 +10,12 @@ can reconstruct state without a full history dump.
 The bus also maintains a `_sessions` map (session_id → last-known state) so
 late-joining clients can fetch a full snapshot via /api/pixel-office/snapshot
 without replaying the entire event log.
+
+Per-subscriber RBAC filtering (Phase 16): subscribers may pass a `filter_fn`
+predicate `(event, context) -> bool` at subscribe time. Events for which the
+predicate returns ``False`` are skipped for that subscriber only — replay
+buffer + dispatch + drop accounting all honour the filter. The filter is
+intended to be cheap (set-membership lookup); heavy work belongs upstream.
 """
 from __future__ import annotations
 
@@ -17,23 +23,38 @@ import copy
 import queue
 import threading
 from collections import deque
-from typing import Any
+from typing import Any, Callable, Optional
+
+# Per-subscriber filter predicate. Receives the event dict and an opaque
+# `context` placeholder reserved for future use (subscriber metadata, request
+# context, etc.). Returns True to deliver, False to skip.
+FilterFn = Callable[[dict[str, Any], Any], bool]
 
 
 class PixelOfficeBus:
     def __init__(self, max_queue: int = 500, replay_size: int = 50) -> None:
         self._lock = threading.Lock()
         self._subscribers: list[queue.Queue] = []
+        self._filters: dict[int, Optional[FilterFn]] = {}
         self._max_queue = max_queue
         self._replay: deque = deque(maxlen=replay_size) if replay_size > 0 else deque(maxlen=0)
         self._sessions: dict[str, dict[str, Any]] = {}
         self._events_published: int = 0
         self._events_dropped: int = 0
 
-    def subscribe(self) -> queue.Queue:
+    def subscribe(self, filter_fn: Optional[FilterFn] = None) -> queue.Queue:
+        """Register a new subscriber.
+
+        ``filter_fn`` is an optional predicate ``(event, context) -> bool``
+        applied per-event. When ``None`` (default) the subscriber receives
+        every event — backward compatible with all existing call sites.
+        """
         q: queue.Queue = queue.Queue(maxsize=self._max_queue)
         with self._lock:
+            self._filters[id(q)] = filter_fn
             for evt in list(self._replay):
+                if filter_fn is not None and not filter_fn(evt, None):
+                    continue
                 try:
                     q.put_nowait(evt)
                 except queue.Full:
@@ -45,6 +66,7 @@ class PixelOfficeBus:
         with self._lock:
             if q in self._subscribers:
                 self._subscribers.remove(q)
+            self._filters.pop(id(q), None)
 
     def _update_sessions(self, event: dict[str, Any]) -> None:
         """Update the session-state map based on event type. Must be called under self._lock."""
@@ -84,6 +106,18 @@ class PixelOfficeBus:
             self._replay.append(event)
             dead: list[queue.Queue] = []
             for q in self._subscribers:
+                # Apply per-subscriber filter (Phase 16 RBAC). A predicate
+                # raising or returning False simply skips delivery for this
+                # subscriber — drop counter is unaffected because the event
+                # was *intentionally* withheld, not dropped under pressure.
+                fn = self._filters.get(id(q))
+                if fn is not None:
+                    try:
+                        if not fn(event, None):
+                            continue
+                    except Exception:
+                        # A misbehaving filter must not poison the bus.
+                        continue
                 try:
                     q.put_nowait(event)
                 except queue.Full:
@@ -99,11 +133,25 @@ class PixelOfficeBus:
                         dead.append(q)
             for q in dead:
                 self._subscribers.remove(q)
+                self._filters.pop(id(q), None)
 
-    def snapshot(self) -> dict[str, dict[str, Any]]:
-        """Return a deep-copy of the current session map. Safe for concurrent reads."""
+    def snapshot(
+        self, allowed_slugs: Optional[set[str]] = None
+    ) -> dict[str, dict[str, Any]]:
+        """Return a deep-copy of the current session map. Safe for concurrent reads.
+
+        When ``allowed_slugs`` is provided, only sessions whose ``agent``
+        appears in the set are returned. ``None`` returns everything
+        (admin / unrestricted callers).
+        """
         with self._lock:
-            return copy.deepcopy(self._sessions)
+            if allowed_slugs is None:
+                return copy.deepcopy(self._sessions)
+            return {
+                sid: copy.deepcopy(info)
+                for sid, info in self._sessions.items()
+                if info.get("agent") in allowed_slugs
+            }
 
     def stats(self) -> dict[str, Any]:
         """Return runtime metrics for the bus. Safe for concurrent reads."""
