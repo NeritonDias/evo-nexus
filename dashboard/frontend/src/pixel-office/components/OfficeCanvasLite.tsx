@@ -194,8 +194,14 @@ export function OfficeCanvasLite({
 
   const handleMouseUp = useCallback(() => { isPanningRef.current = false; }, []);
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+  // React's synthetic onWheel attaches the listener as PASSIVE in modern
+  // React, so e.preventDefault() is silently ignored and the browser still
+  // applies its own Ctrl+Wheel page zoom. Attach a NATIVE wheel listener
+  // with passive:false so we actually own the gesture inside the canvas.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         zoomAccumulatorRef.current += e.deltaY;
@@ -210,9 +216,10 @@ export function OfficeCanvasLite({
         officeState.cameraFollowId = null;
         panRef.current = clampPan(panRef.current.x - e.deltaX * dpr, panRef.current.y - e.deltaY * dpr);
       }
-    },
-    [zoom, onZoomChange, officeState, panRef, clampPan],
-  );
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, [zoom, onZoomChange, officeState, panRef, clampPan]);
 
   return (
     <div ref={containerRef} className="w-full h-full relative overflow-hidden bg-slate-900">
@@ -223,7 +230,6 @@ export function OfficeCanvasLite({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
         className="block"
       />
     </div>
