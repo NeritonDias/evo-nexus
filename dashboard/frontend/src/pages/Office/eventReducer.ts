@@ -1,5 +1,6 @@
 import type { OfficeState } from '../../pixel-office/engine/officeState.js';
 import { paletteForAgent } from '../../pixel-office/agentIdentity.js';
+import { MAX_VISIBLE_CHARACTERS } from '../../pixel-office/constants.js';
 
 /** Matches the shape of /api/agents entries (`name` is the agent slug). */
 export type RosterEntry = {
@@ -35,6 +36,14 @@ export type PixelOfficeEvent =
 const sessionToId = new Map<string, number>();
 let nextId = 1;
 
+/**
+ * Pending `agent_started` events held back when the office is at capacity.
+ * Drained FIFO by `agent_stopped` once a slot frees. Each entry preserves the
+ * original session_id so the eventual spawn keeps a stable id across events.
+ */
+type QueuedSpawn = { agent: string; session_id: string };
+const pendingQueue: QueuedSpawn[] = [];
+
 function resolveId(sessionId: string): number {
   let id = sessionToId.get(sessionId);
   if (id === undefined) {
@@ -44,21 +53,69 @@ function resolveId(sessionId: string): number {
   return id;
 }
 
+/**
+ * Live characters = on-screen, not despawning. Despawning characters are
+ * about to disappear so they no longer count toward the cap (this lets the
+ * next queued agent spawn the moment its predecessor is told to stop).
+ */
+function liveCharacterCount(os: OfficeState): number {
+  let n = 0;
+  for (const ch of os.characters.values()) {
+    if (ch.matrixEffect !== 'despawn') n++;
+  }
+  return n;
+}
+
+function spawnAgent(os: OfficeState, agent: string, sessionId: string): void {
+  const id = resolveId(sessionId);
+  const entry = roster.get(agent);
+  const { palette, hueShift } = paletteForAgent(agent, { color: entry?.color });
+  os.addAgent(id, palette, hueShift, undefined, false, agent);
+}
+
+/** Drain queued spawns until the cap is reached again. */
+function drainQueue(os: OfficeState): void {
+  while (pendingQueue.length > 0 && liveCharacterCount(os) < MAX_VISIBLE_CHARACTERS) {
+    const next = pendingQueue.shift()!;
+    spawnAgent(os, next.agent, next.session_id);
+  }
+}
+
+/** Number of queued agents waiting for a slot. UI reads this for the overlay. */
+export function getPendingQueueSize(): number {
+  return pendingQueue.length;
+}
+
 export function applyEvent(os: OfficeState, evt: PixelOfficeEvent): void {
   switch (evt.type) {
     case 'agent_started': {
-      const id = resolveId(evt.session_id);
-      const entry = roster.get(evt.agent);
-      const { palette, hueShift } = paletteForAgent(evt.agent, { color: entry?.color });
-      os.addAgent(id, palette, hueShift, undefined, false, evt.agent);
+      // If the session is already tracked (replay / duplicate), skip.
+      if (sessionToId.has(evt.session_id)) {
+        spawnAgent(os, evt.agent, evt.session_id); // no-op if already added
+        break;
+      }
+      // Cap reached → queue and wait for a slot to free.
+      if (liveCharacterCount(os) >= MAX_VISIBLE_CHARACTERS) {
+        pendingQueue.push({ agent: evt.agent, session_id: evt.session_id });
+        break;
+      }
+      spawnAgent(os, evt.agent, evt.session_id);
       break;
     }
     case 'agent_stopped': {
+      // If the agent never spawned (still queued), just drop it from the queue.
+      const queuedIdx = pendingQueue.findIndex((q) => q.session_id === evt.session_id);
+      if (queuedIdx !== -1) {
+        pendingQueue.splice(queuedIdx, 1);
+        break;
+      }
       const id = sessionToId.get(evt.session_id);
       if (id !== undefined) {
         os.removeAgent(id);
         sessionToId.delete(evt.session_id);
       }
+      // A slot may now be free — drain the queue.
+      drainQueue(os);
       break;
     }
     case 'tool_started': {
@@ -108,9 +165,11 @@ export function applyEvent(os: OfficeState, evt: PixelOfficeEvent): void {
 export const _internals = {
   sessionToId,
   roster,
+  pendingQueue,
   reset: (): void => {
     sessionToId.clear();
     nextId = 1;
     roster.clear();
+    pendingQueue.length = 0;
   },
 };

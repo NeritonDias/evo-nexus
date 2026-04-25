@@ -115,6 +115,15 @@ export const CHARACTER_HIT_HALF_WIDTH = 8;
 export const CHARACTER_HIT_HEIGHT = 24;
 export const TOOL_OVERLAY_VERTICAL_OFFSET = 32;
 
+// ── Capacity ────────────────────────────────────────────────
+/**
+ * Maximum number of characters rendered on the canvas at once.
+ * Additional `agent_started` events are queued by the event reducer and
+ * dequeued when a slot frees (an active character finishes its despawn
+ * animation). Tuned for ~50 sprites on a 20x11 grid without seat starvation.
+ */
+export const MAX_VISIBLE_CHARACTERS = 50;
+
 // ── Agent Teams ─────────────────────────────────────────────
 export const MAX_CONTEXT_TOKENS = 200_000;
 export const TOKEN_WARN_THRESHOLD = 0.6;

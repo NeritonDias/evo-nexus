@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { OfficeState } from '../../pixel-office/engine/officeState.js';
-import { applyEvent, _internals } from './eventReducer.js';
+import { MAX_VISIBLE_CHARACTERS } from '../../pixel-office/constants.js';
+import { applyEvent, getPendingQueueSize, _internals } from './eventReducer.js';
 
 const sess = (id: string) => ({ session_id: id, ts: '2026-04-24T10:00:00Z' });
 
@@ -62,5 +63,52 @@ describe('applyEvent', () => {
     applyEvent(os, { type: 'subagent_finished', parent_session_id: 'p', parent_tool_id: 'T1', ts: 't' });
     const sub = Array.from(os.characters.values()).find(c => c.isSubagent);
     expect(sub?.matrixEffect).toBe('despawn');
+  });
+
+  it('queues agent_started events past the visible-character cap', () => {
+    const os = new OfficeState();
+    // Spawn exactly MAX_VISIBLE_CHARACTERS
+    for (let i = 0; i < MAX_VISIBLE_CHARACTERS; i++) {
+      applyEvent(os, { type: 'agent_started', agent: 'a' + i, ...sess('s' + i) });
+    }
+    expect(os.characters.size).toBe(MAX_VISIBLE_CHARACTERS);
+    expect(getPendingQueueSize()).toBe(0);
+
+    // The next 3 should be queued, not spawned.
+    applyEvent(os, { type: 'agent_started', agent: 'q1', ...sess('q1') });
+    applyEvent(os, { type: 'agent_started', agent: 'q2', ...sess('q2') });
+    applyEvent(os, { type: 'agent_started', agent: 'q3', ...sess('q3') });
+    expect(os.characters.size).toBe(MAX_VISIBLE_CHARACTERS);
+    expect(getPendingQueueSize()).toBe(3);
+  });
+
+  it('dequeues the next pending agent on agent_stopped', () => {
+    const os = new OfficeState();
+    for (let i = 0; i < MAX_VISIBLE_CHARACTERS; i++) {
+      applyEvent(os, { type: 'agent_started', agent: 'a' + i, ...sess('s' + i) });
+    }
+    applyEvent(os, { type: 'agent_started', agent: 'q1', ...sess('q1') });
+    expect(getPendingQueueSize()).toBe(1);
+
+    // Stop one of the live agents — the queued one should spawn immediately.
+    applyEvent(os, { type: 'agent_stopped', ...sess('s0') });
+    expect(getPendingQueueSize()).toBe(0);
+    // q1 now has a tracked session id (it was spawned)
+    expect(_internals.sessionToId.has('q1')).toBe(true);
+  });
+
+  it('drops queued agents when their agent_stopped arrives before they spawn', () => {
+    const os = new OfficeState();
+    for (let i = 0; i < MAX_VISIBLE_CHARACTERS; i++) {
+      applyEvent(os, { type: 'agent_started', agent: 'a' + i, ...sess('s' + i) });
+    }
+    applyEvent(os, { type: 'agent_started', agent: 'q1', ...sess('q1') });
+    applyEvent(os, { type: 'agent_started', agent: 'q2', ...sess('q2') });
+    expect(getPendingQueueSize()).toBe(2);
+
+    // q1 finishes before its slot opens — should drop from queue without spawning.
+    applyEvent(os, { type: 'agent_stopped', ...sess('q1') });
+    expect(getPendingQueueSize()).toBe(1);
+    expect(_internals.sessionToId.has('q1')).toBe(false);
   });
 });

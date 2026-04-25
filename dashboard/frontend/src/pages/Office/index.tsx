@@ -6,7 +6,7 @@ import { OfficeCanvasLite } from '../../pixel-office/components/OfficeCanvasLite
 import { ToolOverlay } from '../../pixel-office/components/ToolOverlay.js';
 import { usePixelOfficeSocket } from './usePixelOfficeSocket.js';
 import { RosterPanel } from './RosterPanel.js';
-import { setRoster } from './eventReducer.js';
+import { setRoster, getPendingQueueSize } from './eventReducer.js';
 import { OfficeErrorBoundary } from './ErrorBoundary.js';
 import { DebugOverlay } from './DebugOverlay.js';
 
@@ -203,6 +203,8 @@ export default function Office() {
     totalOut += ch.outputTokens || 0;
   }
   const activeCount = os.characters.size;
+  // Surfaced from the reducer so the user knows agents are spawning past the cap.
+  const queuedCount = getPendingQueueSize();
 
   // Narrow-screen fallback: skip the canvas (which expects a wide viewport)
   // and show the roster list full-width with a notice.
@@ -266,6 +268,11 @@ export default function Office() {
             />
             <ToolOverlay officeState={os} zoom={zoom} panRef={panRef} />
           </OfficeErrorBoundary>
+          {queuedCount > 0 && (
+            <div className="absolute top-2 right-2 px-2 py-1 rounded bg-slate-900/80 border border-slate-700 text-amber-300 text-xs font-medium pointer-events-none shadow">
+              {t('office.queued', '+{{count}} agents queued', { count: queuedCount })}
+            </div>
+          )}
           {debugEnabled && <DebugOverlay officeState={os} wsConnected={wsConnected} />}
           {activeCount === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
