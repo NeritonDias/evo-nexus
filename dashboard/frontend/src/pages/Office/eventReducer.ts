@@ -1,4 +1,24 @@
 import type { OfficeState } from '../../pixel-office/engine/officeState.js';
+import { paletteForAgent } from '../../pixel-office/agentIdentity.js';
+
+/** Matches the shape of /api/agents entries (`name` is the agent slug). */
+export type RosterEntry = {
+  name: string;
+  description?: string;
+  color?: string;
+  /** Optional explicit slug; falls back to `name` when absent. */
+  slug?: string;
+};
+
+const roster = new Map<string, RosterEntry>();
+
+export function setRoster(entries: RosterEntry[]): void {
+  roster.clear();
+  for (const e of entries) {
+    const key = e.slug ?? e.name;
+    if (key) roster.set(key, e);
+  }
+}
 
 export type PixelOfficeEvent =
   | { type: 'agent_started'; agent: string; session_id: string; ts: string }
@@ -26,7 +46,9 @@ export function applyEvent(os: OfficeState, evt: PixelOfficeEvent): void {
   switch (evt.type) {
     case 'agent_started': {
       const id = resolveId(evt.session_id);
-      os.addAgent(id, undefined, undefined, undefined, false, evt.agent);
+      const entry = roster.get(evt.agent);
+      const { palette, hueShift } = paletteForAgent(evt.agent, { color: entry?.color });
+      os.addAgent(id, palette, hueShift, undefined, false, evt.agent);
       break;
     }
     case 'agent_stopped': {
@@ -71,8 +93,10 @@ export function applyEvent(os: OfficeState, evt: PixelOfficeEvent): void {
 // Exposed for tests so each case can start from a clean session map.
 export const _internals = {
   sessionToId,
+  roster,
   reset: (): void => {
     sessionToId.clear();
     nextId = 1;
+    roster.clear();
   },
 };

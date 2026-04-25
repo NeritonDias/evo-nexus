@@ -5,6 +5,7 @@ import { OfficeState } from '../../pixel-office/engine/officeState.js';
 import { OfficeCanvasLite } from '../../pixel-office/components/OfficeCanvasLite.js';
 import { usePixelOfficeSocket } from './usePixelOfficeSocket.js';
 import { RosterPanel } from './RosterPanel.js';
+import { setRoster } from './eventReducer.js';
 
 export default function Office() {
   const { t } = useTranslation();
@@ -19,6 +20,28 @@ export default function Office() {
   useEffect(() => {
     osRef.current = new OfficeState();
     setReady(true);
+  }, []);
+
+  // Fetch the roster on mount and feed it to the event reducer so palette
+  // resolution honours each agent's frontmatter color.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/agents')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: Array<{ name: string; description?: string; color?: string; locked?: boolean }>) => {
+        if (cancelled || !Array.isArray(data)) return;
+        setRoster(
+          data
+            .filter((a) => !a.locked)
+            .map((a) => ({ name: a.name, description: a.description, color: a.color, slug: a.name })),
+        );
+      })
+      .catch(() => {
+        /* roster fetch is best-effort — palette falls back to slug hash */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   usePixelOfficeSocket(ready ? osRef.current : null);
