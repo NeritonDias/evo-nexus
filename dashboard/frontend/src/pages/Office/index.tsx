@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { OfficeState } from '../../pixel-office/engine/officeState.js';
 import { OfficeCanvasLite } from '../../pixel-office/components/OfficeCanvasLite.js';
+import { ToolOverlay } from '../../pixel-office/components/ToolOverlay.js';
 import { usePixelOfficeSocket } from './usePixelOfficeSocket.js';
 import { RosterPanel } from './RosterPanel.js';
 import { setRoster } from './eventReducer.js';
@@ -131,6 +132,7 @@ export default function Office() {
             onZoomChange={setZoom}
             panRef={panRef}
           />
+          <ToolOverlay officeState={os} zoom={zoom} panRef={panRef} />
           {activeCount === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-slate-500 text-sm">
