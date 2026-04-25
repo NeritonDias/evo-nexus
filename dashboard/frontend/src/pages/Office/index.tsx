@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { OfficeState } from '../../pixel-office/engine/officeState.js';
 import { OfficeCanvasLite } from '../../pixel-office/components/OfficeCanvasLite.js';
 import { usePixelOfficeSocket } from './usePixelOfficeSocket.js';
+import { RosterPanel } from './RosterPanel.js';
 
 export default function Office() {
   const { t } = useTranslation();
@@ -91,21 +92,30 @@ export default function Office() {
           {totalIn.toLocaleString()} in · {totalOut.toLocaleString()} out tokens
         </span>
       </div>
-      <div className="flex-1 min-h-0 relative">
-        <OfficeCanvasLite
+      <div className="flex-1 min-h-0 flex">
+        <RosterPanel
           officeState={os}
-          onSelect={handleSelect}
-          zoom={zoom}
-          onZoomChange={setZoom}
-          panRef={panRef}
+          onSelect={(id) => {
+            os.selectedAgentId = id;
+            os.cameraFollowId = id;
+          }}
         />
-        {activeCount === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-slate-500 text-sm">
-              {t('office.empty', 'Office is quiet. Trigger an agent to see them at work.')}
+        <div className="flex-1 min-w-0 relative">
+          <OfficeCanvasLite
+            officeState={os}
+            onSelect={handleSelect}
+            zoom={zoom}
+            onZoomChange={setZoom}
+            panRef={panRef}
+          />
+          {activeCount === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-slate-500 text-sm">
+                {t('office.empty', 'Office is quiet. Trigger an agent to see them at work.')}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
